@@ -1,0 +1,60 @@
+# ── Dataset FMA: nunca versionar (mantém o repo leve) ──────────────
+data/
+*.zip
+fma_metadata/
+fma_small/
+fma_medium/
+fma_large/
+fma_full/
+
+# Áudio das faixas selecionadas
+*.mp3
+*.flac
+*.wav
+*.ogg
+*.m4a
+
+# ── Python / FastAPI ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── Node / React / Next.js ─────────────────────────────────────────
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Ambiente e segredos ────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── PostgreSQL / Docker ────────────────────────────────────────────
+postgres-data/
+pgdata/
+docker-compose.override.yml
+*.dump
+*.sql.gz
+
+# ── Editores e sistema operacional ─────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
