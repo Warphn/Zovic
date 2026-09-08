@@ -1,4 +1,4 @@
-# lab_eng_soft
+# Zovic
 
 O projeto consiste em um site para streaming de músicas.
 
