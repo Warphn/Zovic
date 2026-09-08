@@ -45,30 +45,12 @@
   --color-paper: var(--paper);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #171512;
-    --foreground: #efe7d8;
-    --surface: #211e19;
-    --border: #4a4437;
-
-    --muted: #6b6455;
-    --muted-foreground: #cabfa8;
-
-    --primary: #e2604f;
-    --primary-foreground: #171512;
-
-    --accent: #4fb3b6;
-    --accent-foreground: #171512;
-  }
-}
-
 * {
   border-color: var(--border);
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
