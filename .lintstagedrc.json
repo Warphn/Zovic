@@ -1,0 +1,3 @@
+{
+  "frontend/**/*.{js,jsx,mjs,cjs,ts,tsx}": "frontend/node_modules/.bin/eslint --config frontend/eslint.config.mjs --fix"
+}
