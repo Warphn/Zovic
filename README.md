@@ -7,4 +7,5 @@ O projeto consiste em um site para streaming de músicas.
 Backend: TypeScript, Express
 Frontend: TypeScript, React
 Banco de Dados: PostgreSQL
+
 Migrations: flyway
