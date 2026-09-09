@@ -33,7 +33,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="glass sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+    <header className="glass sticky top-0 z-50">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8">
         <Link
           href="/"
