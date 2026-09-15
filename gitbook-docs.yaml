@@ -1,0 +1,17 @@
+$schema: https://api.gitbook.com/openapi.yaml#/components/schemas/GitSyncSiteConfig
+site:
+  title: Documentação
+  structure:
+    - type: section
+      key: documentation
+      title: Documentação
+      path: documentation
+      children:
+        - type: space
+          key: docs-pt
+          title: Português
+          path: docs
+          default: true
+          content:
+            directory: ./docs
+            language: pt
