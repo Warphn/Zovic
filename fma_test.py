@@ -8,7 +8,6 @@ import seaborn as sns
 import sklearn as skl
 import librosa
 import librosa.display
-
 import utils
 
 plt.rcParams['figure.figsize'] = (17, 5)
