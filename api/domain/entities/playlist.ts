@@ -1,3 +1,5 @@
+import { ValidationError } from "../errors/domain-error";
+
 export interface ExistingPlaylistData {
     id: string,
     ownerId: string,
@@ -63,7 +65,7 @@ export class Playlist {
         return name;
     }
     
-    private static normalizeDescription(value?: string | null): string | null {
+    private static normalizedDescription(value?: string | null): string | null {
         const description = value?.trim();
 
         if (!description) {
@@ -78,4 +80,5 @@ export class Playlist {
 
         return description;
     }
+    
 }
