@@ -1,30 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+## Configuração do Ambiente
 
-First, run the development server:
+Instale o [Bun](https://bun.com/). É o runtime e o gerenciador de pacotes usado neste projeto, tanto no frontent quanto no backend.
+
+Em seguida, instale as dependências do projeto:
+
+```bash
+bun install
+```
+
+Para rodar, basta usar:
 
 ```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Gerenciamento de Dependências
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Para adicionar uma nova dependência de produção, use:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bun add <package-name>
+```
 
-## Learn More
+Para adicionar uma nova dependência de desenvolvimento, use:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+bun add -D <package-name>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Para remover uma dependência, use:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+bun remove <package-name>
+```
