@@ -2,7 +2,7 @@ import { Button } from "./ui/button";
 
 export default function Hero() {
   return (
-    <section className="flex flex-col w-screen h-[50vh] m-16 justify-center items-center">
+    <section className="flex flex-col w-full h-dvh px-16 justify-center items-center">
         <h1 className="text-8xl font-semibold text-center leading-[0.9] mb-5">
           Suas músicas<br />
           do seu jeito

@@ -31,52 +31,90 @@ const navLinkClasses =
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
+
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+    } else {
+      setMenuMounted(true);
+      setOpen(true);
+    }
+  };
+
+  const closeMenu = () => setOpen(false);
+
+  const menuAnimationClasses = open
+    ? "animate-in fade-in fill-mode-forwards"
+    : "animate-out fade-out fill-mode-forwards";
 
   return (
-    <header className="glass sticky top-0 z-50">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8">
-        <Link
-          href="/"
-          className="rounded-sm text-lg font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-        >
-          Zovic
-        </Link>
-
-        <nav className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className={navLinkClasses}>
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-label={open ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:hidden"
-        >
-          <MenuIcon open={open} />
-        </button>
-      </div>
-
-      {open && (
-        <div className="bg-background px-6 pb-6 pt-2 shadow-lg md:hidden">
-          <nav className="flex flex-col">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <>
+      {menuMounted && (
+        <div
+          aria-hidden="true"
+          onClick={closeMenu}
+          className={`fixed inset-0 z-40 bg-black/50 duration-200 md:hidden ${menuAnimationClasses}`}
+        />
       )}
-    </header>
+
+      <header className="fixed inset-x-0 top-0 z-50">
+        {menuMounted && (
+          <div
+            aria-hidden="true"
+            onAnimationEnd={() => {
+              if (!open) setMenuMounted(false);
+            }}
+            className={`absolute inset-0 bg-background glass duration-200 ${menuAnimationClasses}`}
+          />
+        )}
+
+        <div className={`relative z-10 ${menuMounted ? "" : "glass"}`}>
+          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8">
+            <Link
+              href="/"
+              className="rounded-sm text-lg font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              Zovic
+            </Link>
+
+            <nav className="hidden items-center gap-8 md:flex">
+              {NAV_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className={navLinkClasses}>
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            <button
+              type="button"
+              onClick={toggleMenu}
+              aria-label={open ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={open}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:hidden"
+            >
+              <MenuIcon open={open} />
+            </button>
+          </div>
+
+          {menuMounted && (
+            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses}`}>
+              <nav className="flex flex-col">
+                {NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className="py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          )}
+        </div>
+      </header>
+    </>
   );
 }
