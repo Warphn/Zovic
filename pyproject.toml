@@ -1,0 +1,26 @@
+[project]
+name = "lab-eng-soft"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "CaioNassar", email = "nassar.s@outlook.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "ipython>=9.17.1",
+    "librosa>=1.0.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.5",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
+    "utils>=1.0.2",
+]
+
+[project.scripts]
+lab-eng-soft = "lab_eng_soft:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
