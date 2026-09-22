@@ -24,7 +24,10 @@ echonest = utils.load('data/fma_metadata/echonest.csv')
 np.testing.assert_array_equal(features.index, tracks.index)
 assert echonest.index.isin(tracks.index).all()
 
-tracks.shape, genres.shape, features.shape, echonest.shape
+print("tracks:", tracks.shape)
+print("genres:", genres.shape)
+print("features:", features.shape)
+print("echonest:", echonest.shape)
 
 ipd.display(tracks['track'].head())
 ipd.display(tracks['album'].head())
