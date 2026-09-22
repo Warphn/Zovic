@@ -9,18 +9,21 @@ import sklearn as skl
 import librosa
 import librosa.display
 import utils
+from pathlib import Path 
 print(utils.__file__)
 
 plt.rcParams['figure.figsize'] = (17, 5)
 
 # Directory where mp3 are stored.
-AUDIO_DIR = os.environ.get('AUDIO_DIR')
 
 # Load metadata and features.
-tracks = utils.load('metadata/fma_metadata/tracks.csv')
-genres = utils.load('metadata/fma_metadata/genres.csv')
-features = utils.load('metadata/fma_metadata/features.csv')
-echonest = utils.load('metadata/fma_metadata/echonest.csv')
+
+DATA_DIR = Path(__file__).resolve().parent.parent / 'data' / 'fma_metadata'
+
+tracks = utils.load(DATA_DIR / 'tracks.csv')
+genres = utils.load(DATA_DIR / 'genres.csv')
+features = utils.load(DATA_DIR / 'features.csv')
+echonest = utils.load(DATA_DIR / 'echonest.csv')
 
 np.testing.assert_array_equal(features.index, tracks.index)
 assert echonest.index.isin(tracks.index).all()

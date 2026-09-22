@@ -8,11 +8,13 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "dotenv>=0.9.9",
     "ipython>=9.17.1",
     "librosa>=1.0.0",
     "matplotlib>=3.11.2",
     "numpy>=2.5.3",
     "pandas>=3.0.5",
+    "pydot>=4.0.1",
     "scikit-learn>=1.9.1",
     "seaborn>=0.13.2",
     "utils>=1.0.2",
