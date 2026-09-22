@@ -9,6 +9,7 @@ import sklearn as skl
 import librosa
 import librosa.display
 import utils
+print(utils.__file__)
 
 plt.rcParams['figure.figsize'] = (17, 5)
 
@@ -16,10 +17,10 @@ plt.rcParams['figure.figsize'] = (17, 5)
 AUDIO_DIR = os.environ.get('AUDIO_DIR')
 
 # Load metadata and features.
-tracks = utils.load('data/fma_metadata/tracks.csv')
-genres = utils.load('data/fma_metadata/genres.csv')
-features = utils.load('data/fma_metadata/features.csv')
-echonest = utils.load('data/fma_metadata/echonest.csv')
+tracks = utils.load('metadata/fma_metadata/tracks.csv')
+genres = utils.load('metadata/fma_metadata/genres.csv')
+features = utils.load('metadata/fma_metadata/features.csv')
+echonest = utils.load('metadata/fma_metadata/echonest.csv')
 
 np.testing.assert_array_equal(features.index, tracks.index)
 assert echonest.index.isin(tracks.index).all()
