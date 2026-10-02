@@ -1,0 +1,26 @@
+{
+  "name": "zovic-api",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "dev": "bun --env-file=../.env --watch infra/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware",
+    "lint:fix": "oxlint --type-aware --fix"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "joi": "^18.2.9",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.23.1",
+    "oxlint": "^1.86.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "typescript": "^7"
+  }
+}
