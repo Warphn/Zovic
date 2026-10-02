@@ -1,3 +1,4 @@
 {
-  "frontend/**/*.{js,jsx,mjs,cjs,ts,tsx}": "frontend/node_modules/.bin/eslint --config frontend/eslint.config.mjs --fix"
+  "api/**/*.{js,mjs,cjs,ts,mts,cts}": "bun run --cwd api lint",
+  "frontend/**/*.{js,jsx,mjs,cjs,ts,tsx}": "bun run --cwd frontend lint"
 }
