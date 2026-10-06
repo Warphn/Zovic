@@ -14,7 +14,7 @@ A IA não decide nada sozinha:
 
 ### 06/10/2026: modelo ER e banco de dados
 
-Ponto de partida: o diagrama ER que a equipe fez no draw.io (`Zovic.drawio`).
+Ponto de partida: o diagrama ER que a equipe fez no draw.io. A imagem abaixo é a versão atual (`Zovic2.drawio`); os prompts desta data partiram da primeira versão (`Zovic.drawio`).
 
 ![Diagrama ER do Zovic](../assets/modelo-er.png)
 
@@ -22,3 +22,5 @@ Ponto de partida: o diagrama ER que a equipe fez no draw.io (`Zovic.drawio`).
 |---|---|---|
 | 1 | Consegue transformar essa relação de ER em um arquivo .md para colocar no repositório? *(com a imagem acima anexada)* | [`docs/modelo-er.md`](../modelo-er.md) |
 | 2 | Atualize o md: `album_genre` tem `album_id`; trocamos `gender` por `genre`; `lyrics` não tem coluna de conteúdo (ex.: `text`), porque ainda não decidimos como armazenar essa informação; `system_data` não tem `id`; se for tabela de linha única, documente essa escolha. | Correções em [`docs/modelo-er.md`](../modelo-er.md) |
+
+O conteúdo gerado não foi o resultado final, apenas um passo intermediário para a criação do banco de dados
