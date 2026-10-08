@@ -1,0 +1,381 @@
+// Zovic — schema Prisma
+//
+// O schema do banco é dono do Flyway (db/migrations). Este arquivo só espelha
+// as tabelas para gerar o client tipado: NÃO use `prisma migrate` nem `db push`.
+// Ao criar uma migration nova no Flyway, atualize este arquivo junto
+// (ou rode `prisma db pull` e revise o diff).
+//
+// O que o Prisma não consegue representar e existe só no SQL:
+//   * CHECKs (preço >= 0, rating 1..5, cor #RRGGBB, linha única de system_data…)
+//   * índices únicos parciais (WHERE deleted_at IS NULL) em genre.name e
+//     rating(music_id, user_id)
+//   * triggers set_updated_at (o @updatedAt abaixo faz o mesmo pelo client)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Valores provisórios; manter igual ao CREATE TYPE user_event_type.
+enum UserEventType {
+  sign_up
+  login
+  logout
+  music_play
+  music_skip
+
+  @@map("user_event_type")
+}
+
+// =====================================================================
+// Planos e usuários
+// =====================================================================
+
+model PlanType {
+  id         Int       @id @default(autoincrement())
+  name       String    @db.VarChar(100)
+  price      Decimal   @db.Decimal(10, 2)
+  userAmount Int       @map("user_amount")
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  plans Plan[]
+
+  @@map("plan_type")
+}
+
+model Plan {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  typeId    Int       @map("type_id")
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  type  PlanType   @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  users PlanUser[]
+
+  @@index([typeId])
+  @@map("plan")
+}
+
+model PlanUser {
+  planId  Int     @map("plan_id")
+  userId  Int     @map("user_id")
+  isAdmin Boolean @default(false) @map("is_admin")
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([planId, userId])
+  @@index([userId])
+  @@map("plan_user")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(150)
+  birthdate DateTime? @db.Date
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  plans       PlanUser[]
+  events      UserEvent[]
+  playlists   PlaylistUser[]
+  savedMusics MusicUser[]
+  ratings     Rating[]
+  comments    Comment[]
+
+  @@map("user")
+}
+
+model UserEvent {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  eventType UserEventType @map("event_type")
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("user_event")
+}
+
+// Linha única: `singleton` é sempre true (garantido por PK + CHECK no banco).
+// Leia/atualize com where: { singleton: true }.
+model SystemData {
+  singleton Boolean  @id @default(true)
+  users     Int      @default(0)
+  songs     Int      @default(0)
+  playlists Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("system_data")
+}
+
+// =====================================================================
+// Catálogo musical
+// =====================================================================
+
+model Music {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(255)
+  duration  Int // segundos
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  stats     MusicStats?
+  lyrics    LyricsMusic[]
+  genres    GenreMusic[]
+  albums    AlbumMusic[]
+  artists   ArtistMusic[]
+  playlists MusicPlaylist[]
+  savedBy   MusicUser[]
+  ratings   Rating[]
+  comments  Comment[]
+
+  @@map("musics")
+}
+
+// Ainda sem coluna de conteúdo: ver "Pontos em aberto" em docs/modelo-er.md.
+model Lyrics {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  musics LyricsMusic[]
+
+  @@map("lyrics")
+}
+
+model LyricsMusic {
+  lyricsId Int @map("lyrics_id")
+  musicId  Int @map("music_id")
+
+  lyrics Lyrics @relation(fields: [lyricsId], references: [id], onDelete: Cascade)
+  music  Music  @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@id([lyricsId, musicId])
+  @@index([musicId])
+  @@map("lyrics_music")
+}
+
+model Genre {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100) // único entre os ativos (índice parcial no SQL)
+  color     String    @db.Char(7) // #RRGGBB
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  musics GenreMusic[]
+  albums AlbumGenre[]
+
+  @@map("genre")
+}
+
+model GenreMusic {
+  genreId Int @map("genre_id")
+  musicId Int @map("music_id")
+
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@id([genreId, musicId])
+  @@index([musicId])
+  @@map("genre_music")
+}
+
+model Album {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  genres  AlbumGenre[]
+  musics  AlbumMusic[]
+  artists AlbumArtist[]
+
+  @@map("album")
+}
+
+model AlbumGenre {
+  genreId Int @map("genre_id")
+  albumId Int @map("album_id")
+
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@id([genreId, albumId])
+  @@index([albumId])
+  @@map("album_genre")
+}
+
+model AlbumMusic {
+  albumId Int @map("album_id")
+  musicId Int @map("music_id")
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, musicId])
+  @@index([musicId])
+  @@map("album_music")
+}
+
+model Artist {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  albums AlbumArtist[]
+  musics ArtistMusic[]
+
+  @@map("artist")
+}
+
+model AlbumArtist {
+  albumId  Int @map("album_id")
+  artistId Int @map("artist_id")
+
+  album  Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, artistId])
+  @@index([artistId])
+  @@map("album_artist")
+}
+
+model ArtistMusic {
+  artistId Int @map("artist_id")
+  musicId  Int @map("music_id")
+
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  music  Music  @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, musicId])
+  @@index([musicId])
+  @@map("artist_music")
+}
+
+// =====================================================================
+// Interações do usuário com músicas
+// =====================================================================
+
+model MusicUser {
+  musicId   Int       @map("music_id")
+  userId    Int       @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([musicId, userId])
+  @@index([userId])
+  @@map("music_user")
+}
+
+// Uma avaliação ativa por (music_id, user_id): índice único parcial no SQL.
+model Rating {
+  id        Int       @id @default(autoincrement())
+  musicId   Int       @map("music_id")
+  userId    Int       @map("user_id")
+  rating    Int       @db.SmallInt // 1..5
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("rating")
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  musicId   Int       @map("music_id")
+  userId    Int       @map("user_id")
+  comment   String
+  timestamp Int? // segundos desde o início da música
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([musicId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model MusicStats {
+  id       Int     @id @default(autoincrement())
+  musicId  Int     @unique @map("music_id")
+  genre    String? @db.VarChar(100)
+  duration Int?
+  streams  Int     @default(0)
+  rating   Float?
+
+  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@map("music_stats")
+}
+
+// =====================================================================
+// Playlists
+// =====================================================================
+
+model Playlist {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(150)
+  isPrivate Boolean   @default(false) @map("is_private")
+  color     String?   @db.Char(7) // #RRGGBB
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users  PlaylistUser[]
+  musics MusicPlaylist[]
+
+  @@map("playlists")
+}
+
+model PlaylistUser {
+  playlistId Int     @map("playlist_id")
+  userId     Int     @map("user_id")
+  isAdmin    Boolean @default(false) @map("is_admin")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, userId])
+  @@index([userId])
+  @@map("playlist_user")
+}
+
+model MusicPlaylist {
+  musicId    Int @map("music_id")
+  playlistId Int @map("playlist_id")
+
+  music    Music    @relation(fields: [musicId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([musicId, playlistId])
+  @@index([playlistId])
+  @@map("music_playlist")
+}
