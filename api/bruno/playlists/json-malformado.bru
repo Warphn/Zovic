@@ -1,0 +1,27 @@
+meta {
+  name: JSON malformado
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: text
+  auth: none
+}
+
+headers {
+  x-user-id: {{userId}}
+  Content-Type: application/json
+}
+
+body:text {
+  {"name":
+}
+
+tests {
+  test("responde 400 com INVALID_JSON", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().error).to.equal("INVALID_JSON");
+  });
+}

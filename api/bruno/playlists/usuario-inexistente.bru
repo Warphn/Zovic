@@ -1,0 +1,28 @@
+meta {
+  name: Usuário inexistente
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+headers {
+  x-user-id: {{missingUserId}}
+}
+
+body:json {
+  {
+    "name": "Rock"
+  }
+}
+
+tests {
+  test("responde 404", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().error).to.equal("NOT_FOUND");
+  });
+}

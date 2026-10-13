@@ -1,0 +1,41 @@
+meta {
+  name: Criar playlist
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+headers {
+  x-user-id: {{userId}}
+}
+
+body:json {
+  {
+    "name": "  Rock nacional  ",
+    "color": "#1db954"
+  }
+}
+
+tests {
+  test("responde 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("normaliza nome e cor", function () {
+    const body = res.getBody();
+    expect(body.name).to.equal("Rock nacional");
+    expect(body.color).to.equal("#1DB954");
+  });
+
+  test("nasce pública, com id e data", function () {
+    const body = res.getBody();
+    expect(body.isPrivate).to.equal(false);
+    expect(body.id).to.be.a("number");
+    expect(new Date(body.createdAt).toISOString()).to.equal(body.createdAt);
+  });
+}
