@@ -113,14 +113,18 @@ Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o 
 
 | Grupo | Ambiente | Conteúdo |
 | --- | --- | --- |
-| Tipos de plano | `ALL` | Individual, Universitário, Duo e Família, com preço e limite de usuários |
-| Gêneros | `ALL` | 10 gêneros, com cor |
-| Usuários | `LOCAL` | 20 usuários, 2 com soft delete |
-| Planos | `LOCAL` | 11 planos assinados; todo usuário em ao menos um, todo plano com admin e dentro do limite do tipo |
-| Catálogo | `LOCAL` | 12 artistas, 12 álbuns e 63 músicas fictícios, com participações (feat) e um álbum em parceria |
-| Playlists | `LOCAL` | 10 playlists, públicas e privadas, todas com admin |
+| Tipos de plano | `ALL` | Os tipos do produto, com preço e limite de usuários (`plan-types.ts`) |
+| Gêneros | `ALL` | Os gêneros do produto, com cor (`genres.ts`) |
+| Usuários | `LOCAL` | Usuários fictícios, alguns com soft delete |
+| Planos | `LOCAL` | Planos assinados; todo usuário em ao menos um, todo plano com admin e dentro do limite do tipo |
+| Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações (feat) e um álbum em parceria (`catalog-data.ts`) |
+| Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
 | Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos |
 | Totais do sistema | `ALL` | Recalcula a `system_data` a partir do banco |
+
+O terminal mostra, ao fim de cada seeder, quanto ele criou.
+
+Como os seeders `LOCAL` usam os dados dos `ALL` pelo nome, mudar um não basta: o que referencia esse nome também precisa mudar. Se você tirar um gênero de `genres.ts`, por exemplo, troque-o também nas músicas de `catalog-data.ts`. Se um nome ficar sem par, o seed para e diz qual é, sem gravar nada.
 
 Os dados são sempre os mesmos, com os mesmos ids, em todas as máquinas: o que precisa de sorteio usa um gerador com semente fixa. A única exceção é o `created_at` dos dados `ALL`, que registra o momento real da inserção.
 
