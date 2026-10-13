@@ -19,16 +19,30 @@ O repositório tem dois projetos independentes, `api/` e `frontend/`. O `docker 
 
 ### Jeito rápido
 
-Na raiz:
+Logo depois de clonar, na raiz, uma vez só:
 
 ```bash
-bun start    # escolhe frontend, backend ou full e diz se é o primeiro acesso
-bun stop     # para todos os containers (o banco continua salvo)
+bun install    # hooks de git e o menu do bun start
 ```
 
-No primeiro acesso, o `bun start` cria o `.env`, roda o `bun install` do que for preciso e sobe o Docker. Nos outros, só sobe o Docker. Também dá para pular as perguntas: `bun start backend` ou `bun start backend --first`.
+Depois, sempre que for trabalhar, também na raiz:
 
-Logo depois de clonar, rode `bun install` na raiz uma vez antes do `bun start`: o próprio script depende da biblioteca do menu.
+```bash
+bun start      # pergunta o ambiente, se é o primeiro acesso e se quer popular o banco
+bun stop       # para todos os containers (o banco continua salvo)
+```
+
+O `bun start` faz três perguntas:
+
+| Pergunta | Opções |
+| --- | --- |
+| Cê vai fazer o que, Zé? | `frontend`, `backend` ou `full` |
+| É o seu primeiro acesso? | Se sim, cria o `.env`, roda o `bun install` do que for preciso e gera o client do Prisma |
+| Quer popular o banco? | **Não**, **LOCAL** (dados de teste; apaga o banco local antes) ou **PROD** (só os dados reais, sem apagar nada) |
+
+Depois ele sobe o Docker e, se você escolheu um seed, espera as migrations terminarem e popula o banco. No primeiro acesso, a resposta padrão do seed é LOCAL, já que o banco começa vazio.
+
+Para pular as perguntas, passe tudo nos argumentos: `bun start backend`, `bun start backend --first` ou `bun start frontend --seed=local`. Sem `--seed`, nada é populado.
 
 As seções abaixo mostram o que o script faz por baixo, para quem preferir rodar à mão.
 
@@ -36,7 +50,7 @@ As seções abaixo mostram o que o script faz por baixo, para quem preferir roda
 
 ```bash
 cp .env.example .env
-bun install                      # só os hooks de git; uma vez e pronto
+bun install                      # na raiz: hooks de git e o menu do bun start
 ```
 
 ### Backend
@@ -63,6 +77,12 @@ docker compose --profile frontend up --build   # terminal 1, na raiz: banco + mi
 bun dev                                        # terminal 2, em frontend/: Next com hot reload
 ```
 
+Para ter dados no banco, popule pela `api/`. Isso exige instalar as dependências dela uma vez:
+
+```bash
+cd api && bun install && bun run db:generate && bun run db:seed
+```
+
 O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
 
 ### Endereços
@@ -75,7 +95,7 @@ O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
 
 Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/docker.md).
 
-Migrations, Prisma e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
+Migrations, Prisma, seed e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
 
 ### Lint
 

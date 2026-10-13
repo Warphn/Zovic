@@ -97,6 +97,10 @@ O seed popula o banco. Fica em `api/prisma/seed/`, com um arquivo por grupo de d
 
 Tudo roda numa transação: se um seeder falhar, nada é gravado.
 
+O seed grava sempre no banco do `DATABASE_URL`. O `--env` escolhe **quais seeders** rodam, não **qual banco**: para popular a produção de verdade, rode com o `DATABASE_URL` de produção.
+
+Também dá para rodar pelo `bun start`, na raiz, que pergunta "Quer popular o banco?" (ou recebe `--seed=local` / `--seed=prod`). Ele usa o `DATABASE_URL` do `.env`, então mesmo a opção PROD grava no seu banco local: serve para ver o banco só com os dados reais, como a produção começaria.
+
 ### Onde cada seeder roda
 
 O arquivo `api/prisma/seed/seeders.ts` lista os seeders, na ordem em que rodam, e o ambiente de cada um:

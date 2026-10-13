@@ -1,17 +1,20 @@
 /**
  * Sobe e derruba o ambiente de desenvolvimento do Zovic.
  *
- *   bun start                     → pergunta o ambiente e se é o primeiro acesso
- *   bun start backend [--first]   → pula as perguntas
- *   bun stop                      → derruba todos os containers (o banco continua salvo)
+ *   bun start                                   → pergunta o ambiente, se é o primeiro acesso e o seed
+ *   bun start backend [--first] [--seed=local]  → pula as perguntas (--seed=local ou --seed=prod)
+ *   bun stop                                    → derruba todos os containers (o banco continua salvo)
  */
 import * as p from "@clack/prompts";
-import { $ } from "bun";
+import { $, type ShellPromise } from "bun";
 import { copyFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import pkg from "../package.json";
 
 type Env = "backend" | "frontend" | "full";
+
+/** Seed do banco: nenhum, LOCAL (dados de teste) ou PROD (só os dados reais). Ver docs/banco-de-dados.md. */
+type Seed = "none" | "local" | "prod";
 
 interface EnvPlan {
   /** Projetos que precisam de `bun install` local, além da raiz. */
@@ -41,6 +44,7 @@ const PLANS: Record<Env, EnvPlan> = {
 };
 
 const ROOT = join(import.meta.dir, "..");
+const API = join(ROOT, "api");
 $.cwd(ROOT);
 
 /** Encerra com mensagem amigável quando o usuário aperta Ctrl+C num prompt. */
@@ -67,6 +71,19 @@ function warnBunVersion() {
   }
 }
 
+/** Roda um comando com spinner; se falhar, mostra a saída e encerra. */
+async function step(label: string, done: string, command: ShellPromise) {
+  const s = p.spinner();
+  s.start(label);
+  const result = await command.quiet().nothrow();
+  if (result.exitCode !== 0) {
+    s.stop(`Falhou: ${label}`, 1);
+    console.error(result.stdout.toString() + result.stderr.toString());
+    process.exit(result.exitCode);
+  }
+  s.stop(done);
+}
+
 async function firstAccess(plan: EnvPlan) {
   if (!existsSync(join(ROOT, ".env"))) {
     copyFileSync(join(ROOT, ".env.example"), join(ROOT, ".env"));
@@ -75,29 +92,55 @@ async function firstAccess(plan: EnvPlan) {
 
   for (const dir of [".", ...plan.installs]) {
     const name = dir === "." ? "raiz" : `${dir}/`;
-    const s = p.spinner();
-    s.start(`bun install em ${name}`);
-    const result = await $`bun install`.cwd(join(ROOT, dir)).quiet().nothrow();
-    if (result.exitCode !== 0) {
-      s.stop(`bun install falhou em ${name}`, 1);
-      console.error(result.stderr.toString());
-      process.exit(result.exitCode);
-    }
-    s.stop(`Dependências instaladas em ${name}`);
+    await step(`bun install em ${name}`, `Dependências instaladas em ${name}`, $`bun install`.cwd(join(ROOT, dir)));
   }
 
-  // O client do Prisma não é versionado: a API precisa dele gerado antes do `bun dev`.
   if (plan.installs.includes("api")) {
-    const s = p.spinner();
-    s.start("Gerando o client do Prisma em api/");
-    const result = await $`bun run db:generate`.cwd(join(ROOT, "api")).quiet().nothrow();
-    if (result.exitCode !== 0) {
-      s.stop("prisma generate falhou em api/", 1);
-      console.error(result.stderr.toString());
-      process.exit(result.exitCode);
-    }
-    s.stop("Client do Prisma gerado em api/");
+    await step("Gerando o client do Prisma em api/", "Client do Prisma gerado em api/", $`bun run db:generate`.cwd(API));
   }
+}
+
+async function migrationsSucceeded() {
+  for (let i = 0; i < 240; i++) {
+    const out = await $`docker compose ps -a --format {{.State}}:{{.ExitCode}} flyway`.quiet().nothrow();
+    const [state, code] = out.stdout.toString().trim().split(":");
+    if (state === "exited") return code === "0";
+    await Bun.sleep(500);
+  }
+  return false;
+}
+
+async function seedDatabase(seed: Exclude<Seed, "none">) {
+  const s = p.spinner();
+  s.start("Esperando as migrations do Flyway");
+  if (!(await migrationsSucceeded())) {
+    s.stop("As migrations falharam; o seed não rodou. Veja: docker compose logs flyway", 1);
+    process.exit(1);
+  }
+  s.stop("Migrations aplicadas");
+
+  // O seed roda pela api/, que pode não ter sido instalada (ex.: ambiente frontend).
+  if (!existsSync(join(API, "node_modules"))) {
+    await step("bun install em api/ (necessário para o seed)", "Dependências instaladas em api/", $`bun install`.cwd(API));
+  }
+  if (!existsSync(join(API, "generated/prisma"))) {
+    await step("Gerando o client do Prisma em api/", "Client do Prisma gerado em api/", $`bun run db:generate`.cwd(API));
+  }
+
+  p.log.step(`bun run db:seed --env=${seed}`);
+  const result = await $`bun run db:seed --env=${seed}`.cwd(API).nothrow();
+  if (result.exitCode !== 0) process.exit(result.exitCode);
+}
+
+function seedFromArgs(args: string[]): Seed | undefined {
+  const arg = args.find((a) => a.startsWith("--seed="));
+  if (!arg) return undefined;
+  const value = arg.slice("--seed=".length);
+  if (value !== "local" && value !== "prod") {
+    p.log.error(`--seed inválido: "${value}". Use --seed=local ou --seed=prod.`);
+    process.exit(1);
+  }
+  return value;
 }
 
 async function start(args: string[]) {
@@ -128,6 +171,21 @@ async function start(args: string[]) {
         }),
       );
 
+  const seed = seedFromArgs(args) ?? (fromArgs
+    ? "none"
+    : orExit(
+        await p.select<Seed>({
+          message: "Quer popular o banco?",
+          showInstructions: false,
+          initialValue: isFirst ? "local" : "none",
+          options: [
+            { value: "none", label: "Não", hint: "mantém os dados que já estão no banco" },
+            { value: "local", label: "LOCAL: dados de teste", hint: "apaga o banco local e insere tudo de novo" },
+            { value: "prod", label: "PROD: só os dados reais", hint: "tipos de plano e gêneros, sem apagar nada" },
+          ],
+        }),
+      ));
+
   const plan = PLANS[env];
 
   warnBunVersion();
@@ -136,6 +194,8 @@ async function start(args: string[]) {
 
   p.log.step(`docker compose ${plan.compose.join(" ")}`);
   await $`docker compose ${plan.compose}`;
+
+  if (seed !== "none") await seedDatabase(seed);
 
   p.note(plan.next.join("\n"), "Próximos passos");
   p.outro("Para parar: bun stop");
