@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "./ui/button";
 
 export default function Hero() {
@@ -9,9 +10,11 @@ export default function Hero() {
         </h1>
       <p className="text-xl text-center mb-8">Crie playlists personalizadas e organize suas músicas com facilidade.</p>
       <div className="flex flex-row items-center gap-4">
-        <Button variant="default" size="lg" className="h-12 px-8 text-base">
-          Criar minha conta
-        </Button>
+        <Link href="/playlist">
+          <Button variant="default" size="lg" className="h-12 px-8 text-base cursor-pointer">
+            Criar playlist
+          </Button>
+        </Link>
         <Button variant="outline" size="lg" className="h-12 px-8 text-base">
           Ver como funciona
         </Button>

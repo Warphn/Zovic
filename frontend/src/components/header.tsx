@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Sobre", href: "#sobre" },
-  { label: "Projetos", href: "#projetos" },
-  { label: "Blog", href: "#blog" },
-  { label: "Contato", href: "#contato" },
+  { label: "Playlists", href: "/playlist" },
+  { label: "Sobre", href: "/#sobre" },
+  { label: "Projetos", href: "/#projetos" },
+  { label: "Blog", href: "/#blog" },
+  { label: "Contato", href: "/#contato" },
 ];
 
 function MenuIcon({ open }: { open: boolean }) {
