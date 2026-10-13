@@ -85,6 +85,19 @@ async function firstAccess(plan: EnvPlan) {
     }
     s.stop(`Dependências instaladas em ${name}`);
   }
+
+  // O client do Prisma não é versionado: a API precisa dele gerado antes do `bun dev`.
+  if (plan.installs.includes("api")) {
+    const s = p.spinner();
+    s.start("Gerando o client do Prisma em api/");
+    const result = await $`bun run db:generate`.cwd(join(ROOT, "api")).quiet().nothrow();
+    if (result.exitCode !== 0) {
+      s.stop("prisma generate falhou em api/", 1);
+      console.error(result.stderr.toString());
+      process.exit(result.exitCode);
+    }
+    s.stop("Client do Prisma gerado em api/");
+  }
 }
 
 async function start(args: string[]) {

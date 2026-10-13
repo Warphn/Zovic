@@ -21,7 +21,7 @@ Os `Dockerfile` não escolhem versões de biblioteca: eles rodam `bun install --
    ```bash
    cp .env.example .env   # o .env não vai para o git; ajuste os valores se quiser
    bun install            # raiz: só os hooks de git (husky, lint-staged)
-   (cd api && bun install)
+   (cd api && bun install && bun run db:generate)   # db:generate: client do Prisma
    (cd frontend && bun install)
    ```
 
