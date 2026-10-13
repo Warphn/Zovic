@@ -12,7 +12,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:format": "prisma format",
-    "db:pull": "prisma db pull --print"
+    "db:sync": "bun scripts/db-sync.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

@@ -46,32 +46,45 @@ A primeira migration, `V1__create_schema.sql`, é anterior a esse padrão e fica
    ```
 
    Se falhar, o log mostra o erro. Corrija o arquivo e rode de novo; se a migration chegou a ser aplicada pela metade, recrie o banco local com `docker compose down -v`.
-3. Atualize o Prisma, como abaixo.
+3. Atualize o Prisma: `bun run db:sync`, em `api/` (próxima seção).
 
 ## Prisma
 
 O schema fica em `api/prisma/schema.prisma` e a configuração em `api/prisma.config.ts`, que lê o `DATABASE_URL` do `.env` da raiz. O client gerado vai para `api/generated/prisma/`, que não é versionado.
 
-Rode os comandos dentro de `api/`:
+O `schema.prisma` **é gerado a partir do banco**, pelo `db:sync`. Não é preciso escrever nele as tabelas e colunas novas.
+
+Rode os comandos dentro de `api/`, com o banco no ar:
 
 | Comando | O que faz |
 | --- | --- |
-| `bun run db:generate` | Gera o client tipado a partir do `schema.prisma`. Rode depois do `bun install` e sempre que o schema mudar. |
+| `bun run db:sync` | Lê o banco, atualiza o `schema.prisma` e gera o client. Rode depois de toda migration nova. |
+| `bun run db:sync --check` | Só confere: diz se o `schema.prisma` está diferente do banco, mostra a diferença e sai com erro. Bom para rodar antes de abrir um PR. |
+| `bun run db:generate` | Só gera o client, sem consultar o banco. Rode depois do `bun install`. |
 | `bun run db:format` | Formata o `schema.prisma` (alinhamento e espaços) e valida. |
-| `bun run db:validate` | Só valida o `schema.prisma`, sem alterar nada. Não consulta o banco. |
-| `bun run db:pull` | Lê o banco e imprime o schema equivalente, **sem sobrescrever** o arquivo. Serve para conferir se o `schema.prisma` está igual ao banco. |
+| `bun run db:validate` | Só valida o `schema.prisma`, sem alterar nada. |
 
-### Depois de uma migration nova
+### O que o `db:sync` faz
 
-1. Edite o `schema.prisma` com a mudança, mantendo o padrão do arquivo: models em PascalCase e campos em camelCase, ligados aos nomes reais com `@@map` e `@map`.
-2. Rode `bun run db:format`.
-3. Rode `bun run db:pull` e compare com o seu arquivo. A saída sempre traz três coisas que **não** são diferenças:
-   - o model `flyway_schema_history`, que é do Flyway e não entra no `schema.prisma`;
-   - avisos de que o Prisma reaproveitou os `@map`/`@@map` do arquivo atual;
-   - a lista de CHECK constraints, que o Prisma não representa e existem só no SQL.
+1. Roda o `prisma db pull`, que lê o banco e reescreve o schema, mantendo os nomes e comentários `///` que já estão no arquivo.
+2. Tira o model `flyway_schema_history`, que é do Flyway.
+3. Converte o que for novo para o padrão do projeto: a tabela `user_follow` vira `model UserFollow` com `@@map("user_follow")`, e a coluna `created_at` vira `createdAt` com `@map("created_at")`.
+4. Formata o arquivo e gera o client.
 
-   Qualquer outra diferença é algo que faltou no `schema.prisma`.
-4. Rode `bun run db:generate`.
+O script fica em `api/scripts/db-sync.ts`.
+
+### O que continua à mão (opcional)
+
+O `db:sync` lista no terminal os nomes que criou. Dois casos costumam valer um ajuste:
+
+- **Singular/plural:** a tabela `follows` vira `model Follows`. Se preferir `Follow`, renomeie no arquivo.
+- **Nomes de relações:** são gerados pelo Prisma e às vezes ficam longos. Quando há duas relações para a mesma tabela, por exemplo, o nome fica parecido com `userFollowUserFollowFollowedIdTouser`; algo como `followers` é mais legível.
+
+Renomeie direto no `schema.prisma` e rode `bun run db:sync` de novo: **o nome escolhido é mantido nos próximos syncs**.
+
+### Comentários
+
+Use `///` para documentar models e campos. Eles são mantidos pelo `db:sync` e aparecem no autocomplete do editor. Comentários com `//` são apagados a cada sync; só o cabeçalho do arquivo, que o próprio script escreve, usa `//`.
 
 ## Vendo o banco
 

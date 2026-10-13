@@ -1,38 +1,25 @@
-// Zovic — schema Prisma
+// Zovic — schema Prisma, gerado por `bun run db:sync` a partir do banco.
 //
-// O schema do banco é dono do Flyway (db/migrations). Este arquivo só espelha
-// as tabelas para gerar o client tipado: NÃO use `prisma migrate` nem `db push`.
-// Ao criar uma migration nova no Flyway, atualize este arquivo junto e confira
-// com `bun run db:pull`, que imprime o schema lido do banco sem sobrescrever este.
+// A estrutura do banco é do Flyway (db/migrations): não use `prisma migrate` nem
+// `db push`. Depois de uma migration nova, rode `bun run db:sync`.
 //
-// O que o Prisma não consegue representar e existe só no SQL: os CHECKs
-// (preço >= 0, rating 1..5, streams >= 0, cor #RRGGBB, linha única de system_data…).
+// db:sync preserva. Comentários `//` são apagados a cada sync.
+//
+// Ficam só no SQL, porque o Prisma não os representa: os CHECKs (preço >= 0,
+// rating 1..5, streams >= 0, cor #RRGGBB, linha única de system_data…).
+//
+// previewFeatures "partialIndexes": representa os índices únicos parciais
+// (WHERE deleted_at IS NULL) de genre.name e rating.
 
 generator client {
   provider        = "prisma-client"
   output          = "../generated/prisma"
-  // Índices únicos parciais (WHERE deleted_at IS NULL) de genre.name e rating.
   previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
 }
-
-// Valores provisórios; manter igual ao CREATE TYPE user_event_type.
-enum UserEventType {
-  sign_up
-  login
-  logout
-  music_play
-  music_skip
-
-  @@map("user_event_type")
-}
-
-// =====================================================================
-// Planos e usuários
-// =====================================================================
 
 model PlanType {
   id         Int       @id @default(autoincrement())
@@ -41,21 +28,19 @@ model PlanType {
   userAmount Int       @map("user_amount")
   deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  plans Plan[]
+  plans      Plan[]
 
   @@map("plan_type")
 }
 
 model Plan {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(100)
-  typeId    Int       @map("type_id")
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  type  PlanType   @relation(fields: [typeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  users PlanUser[]
+  id        Int        @id @default(autoincrement())
+  name      String     @db.VarChar(100)
+  typeId    Int        @map("type_id")
+  deletedAt DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  type      PlanType   @relation(fields: [typeId], references: [id], onUpdate: NoAction)
+  users     PlanUser[]
 
   @@index([typeId])
   @@map("plan")
@@ -65,9 +50,8 @@ model PlanUser {
   planId  Int     @map("plan_id")
   userId  Int     @map("user_id")
   isAdmin Boolean @default(false) @map("is_admin")
-
-  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plan    Plan    @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([planId, userId])
   @@index([userId])
@@ -75,18 +59,17 @@ model PlanUser {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(150)
-  birthdate DateTime? @db.Date
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  plans       PlanUser[]
-  events      UserEvent[]
-  playlists   PlaylistUser[]
-  savedMusics MusicUser[]
-  ratings     Rating[]
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(150)
+  birthdate   DateTime?      @db.Date
+  deletedAt   DateTime?      @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   comments    Comment[]
+  savedMusics MusicUser[]
+  plans       PlanUser[]
+  playlists   PlaylistUser[]
+  ratings     Rating[]
+  events      UserEvent[]
 
   @@map("user")
 }
@@ -96,15 +79,12 @@ model UserEvent {
   userId    Int           @map("user_id")
   eventType UserEventType @map("event_type")
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId, createdAt])
   @@map("user_event")
 }
 
-// Linha única: `singleton` é sempre true (garantido por PK + CHECK no banco).
-// Leia/atualize com where: { singleton: true }.
 model SystemData {
   singleton Boolean  @id @default(true)
   users     Int      @default(0)
@@ -115,50 +95,43 @@ model SystemData {
   @@map("system_data")
 }
 
-// =====================================================================
-// Catálogo musical
-// =====================================================================
-
 model Music {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(255)
-  duration  Int // segundos
-  lyricsId  Int?      @map("lyrics_id") // sem relação: ainda não há tabela de letras
-  streams   Int       @default(0)
-  rating    Float? // média das avaliações (1..5)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  genres    GenreMusic[]
+  id        Int             @id @default(autoincrement())
+  name      String          @db.VarChar(255)
+  duration  Int
+  lyricsId  Int?            @map("lyrics_id")
+  streams   Int             @default(0)
+  rating    Float?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
   albums    AlbumMusic[]
   artists   ArtistMusic[]
+  comments  Comment[]
+  genres    GenreMusic[]
   playlists MusicPlaylist[]
   savedBy   MusicUser[]
   ratings   Rating[]
-  comments  Comment[]
 
   @@map("musics")
 }
 
 model Genre {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique(where: raw("(deleted_at IS NULL)")) @db.VarChar(100) // único entre os ativos
-  color     String    @db.Char(7) // #RRGGBB
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  musics GenreMusic[]
-  albums AlbumGenre[]
+  id        Int          @id @default(autoincrement())
+  name      String       @unique(where: raw("(deleted_at IS NULL)")) @db.VarChar(100)
+  color     String       @db.Char(7)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  albums    AlbumGenre[]
+  musics    GenreMusic[]
 
   @@map("genre")
 }
 
 model GenreMusic {
-  genreId Int @map("genre_id")
-  musicId Int @map("music_id")
-
-  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  genreId Int   @map("genre_id")
+  musicId Int   @map("music_id")
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music   Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([genreId, musicId])
   @@index([musicId])
@@ -166,24 +139,22 @@ model GenreMusic {
 }
 
 model Album {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(255)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  genres  AlbumGenre[]
-  musics  AlbumMusic[]
-  artists AlbumArtist[]
+  id        Int           @id @default(autoincrement())
+  name      String        @db.VarChar(255)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  artists   AlbumArtist[]
+  genres    AlbumGenre[]
+  musics    AlbumMusic[]
 
   @@map("album")
 }
 
 model AlbumGenre {
-  genreId Int @map("genre_id")
-  albumId Int @map("album_id")
-
-  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  genreId Int   @map("genre_id")
+  albumId Int   @map("album_id")
+  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([genreId, albumId])
   @@index([albumId])
@@ -191,11 +162,10 @@ model AlbumGenre {
 }
 
 model AlbumMusic {
-  albumId Int @map("album_id")
-  musicId Int @map("music_id")
-
-  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  albumId Int   @map("album_id")
+  musicId Int   @map("music_id")
+  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music   Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([albumId, musicId])
   @@index([musicId])
@@ -203,23 +173,21 @@ model AlbumMusic {
 }
 
 model Artist {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(255)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  albums AlbumArtist[]
-  musics ArtistMusic[]
+  id        Int           @id @default(autoincrement())
+  name      String        @db.VarChar(255)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  albums    AlbumArtist[]
+  musics    ArtistMusic[]
 
   @@map("artist")
 }
 
 model AlbumArtist {
-  albumId  Int @map("album_id")
-  artistId Int @map("artist_id")
-
-  album  Album  @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  albumId  Int    @map("album_id")
+  artistId Int    @map("artist_id")
+  album    Album  @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([albumId, artistId])
   @@index([artistId])
@@ -227,29 +195,23 @@ model AlbumArtist {
 }
 
 model ArtistMusic {
-  artistId Int @map("artist_id")
-  musicId  Int @map("music_id")
-
-  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  music  Music  @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  artistId Int    @map("artist_id")
+  musicId  Int    @map("music_id")
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music    Music  @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([artistId, musicId])
   @@index([musicId])
   @@map("artist_music")
 }
 
-// =====================================================================
-// Interações do usuário com músicas
-// =====================================================================
-
 model MusicUser {
   musicId   Int       @map("music_id")
   userId    Int       @map("user_id")
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music     Music     @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([musicId, userId])
   @@index([userId])
@@ -260,14 +222,12 @@ model Rating {
   id        Int       @id @default(autoincrement())
   musicId   Int       @map("music_id")
   userId    Int       @map("user_id")
-  rating    Int       @db.SmallInt // 1..5
+  rating    Int       @db.SmallInt
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  music     Music     @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  // Uma avaliação ativa por usuário e música.
   @@unique([musicId, userId], where: raw("(deleted_at IS NULL)"))
   @@index([userId])
   @@map("rating")
@@ -278,43 +238,36 @@ model Comment {
   musicId   Int       @map("music_id")
   userId    Int       @map("user_id")
   comment   String
-  timestamp Int? // segundos desde o início da música
+  timestamp Int?
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music     Music     @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([musicId])
   @@index([userId])
   @@map("comments")
 }
 
-// =====================================================================
-// Playlists
-// =====================================================================
-
 model Playlist {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(150)
-  isPrivate Boolean   @default(false) @map("is_private")
-  color     String?   @db.Char(7) // #RRGGBB
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  users  PlaylistUser[]
-  musics MusicPlaylist[]
+  id        Int             @id @default(autoincrement())
+  name      String          @db.VarChar(150)
+  isPrivate Boolean         @default(false) @map("is_private")
+  color     String?         @db.Char(7)
+  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  musics    MusicPlaylist[]
+  users     PlaylistUser[]
 
   @@map("playlists")
 }
 
 model PlaylistUser {
-  playlistId Int     @map("playlist_id")
-  userId     Int     @map("user_id")
-  isAdmin    Boolean @default(false) @map("is_admin")
-
-  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  playlistId Int      @map("playlist_id")
+  userId     Int      @map("user_id")
+  isAdmin    Boolean  @default(false) @map("is_admin")
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([playlistId, userId])
   @@index([userId])
@@ -322,13 +275,22 @@ model PlaylistUser {
 }
 
 model MusicPlaylist {
-  musicId    Int @map("music_id")
-  playlistId Int @map("playlist_id")
-
-  music    Music    @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  musicId    Int      @map("music_id")
+  playlistId Int      @map("playlist_id")
+  music      Music    @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([musicId, playlistId])
   @@index([playlistId])
   @@map("music_playlist")
+}
+
+enum UserEventType {
+  sign_up
+  login
+  logout
+  music_play
+  music_skip
+
+  @@map("user_event_type")
 }
