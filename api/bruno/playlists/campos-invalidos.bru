@@ -1,0 +1,34 @@
+meta {
+  name: Campos inválidos
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+headers {
+  x-user-id: {{userId}}
+}
+
+body:json {
+  {
+    "color": "azul",
+    "isPrivate": "talvez"
+  }
+}
+
+tests {
+  test("responde 400", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().error).to.equal("VALIDATION_ERROR");
+  });
+
+  test("lista todos os campos inválidos de uma vez", function () {
+    const fields = res.getBody().fields.map((f) => f.field).sort();
+    expect(fields).to.deep.equal(["color", "isPrivate", "name"]);
+  });
+}

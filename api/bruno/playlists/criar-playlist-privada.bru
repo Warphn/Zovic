@@ -1,0 +1,39 @@
+meta {
+  name: Criar playlist privada sem cor
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+headers {
+  x-user-id: {{userId}}
+}
+
+body:json {
+  {
+    "name": "Para estudar",
+    "isPrivate": true,
+    "owner": 99
+  }
+}
+
+tests {
+  test("responde 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("respeita isPrivate e deixa a cor nula", function () {
+    const body = res.getBody();
+    expect(body.isPrivate).to.equal(true);
+    expect(body.color).to.equal(null);
+  });
+
+  test("ignora campos fora do schema", function () {
+    expect(res.getBody()).to.not.have.property("owner");
+  });
+}

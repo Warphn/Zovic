@@ -1,0 +1,24 @@
+meta {
+  name: Sem autenticação
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Rock"
+  }
+}
+
+tests {
+  test("responde 401", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().error).to.equal("UNAUTHENTICATED");
+  });
+}

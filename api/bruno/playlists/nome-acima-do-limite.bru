@@ -1,0 +1,28 @@
+meta {
+  name: Nome acima do limite
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+headers {
+  x-user-id: {{userId}}
+}
+
+body:json {
+  {
+    "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}
+
+tests {
+  test("responde 400 apontando o nome", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().fields[0].field).to.equal("name");
+  });
+}
