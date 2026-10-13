@@ -8,6 +8,7 @@ O projeto consiste em um site para streaming de músicas.
 - **Frontend:** TypeScript, Next.js
 - **Banco de dados:** PostgreSQL
 - **Migrations:** Flyway
+- **ORM:** Prisma (só o client; a estrutura do banco é do Flyway)
 - **Ferramentas:** Bun (runtime e pacotes), Docker, Oxlint
 
 ## Rodando o projeto
@@ -42,6 +43,7 @@ bun install                      # só os hooks de git; uma vez e pronto
 
 ```bash
 cd api && bun install            # 1ª vez e quando o api/bun.lock mudar
+bun run db:generate              # em api/: gera o client do Prisma (1ª vez e quando o schema mudar)
 ```
 
 ```bash
@@ -71,6 +73,8 @@ O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
 | Postgres | localhost:5432          |
 
 Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/docker.md).
+
+Migrations, Prisma e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
 
 ### Lint
 

@@ -56,6 +56,8 @@ Cada profile adiciona uma camada: sem profile sobem o banco e as migrations; `fr
 
 Rode `up -d` para deixar os serviços em segundo plano.
 
+Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
+
 ## Adicionando coisas
 
 ### Uma biblioteca nova

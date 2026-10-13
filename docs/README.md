@@ -8,5 +8,6 @@ Site para streaming de músicas.
 - **Frontend:** TypeScript, Next.js
 - **Banco de dados:** PostgreSQL
 - **Migrations:** Flyway
+- **ORM:** Prisma
 
 Use o menu ao lado para navegar pela documentação.
