@@ -136,7 +136,7 @@ export const ALBUMS: readonly Album[] = [
   {
     name: "Luz de Garagem",
     artists: ["Os Vagalumes"],
-    genres: ["Indie", "Rock"],
+    genres: ["Rock"],
     tracks: [
       { name: "Lâmpada", seconds: 209 },
       { name: "Amplificador", seconds: 236 },
@@ -186,7 +186,7 @@ export const ALBUMS: readonly Album[] = [
 
 /** Músicas fora de álbum (album_music é opcional para uma música). */
 export const SINGLES: readonly (Track & Release)[] = [
-  { name: "Lago Parado", seconds: 219, artists: ["Tomás Lago"], genres: ["Indie"] },
-  { name: "Pedra na Água", seconds: 196, artists: ["Tomás Lago"], genres: ["Indie"] },
-  { name: "Margem", seconds: 241, artists: ["Tomás Lago"], genres: ["Indie"], feat: ["Os Vagalumes"] },
+  { name: "Lago Parado", seconds: 219, artists: ["Tomás Lago"], genres: ["Pop"] },
+  { name: "Pedra na Água", seconds: 196, artists: ["Tomás Lago"], genres: ["Pop"] },
+  { name: "Margem", seconds: 241, artists: ["Tomás Lago"], genres: ["Pop"], feat: ["Os Vagalumes"] },
 ];
