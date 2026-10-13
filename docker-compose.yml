@@ -20,7 +20,8 @@ services:
 
   flyway:
     image: flyway/flyway:13.9.0
-    command: -connectRetries=10 migrate
+    # validateMigrationNaming: um arquivo fora do padrão de nome falha em vez de ser ignorado
+    command: -connectRetries=10 -validateMigrationNaming=true migrate
     volumes: [./db/migrations:/flyway/sql]
     environment:
       FLYWAY_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}

@@ -219,7 +219,7 @@ erDiagram
 - As tabelas registram só `created_at` (e `deleted_at`, quando aplicável); o modelo não tem `updated_at`.
 - Tabelas associativas (N:N) não têm `id` próprio; a chave primária é composta pelas duas FKs.
 - As estatísticas de uma música (`streams` e `rating`, a média das avaliações) ficam na própria `musics`, e não numa tabela separada.
-- `system_data` é uma tabela de linha única: guarda os totais agregados do sistema (usuários, músicas e playlists) e é sempre atualizada no lugar, nunca recebe novas linhas. Por isso não tem `id` nem relacionamentos. Recomenda-se garantir a unicidade no próprio banco, por exemplo com uma constraint ou trigger que impeça um segundo `INSERT`.
+- `system_data` é uma tabela de linha única: guarda os totais agregados do sistema (usuários, músicas e playlists) e é sempre atualizada no lugar, nunca recebe novas linhas. Por isso não tem `id` de negócio nem relacionamentos. No banco, ela ganhou uma coluna `singleton`, sempre `true`, que é a chave primária: um CHECK impede outro valor, então um segundo `INSERT` falha. A coluna também serve de identificador para o Prisma, que exige um em toda tabela. A migration já cria a linha, com os totais zerados.
 
 ## Pontos em aberto
 

@@ -21,7 +21,7 @@ Os `Dockerfile` não escolhem versões de biblioteca: eles rodam `bun install --
    ```bash
    cp .env.example .env   # o .env não vai para o git; ajuste os valores se quiser
    bun install            # raiz: só os hooks de git (husky, lint-staged)
-   (cd api && bun install)
+   (cd api && bun install && bun run db:generate)   # db:generate: client do Prisma
    (cd frontend && bun install)
    ```
 
@@ -55,6 +55,8 @@ Cada profile adiciona uma camada: sem profile sobem o banco e as migrations; `fr
 | `docker compose down -v` | para tudo **e apaga o banco** |
 
 Rode `up -d` para deixar os serviços em segundo plano.
+
+Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
 
 ## Adicionando coisas
 
