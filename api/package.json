@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:format": "prisma format",
-    "db:sync": "bun scripts/db-sync.ts"
+    "db:sync": "bun scripts/db-sync.ts",
+    "db:seed": "bun prisma/seed/index.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

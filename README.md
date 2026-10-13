@@ -48,6 +48,7 @@ bun run db:generate              # em api/: gera o client do Prisma (1ª vez e q
 
 ```bash
 docker compose up                # terminal 1, na raiz: banco + migrations
+bun run db:seed                  # terminal 2, em api/ (opcional): popula o banco com dados de teste
 bun dev                          # terminal 2, em api/: API com reload
 ```
 

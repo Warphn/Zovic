@@ -33,7 +33,7 @@ A primeira migration, `V1__create_schema.sql`, é anterior a esse padrão e fica
 ### Regras
 
 - **Nunca edite uma migration que já está no `main`.** O Flyway guarda um checksum de cada arquivo aplicado e recusa subir se ele mudar. Para corrigir algo, crie uma migration nova.
-- **Dados de teste não entram em migration.** Migrations rodam em todos os ambientes, inclusive produção. Dados fictícios ficam no seed do Prisma (em construção).
+- **Dados de teste não entram em migration.** Migrations rodam em todos os ambientes, inclusive produção. Dados fictícios ficam no [seed](#seed).
 - **Toda migration nova exige atualizar o Prisma** (próxima seção).
 
 ### Criando uma migration
@@ -85,6 +85,53 @@ Renomeie direto no `schema.prisma` e rode `bun run db:sync` de novo: **o nome es
 ### Comentários
 
 Use `///` para documentar models e campos. Eles são mantidos pelo `db:sync` e aparecem no autocomplete do editor. Comentários com `//` são apagados a cada sync; só o cabeçalho do arquivo, que o próprio script escreve, usa `//`.
+
+## Seed
+
+O seed popula o banco. Fica em `api/prisma/seed/`, com um arquivo por grupo de dados, e roda dentro de `api/`:
+
+| Comando | O que faz |
+| --- | --- |
+| `bun run db:seed` | **Banco local.** Apaga todos os dados, reinicia os ids e roda os seeders `LOCAL` e `ALL`. Recusa rodar se o `DATABASE_URL` não apontar para `localhost`. |
+| `bun run db:seed --env=prod` | **Produção.** Roda só os seeders `PROD` e `ALL`, **sem apagar nada**: insere o que falta e atualiza o que mudou. |
+
+Tudo roda numa transação: se um seeder falhar, nada é gravado.
+
+### Onde cada seeder roda
+
+O arquivo `api/prisma/seed/seeders.ts` lista os seeders, na ordem em que rodam, e o ambiente de cada um:
+
+| Ambiente | Quando roda | Para quê |
+| --- | --- | --- |
+| `LOCAL` | Só no banco local | Dados fictícios para desenvolver e testar |
+| `PROD` | Só em produção | Dados que só fazem sentido em produção |
+| `ALL` | Nos dois | Dados reais do produto, como tipos de plano e gêneros |
+
+Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o que mudou. Eles **nunca apagam**, então um item retirado da lista continua no banco. Eles também não podem depender de dados criados por um seeder `LOCAL`.
+
+### O que o seed local gera
+
+| Grupo | Ambiente | Conteúdo |
+| --- | --- | --- |
+| Tipos de plano | `ALL` | Individual, Universitário, Duo e Família, com preço e limite de usuários |
+| Gêneros | `ALL` | 10 gêneros, com cor |
+| Usuários | `LOCAL` | 20 usuários, 2 com soft delete |
+| Planos | `LOCAL` | 11 planos assinados; todo usuário em ao menos um, todo plano com admin e dentro do limite do tipo |
+| Catálogo | `LOCAL` | 12 artistas, 12 álbuns e 63 músicas fictícios, com participações (feat) e um álbum em parceria |
+| Playlists | `LOCAL` | 10 playlists, públicas e privadas, todas com admin |
+| Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos |
+| Totais do sistema | `ALL` | Recalcula a `system_data` a partir do banco |
+
+Os dados são sempre os mesmos, com os mesmos ids, em todas as máquinas: o que precisa de sorteio usa um gerador com semente fixa. A única exceção é o `created_at` dos dados `ALL`, que registra o momento real da inserção.
+
+`musics.rating` recebe a média das avaliações ativas. Algumas avaliações aparecem trocadas: a antiga com soft delete e uma nova no lugar.
+
+### Criando um seeder
+
+1. Crie o arquivo em `api/prisma/seed/` exportando uma função `Seeder["run"]`, que recebe a transação e devolve um resumo de uma linha.
+2. Registre-o em `seeders.ts`, na posição certa da ordem e com o ambiente.
+3. Para ligar registros, busque os ids pelo nome (`byName` e `idOf`, em `support.ts`), em vez de fixar ids no código.
+4. Rode `bun run db:seed` duas vezes seguidas: o resultado tem que ser o mesmo.
 
 ## Vendo o banco
 
