@@ -6,10 +6,9 @@
 // (ou rode `prisma db pull` e revise o diff).
 //
 // O que o Prisma não consegue representar e existe só no SQL:
-//   * CHECKs (preço >= 0, rating 1..5, cor #RRGGBB, linha única de system_data…)
+//   * CHECKs (preço >= 0, rating 1..5, streams >= 0, cor #RRGGBB, linha única de system_data…)
 //   * índices únicos parciais (WHERE deleted_at IS NULL) em genre.name e
 //     rating(music_id, user_id)
-//   * triggers set_updated_at (o @updatedAt abaixo faz o mesmo pelo client)
 
 generator client {
   provider = "prisma-client"
@@ -41,7 +40,6 @@ model PlanType {
   price      Decimal   @db.Decimal(10, 2)
   userAmount Int       @map("user_amount")
   deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   plans Plan[]
@@ -54,7 +52,6 @@ model Plan {
   name      String    @db.VarChar(100)
   typeId    Int       @map("type_id")
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   type  PlanType   @relation(fields: [typeId], references: [id], onDelete: Restrict)
@@ -82,7 +79,6 @@ model User {
   name      String    @db.VarChar(150)
   birthdate DateTime? @db.Date
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   plans       PlanUser[]
@@ -114,7 +110,6 @@ model SystemData {
   users     Int      @default(0)
   songs     Int      @default(0)
   playlists Int      @default(0)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("system_data")
@@ -128,12 +123,12 @@ model Music {
   id        Int       @id @default(autoincrement())
   name      String    @db.VarChar(255)
   duration  Int // segundos
+  lyricsId  Int?      @map("lyrics_id") // sem relação: ainda não há tabela de letras
+  streams   Int       @default(0)
+  rating    Float? // média das avaliações (1..5)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  stats     MusicStats?
-  lyrics    LyricsMusic[]
   genres    GenreMusic[]
   albums    AlbumMusic[]
   artists   ArtistMusic[]
@@ -145,36 +140,11 @@ model Music {
   @@map("musics")
 }
 
-// Ainda sem coluna de conteúdo: ver "Pontos em aberto" em docs/modelo-er.md.
-model Lyrics {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  musics LyricsMusic[]
-
-  @@map("lyrics")
-}
-
-model LyricsMusic {
-  lyricsId Int @map("lyrics_id")
-  musicId  Int @map("music_id")
-
-  lyrics Lyrics @relation(fields: [lyricsId], references: [id], onDelete: Cascade)
-  music  Music  @relation(fields: [musicId], references: [id], onDelete: Cascade)
-
-  @@id([lyricsId, musicId])
-  @@index([musicId])
-  @@map("lyrics_music")
-}
-
 model Genre {
   id        Int       @id @default(autoincrement())
   name      String    @db.VarChar(100) // único entre os ativos (índice parcial no SQL)
   color     String    @db.Char(7) // #RRGGBB
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   musics GenreMusic[]
@@ -199,7 +169,6 @@ model Album {
   id        Int       @id @default(autoincrement())
   name      String    @db.VarChar(255)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   genres  AlbumGenre[]
@@ -237,7 +206,6 @@ model Artist {
   id        Int       @id @default(autoincrement())
   name      String    @db.VarChar(255)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   albums AlbumArtist[]
@@ -295,7 +263,6 @@ model Rating {
   userId    Int       @map("user_id")
   rating    Int       @db.SmallInt // 1..5
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
@@ -312,7 +279,6 @@ model Comment {
   comment   String
   timestamp Int? // segundos desde o início da música
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
@@ -321,19 +287,6 @@ model Comment {
   @@index([musicId])
   @@index([userId])
   @@map("comments")
-}
-
-model MusicStats {
-  id       Int     @id @default(autoincrement())
-  musicId  Int     @unique @map("music_id")
-  genre    String? @db.VarChar(100)
-  duration Int?
-  streams  Int     @default(0)
-  rating   Float?
-
-  music Music @relation(fields: [musicId], references: [id], onDelete: Cascade)
-
-  @@map("music_stats")
 }
 
 // =====================================================================
@@ -346,7 +299,6 @@ model Playlist {
   isPrivate Boolean   @default(false) @map("is_private")
   color     String?   @db.Char(7) // #RRGGBB
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   users  PlaylistUser[]
