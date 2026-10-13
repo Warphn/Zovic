@@ -9,4 +9,6 @@ Site para streaming de músicas.
 - **Banco de dados:** PostgreSQL
 - **Migrations:** Flyway
 
-Use o menu ao lado para navegar pela documentação.
+## Documentação
+
+- [Ambiente com Docker](docker.md)
