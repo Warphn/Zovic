@@ -11,11 +11,16 @@ import {
   getContrastTextColor,
 } from "@/components/color-picker"
 import {
-  DEFAULT_TRACKS,
   type PlaylistData,
   getPlaylistInitials,
   useStoredPlaylists,
 } from "@/lib/playlist-store"
+import {
+  PLAYLIST_NAME_MAX_LENGTH,
+  PlaylistApiError,
+  type PlaylistField,
+  createPlaylist,
+} from "@/lib/playlists-api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,27 +43,45 @@ export default function PlaylistPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
   const [newPlaylistName, setNewPlaylistName] = React.useState("")
   const [newPlaylistColor, setNewPlaylistColor] = React.useState(PRESET_COLORS[0]?.color ?? "#1e7f82")
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [formError, setFormError] = React.useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = React.useState<Partial<Record<PlaylistField, string>>>({})
 
-  // Handle Form Submit (Create Playlist)
-  const handleCreatePlaylist = (e: React.FormEvent) => {
+  const handleCreatePlaylist = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = newPlaylistName.trim()
-    if (!trimmed) return
+    if (!trimmed || isSubmitting) return
 
-    const newPl: PlaylistData = {
-      id: "pl-" + Date.now(),
-      name: trimmed,
-      color: newPlaylistColor,
-      isPrivate: false,
-      createdAt: "Hoje",
-      tracks: DEFAULT_TRACKS,
+    setIsSubmitting(true)
+    setFormError(null)
+    setFieldErrors({})
+
+    try {
+      const created = await createPlaylist({ name: trimmed, color: newPlaylistColor })
+
+      const newPl: PlaylistData = {
+        id: String(created.id),
+        name: created.name,
+        color: created.color ?? newPlaylistColor,
+        isPrivate: created.isPrivate,
+        createdAt: "Hoje",
+        tracks: [],
+      }
+
+      persistPlaylists([newPl, ...playlists])
+      setIsCreateModalOpen(false)
+      setNewPlaylistName("")
+      router.push(`/playlist/${newPl.id}`)
+    } catch (error) {
+      if (error instanceof PlaylistApiError) {
+        setFormError(error.message)
+        setFieldErrors(error.fieldErrors)
+      } else {
+        setFormError("Não foi possível criar a playlist. Tente de novo.")
+      }
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const updated = [newPl, ...playlists]
-    persistPlaylists(updated)
-    setIsCreateModalOpen(false)
-    setNewPlaylistName("")
-    router.push(`/playlist/${newPl.id}`)
   }
 
   // Handle Playlist Delete
@@ -102,6 +125,8 @@ export default function PlaylistPage() {
               onClick={() => {
                 setNewPlaylistName("")
                 setNewPlaylistColor(PRESET_COLORS[0]?.color ?? "#1e7f82")
+                setFormError(null)
+                setFieldErrors({})
                 setIsCreateModalOpen(true)
               }}
               className="h-10 px-5 text-sm rounded-lg font-semibold shadow-xs cursor-pointer gap-2"
@@ -271,7 +296,7 @@ export default function PlaylistPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreatePlaylist} className="space-y-5 pt-1">
+          <form onSubmit={(e) => void handleCreatePlaylist(e)} className="space-y-5 pt-1">
             <div className="space-y-2">
               <Label htmlFor="create-playlist-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Nome da Playlist
@@ -281,14 +306,33 @@ export default function PlaylistPage() {
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 placeholder="Ex: MPB de Domingo, Sintetizadores Noturnos..."
+                maxLength={PLAYLIST_NAME_MAX_LENGTH}
+                aria-invalid={fieldErrors.name ? true : undefined}
+                aria-describedby={fieldErrors.name ? "create-playlist-name-error" : undefined}
                 required
               />
+              {fieldErrors.name && (
+                <p id="create-playlist-name-error" className="text-xs text-destructive">
+                  {fieldErrors.name}
+                </p>
+              )}
             </div>
 
-            <ColorPicker
-              color={newPlaylistColor}
-              onChange={setNewPlaylistColor}
-            />
+            <div className="space-y-2">
+              <ColorPicker
+                color={newPlaylistColor}
+                onChange={setNewPlaylistColor}
+              />
+              {fieldErrors.color && (
+                <p className="text-xs text-destructive">{fieldErrors.color}</p>
+              )}
+            </div>
+
+            {formError && (
+              <p role="alert" className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-2">
+                {formError}
+              </p>
+            )}
 
             <DialogFooter className="pt-2">
               <Button
@@ -302,10 +346,10 @@ export default function PlaylistPage() {
               <Button
                 type="submit"
                 variant="default"
-                disabled={!newPlaylistName.trim()}
+                disabled={!newPlaylistName.trim() || isSubmitting}
                 className="h-9 text-xs font-bold"
               >
-                Criar Playlist
+                {isSubmitting ? "Criando..." : "Criar Playlist"}
               </Button>
             </DialogFooter>
           </form>
