@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { UserSwitcher } from "@/components/user-switcher";
 
 const NAV_LINKS = [
   { label: "Playlists", href: "/playlist" },
@@ -87,6 +88,10 @@ export default function Header() {
               ))}
             </nav>
 
+            <div className="hidden md:flex items-center gap-4">
+              <UserSwitcher />
+            </div>
+
             <button
               type="button"
               onClick={toggleMenu}
@@ -99,7 +104,10 @@ export default function Header() {
           </div>
 
           {menuMounted && (
-            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses}`}>
+            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses} space-y-4`}>
+              <div className="pt-2 pb-2 border-b border-border">
+                <UserSwitcher />
+              </div>
               <nav className="flex flex-col">
                 {NAV_LINKS.map((link) => (
                   <Link

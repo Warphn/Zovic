@@ -20,17 +20,39 @@ import {
   getPlaylistInitials,
   useStoredPlaylists,
 } from "@/lib/playlist-store"
+import { useActiveUser } from "@/lib/user-store"
+import { TrackComments } from "@/components/comments/track-comments"
 import { cn } from "@/lib/utils"
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
   const playlistId = params?.id
 
+  // Active user profile (Ana Andrade, Heitor Costa, etc.)
+  const { user: currentUser } = useActiveUser()
+
   // All playlists in memory / localStorage with hydration safety
   const { playlists, persistPlaylists } = useStoredPlaylists()
 
   // Modal State for Editing Color
   const [isColorModalOpen, setIsColorModalOpen] = React.useState(false)
+
+  // Expandable Comments Panel State (faz subir a parte de música)
+  const [isCommentsExpanded, setIsCommentsExpanded] = React.useState(false)
+
+  // Derivação segura: menores de idade nunca têm comentários abertos
+  const isCommentsOpen = isCommentsExpanded && !currentUser.isUnderage
+
+  // Fecha os comentários ao pressionar Escape
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isCommentsOpen) {
+        setIsCommentsExpanded(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isCommentsOpen])
 
   // Track search filter
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -246,7 +268,7 @@ export default function PlaylistDetailPage() {
           </div>
 
           {/* =========================================================================
-              TRACKLIST SECTION (Waveforms removed, filters removed, search without emoji)
+              TRACKLIST SECTION
               ========================================================================= */}
           <div className="pb-36 pt-6">
             {/* Search Bar without emoji */}
@@ -332,7 +354,7 @@ export default function PlaylistDetailPage() {
                         </div>
                       </div>
 
-                      {/* Right: BPM, Inline Equalizer, Duration & Actions */}
+                      {/* Right: BPM, Equalizer, Comments (Adults only), Duration & Actions */}
                       <div className="flex items-center gap-3 shrink-0 font-mono text-xs">
                         <span className="hidden md:inline-block text-[10px] text-muted-foreground/80 font-mono">
                           {track.bpm} BPM
@@ -351,6 +373,27 @@ export default function PlaylistDetailPage() {
                         <span className="text-muted-foreground font-mono">
                           {track.duration}
                         </span>
+
+                        {/* Comentários: VISÍVEL APENAS PARA MAIORES DE 18 */}
+                        {!currentUser.isUnderage && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentTrackIndex(actualIdx)
+                              setIsCommentsExpanded(true)
+                            }}
+                            aria-label={`Comentários de ${track.title}`}
+                            className={cn(
+                              "size-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer text-xs",
+                              isCommentsExpanded && currentTrackIndex === actualIdx
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:text-foreground hover:bg-surface"
+                            )}
+                            title="Comentários desta faixa"
+                          >
+                            💬
+                          </button>
+                        )}
 
                         {/* Play / Pause button */}
                         <button
@@ -398,9 +441,25 @@ export default function PlaylistDetailPage() {
         </div>
 
         {/* =========================================================================
-            PERSISTENT BOTTOM AUDIO CONTROLLER (LIGHT THEME & PLAYLIST ACCENT)
+            PERSISTENT BOTTOM AUDIO CONTROLLER + SLIDE-UP COMMENTS PANEL
+            Quando o usuário clica em Comentários, a barra de música sobe suavemente
+            e revela os comentários e o campo para comentar logo abaixo.
             ========================================================================= */}
-        <div className="fixed bottom-0 inset-x-0 h-20 bg-surface/95 backdrop-blur-md border-t border-border px-6 flex items-center justify-between z-40 shadow-lg">
+        <div
+          className={cn(
+            "fixed bottom-0 inset-x-0 bg-surface/98 backdrop-blur-md border-t border-border z-50 shadow-2xl transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
+            isCommentsExpanded && !currentUser.isUnderage
+              ? "h-[540px] max-h-[85vh] rounded-t-2xl border-t-2 border-primary/30"
+              : "h-20"
+          )}
+        >
+          {/* Alça visual no topo do painel expandido */}
+          {isCommentsExpanded && !currentUser.isUnderage && (
+            <div className="w-12 h-1 bg-border rounded-full mx-auto mt-2 mb-0.5 shrink-0" />
+          )}
+
+          {/* Barra de Áudio / Controles (altura fixa h-20) */}
+          <div className="h-20 min-h-[5rem] px-6 flex items-center justify-between shrink-0">
           {/* Left: Track Name & Mini Cover */}
           <div className="flex items-center gap-3 w-1/4 min-w-[140px]">
             <div
@@ -490,13 +549,56 @@ export default function PlaylistDetailPage() {
             </div>
           </div>
 
-          {/* Right: Sound Spec */}
+          {/* Right: Sound Spec & Quick Comments Button (Adults only) */}
           <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px] text-xs font-mono text-muted-foreground">
+            {!currentUser.isUnderage && currentPlayingTrack && (
+              <button
+                type="button"
+                onClick={() => setIsCommentsExpanded((prev) => !prev)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs cursor-pointer transition-colors shadow-2xs font-sans",
+                  isCommentsExpanded
+                    ? "border-primary bg-primary/10 text-primary font-semibold"
+                    : "border-border bg-background/80 hover:bg-surface text-foreground"
+                )}
+                title={isCommentsExpanded ? "Recolher painel de comentários" : "Comentários da faixa atual"}
+              >
+                <span>{isCommentsExpanded ? "✕" : "💬"}</span>
+                <span className="hidden md:inline font-medium text-[11px]">
+                  {isCommentsExpanded ? "Recolher" : "Comentários"}
+                </span>
+              </button>
+            )}
             <span className="hidden sm:inline">STEREO</span>
             <span>🔊</span>
           </div>
         </div>
+
+        {/* Seção de comentários integrada: revelada quando a barra de música sobe */}
+        {isCommentsExpanded && !currentUser.isUnderage && currentPlayingTrack && (
+          <TrackComments
+            track={currentPlayingTrack}
+            user={currentUser}
+            currentPlaybackSec={currentElapsedSec}
+            onSeek={(seconds) => {
+              const duration = currentPlayingTrack?.durationSec || 240
+              const percentage = Math.min(100, Math.max(0, (seconds / duration) * 100))
+              setPlaybackProgress(Math.round(percentage))
+              setIsPlaying(true)
+            }}
+          />
+        )}
+      </div>
       </main>
+
+      {/* Backdrop ao expandir comentários */}
+      {isCommentsExpanded && !currentUser.isUnderage && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-300"
+          onClick={() => setIsCommentsExpanded(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* =========================================================================
           EDIT COLOR MODAL

@@ -3,6 +3,7 @@
 // A estrutura do banco é do Flyway (db/migrations): não use `prisma migrate` nem
 // `db push`. Depois de uma migration nova, rode `bun run db:sync`.
 //
+// Pode editar à mão nomes de models, campos e relações e comentários `///`: o
 // db:sync preserva. Comentários `//` são apagados a cada sync.
 //
 // Ficam só no SQL, porque o Prisma não os representa: os CHECKs (preço >= 0,
@@ -59,17 +60,18 @@ model PlanUser {
 }
 
 model User {
-  id          Int            @id @default(autoincrement())
-  name        String         @db.VarChar(150)
-  birthdate   DateTime?      @db.Date
-  deletedAt   DateTime?      @map("deleted_at") @db.Timestamptz(6)
-  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  comments    Comment[]
-  savedMusics MusicUser[]
-  plans       PlanUser[]
-  playlists   PlaylistUser[]
-  ratings     Rating[]
-  events      UserEvent[]
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(150)
+  birthdate      DateTime?       @db.Date
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  commentReports CommentReport[]
+  comments       Comment[]
+  savedMusics    MusicUser[]
+  plans          PlanUser[]
+  playlists      PlaylistUser[]
+  ratings        Rating[]
+  events         UserEvent[]
 
   @@map("user")
 }
@@ -234,15 +236,16 @@ model Rating {
 }
 
 model Comment {
-  id        Int       @id @default(autoincrement())
-  musicId   Int       @map("music_id")
-  userId    Int       @map("user_id")
-  comment   String
-  timestamp Int?
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  music     Music     @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             Int             @id @default(autoincrement())
+  musicId        Int             @map("music_id")
+  userId         Int             @map("user_id")
+  comment        String
+  timestamp      Int?
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  commentReports CommentReport[]
+  music          Music           @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([musicId])
   @@index([userId])
@@ -283,6 +286,21 @@ model MusicPlaylist {
   @@id([musicId, playlistId])
   @@index([playlistId])
   @@map("music_playlist")
+}
+
+model CommentReport {
+  id        Int      @id @default(autoincrement())
+  commentId Int      @map("comment_id")
+  userId    Int      @map("user_id")
+  reason    String   @db.VarChar(280)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([commentId, userId], map: "comment_reports_comment_user_key")
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_reports")
 }
 
 enum UserEventType {
