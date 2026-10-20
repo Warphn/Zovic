@@ -4,4 +4,5 @@
 * [Ambiente com Docker](docker.md)
 * [Banco de dados](banco-de-dados.md)
 * [Modelo ER](modelo-er.md)
+* [Models (entidades)](models.md)
 * [Uso de IA](prompts/prompts.md)
