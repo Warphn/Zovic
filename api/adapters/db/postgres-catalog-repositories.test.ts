@@ -97,6 +97,13 @@ describe("PostgresArtistRepository", () => {
     await artists.save(artist);
     expect((await artists.findById(artist.id))?.name).toBe("After");
   });
+
+  it("não encontra artista apagado", async () => {
+    const artist = await newArtist("Integration deleted");
+    artist.delete();
+    await artists.save(artist);
+    expect(await artists.findById(artist.id)).toBeNull();
+  });
 });
 
 describe("PostgresMusicRepository", () => {
@@ -152,6 +159,18 @@ describe("PostgresMusicRepository", () => {
     expect(found.map((m) => m.id)).toEqual([second.id, first.id]);
   });
 
+  it("não encontra música apagada, nem por findById nem por findByIds", async () => {
+    const active = await newMusic("Active", [artistId]);
+    const deleted = await newMusic("Deleted", [artistId]);
+    deleted.delete();
+    await musics.save(active);
+    await musics.save(deleted);
+
+    expect(await musics.findById(deleted.id)).toBeNull();
+    const found = await musics.findByIds([deleted.id, active.id]);
+    expect(found.map((m) => m.id)).toEqual([active.id]);
+  });
+
   it("traduz artista inexistente em NotFoundError sem deixar música órfã", async () => {
     const music = await newMusic("Orphan", [MISSING_ID]);
     const error = await musics.save(music).catch((e: unknown) => e);
@@ -173,6 +192,13 @@ describe("PostgresAlbumRepository", () => {
 
     const found = await albums.findById(album.id);
     expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], musicIds: [music.id] });
+  });
+
+  it("não encontra álbum apagado", async () => {
+    const album = await newAlbum([artistId]);
+    album.delete();
+    await albums.save(album);
+    expect(await albums.findById(album.id)).toBeNull();
   });
 
   it("traduz música inexistente em NotFoundError", async () => {
