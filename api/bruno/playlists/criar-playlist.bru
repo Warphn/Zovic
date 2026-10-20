@@ -1,17 +1,13 @@
 meta {
   name: Criar playlist
   type: http
-  seq: 1
+  seq: 3
 }
 
 post {
   url: {{baseUrl}}/api/playlists
   body: json
   auth: none
-}
-
-headers {
-  x-user-id: {{userId}}
 }
 
 body:json {

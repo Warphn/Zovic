@@ -1,0 +1,30 @@
+meta {
+  name: Login com senha errada
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "email": "ana.andrade@zovic.test",
+    "password": "senha-errada"
+  }
+}
+
+tests {
+  test("responde 401 sem revelar o motivo", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("INVALID_EMAIL_OR_PASSWORD");
+    expect(res.getBody().message).to.equal("Invalid email or password");
+  });
+}

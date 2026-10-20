@@ -97,6 +97,37 @@ Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/do
 
 Migrations, Prisma, seed e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
 
+### Autenticação
+
+A autenticação é feita pelo [Better Auth](https://www.better-auth.com), com email e senha e sessão guardada no banco. O login define o cookie `zovic.session_token` (httpOnly, SameSite=Lax); o navegador o envia nas próximas requisições. As rotas ficam em `/api/auth/*`: `sign-up/email`, `sign-in/email`, `sign-out` e `get-session`. A documentação OpenAPI (Swagger UI) está em http://localhost:3333/docs e a coleção do Bruno (`api/bruno/`) tem exemplos prontos.
+
+Depois de `bun run db:seed` (LOCAL), todo usuário de teste entra com a senha `zovic123` e o email `nome.sobrenome@zovic.test`, minúsculo e sem acentos. Por exemplo:
+
+```bash
+curl -i -c cookies.txt -X POST http://localhost:3333/api/auth/sign-in/email \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ana.andrade@zovic.test","password":"zovic123"}'
+curl -b cookies.txt http://localhost:3333/api/auth/get-session
+curl -b cookies.txt -X POST http://localhost:3333/api/auth/sign-out \
+  -H "Content-Type: application/json" -H "Origin: http://localhost:3000" -d '{}'
+```
+
+O `sign-out` (e qualquer POST feito com cookie) precisa do header `Origin`, que o navegador já manda; a origem tem de estar em `CORS_ORIGIN`. Os usuários que existiam antes do Better Auth não têm email nem senha e não conseguem entrar. O seed PROD não cria credenciais.
+
+Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do Better Auth); a sessão dura 30 dias, renovada a cada 15 dias de uso; o login permite 5 tentativas por 15 minutos por IP e o cadastro 10 por hora. Usuário com soft delete (`deleted_at`) não loga e perde as sessões que tinha. Esqueci minha senha, confirmação de email e login social ainda não estão ligados, mas o schema já tem as tabelas `account` e `verification`.
+
+> **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
+
+Variáveis do `.env`:
+
+| Variável | Para que serve |
+| --- | --- |
+| `BETTER_AUTH_SECRET` | **Obrigatória.** Segredo (32+ caracteres) que assina o cookie de sessão. O `.env.example` traz um valor só para desenvolvimento; em produção gere um segredo forte (`openssl rand -base64 32`). **Quem já tem um `.env` precisa acrescentar essa linha.** |
+| `BETTER_AUTH_URL` | URL pública da API, sem o `/api/auth`. Padrão: `http://localhost:<PORT>`. |
+| `CORS_ORIGIN` | Origens do frontend (separadas por vírgula) aceitas pelo Better Auth nas requisições com cookie. |
+| `COOKIE_SECURE` | Se a variável faltar, a API (fora do docker compose) emite o cookie com `Secure` (e o nome ganha o prefixo `__Secure-`), e o navegador (ou o curl) não o guarda em `http://`. Em desenvolvimento use `COOKIE_SECURE=false`; o docker compose já assume `false` quando ela falta. Em produção, com HTTPS, deixe ligado. |
+| `TRUST_PROXY` | Opcional. Número de proxies confiáveis (inteiro >= 1) para quando a API roda atrás de um proxy reverso com TLS: sem isso o rate limit vê o IP do proxy, não o do cliente. Deixe vazio se a API for exposta direto. |
+
 ### Lint
 
 Os dois projetos usam [Oxlint](https://oxc.rs), configurado no `.oxlintrc.json` de cada pasta. Ele roda sozinho no pre-commit, só nos arquivos do commit, e bloqueia o commit se houver erro.

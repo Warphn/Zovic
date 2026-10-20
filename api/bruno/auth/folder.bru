@@ -1,0 +1,22 @@
+meta {
+  name: Autenticação
+  seq: 2
+}
+
+docs {
+  Rotas do Better Auth. A sessão é o cookie `zovic.session_token` (httpOnly), guardado pelo Bruno entre as requisições.
+  
+  Rode a pasta na ordem: cadastro, login, login com senha errada, sessão, logout, sessão após logout.
+  Ela termina deslogada, de propósito.
+  
+  As requisições POST mandam o header `Origin` (variável `origin` do ambiente): o Better Auth
+  recusa POST com cookie e sem `Origin` (proteção contra CSRF), e a origem precisa estar em `CORS_ORIGIN`.
+  
+  Pré-requisitos:
+  - API com `COOKIE_SECURE=false` no `.env` (senão o cookie é `Secure` e não é guardado em http).
+  - Banco populado com `bun run db:seed` (usuário `ana.andrade@zovic.test`, senha `zovic123`).
+  
+  Limites (por IP, em memória): o cadastro aceita 10 por hora e o login 5 por 15 minutos,
+  somando acertos e erros. A coleção inteira usa 3 logins, então a segunda rodada seguida
+  recebe 429: reinicie a API para zerar os limites.
+}
