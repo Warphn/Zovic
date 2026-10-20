@@ -1,17 +1,13 @@
 meta {
   name: Criar playlist privada sem cor
   type: http
-  seq: 2
+  seq: 4
 }
 
 post {
   url: {{baseUrl}}/api/playlists
   body: json
   auth: none
-}
-
-headers {
-  x-user-id: {{userId}}
 }
 
 body:json {

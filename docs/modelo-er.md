@@ -14,6 +14,8 @@ erDiagram
     plan ||--|{ plan_user : "possui"
     user ||--|{ plan_user : "assina"
 
+    user ||--o{ session : "abre"
+    user ||--o{ account : "autentica por"
     user ||--o{ user_event : "gera"
     user ||--o{ playlist_user : "participa"
     playlists ||--|{ playlist_user : "tem membros"
@@ -64,8 +66,45 @@ erDiagram
         int id PK
         string name
         date birthdate
+        string email
+        bool email_verified
+        string image
         datetime deleted_at
         datetime created_at
+        datetime updated_at
+    }
+    session {
+        int id PK
+        int user_id FK
+        string token
+        datetime expires_at
+        string ip_address
+        string user_agent
+        datetime created_at
+        datetime updated_at
+    }
+    account {
+        int id PK
+        int user_id FK
+        string account_id
+        string provider_id
+        string password
+        string access_token
+        string refresh_token
+        string id_token
+        datetime access_token_expires_at
+        datetime refresh_token_expires_at
+        string scope
+        datetime created_at
+        datetime updated_at
+    }
+    verification {
+        int id PK
+        string identifier
+        string value
+        datetime expires_at
+        datetime created_at
+        datetime updated_at
     }
     user_event {
         int id PK
@@ -179,7 +218,7 @@ erDiagram
 | `plan_type` | `id`, `name`, `price`, `user_amount`, `deleted_at`, `created_at` | 1:N com `plan` (todo tipo tem ao menos um plano) |
 | `plan` | `id`, `name`, `type_id`, `deleted_at`, `created_at` | `type_id` → `plan_type.id` |
 | `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário, e todo usuário assina ao menos um plano |
-| `user` | `id`, `name`, `birthdate`, `deleted_at`, `created_at` | — |
+| `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
 | `user_event` | `id`, `user_id`, `event_type` (ENUM), `created_at` | `user_id` → `user.id` |
 | `system_data` | `users`, `songs`, `playlists`, `created_at` | Tabela de linha única com contagens agregadas do sistema (sem `id` e sem FK) |
 
@@ -213,10 +252,21 @@ erDiagram
 | `album_artist` | `album_id`, `artist_id` | Associativa `album` ↔ `artist`; todo álbum tem ao menos um artista |
 | `artist_music` | `artist_id`, `music_id` | Associativa `artist` ↔ `musics`; toda música tem ao menos um artista |
 
+### Autenticação
+
+Tabelas exigidas pelo [Better Auth](https://www.better-auth.com), adicionadas pela migration `V261020_162546__Adota_Better_Auth.sql`. O Flyway continua dono do schema; o Better Auth só lê e grava. Os ids são inteiros gerados pelo banco, e as colunas em snake_case são mapeadas no código (`api/adapters/auth/create-auth.ts`).
+
+| Tabela | Colunas | Relacionamentos |
+|---|---|---|
+| `user` (colunas novas) | `email`, `email_verified`, `image`, `updated_at` | `email` é único e sempre em minúsculas (CHECK). É `NULL` nos usuários anteriores ao Better Auth, que não têm credenciais e por isso não conseguem entrar. O email de um usuário com soft delete continua reservado |
+| `session` | `id`, `user_id`, `token`, `expires_at`, `ip_address`, `user_agent`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); `token` é único e é o valor (assinado) do cookie de sessão |
+| `account` | `id`, `user_id`, `account_id`, `provider_id`, `password`, `access_token`, `refresh_token`, `id_token`, `access_token_expires_at`, `refresh_token_expires_at`, `scope`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); uma linha por forma de login. Email e senha usam `provider_id = 'credential'` e `account_id` igual ao id do usuário, com o hash em `password`; (`provider_id`, `account_id`) é único. Login social entra como outra linha, sem mudar o schema |
+| `verification` | `id`, `identifier`, `value`, `expires_at`, `created_at`, `updated_at` | Sem FK. Guarda os tokens de confirmação de email e de recuperação de senha, que ainda não são usados |
+
 ## Convenções
 
 - Tabelas com `deleted_at` usam *soft delete*.
-- As tabelas registram só `created_at` (e `deleted_at`, quando aplicável); o modelo não tem `updated_at`.
+- As tabelas registram só `created_at` (e `deleted_at`, quando aplicável); o modelo não tem `updated_at`. As exceções são as tabelas do Better Auth (`user`, `session`, `account` e `verification`), que têm `updated_at` porque o Better Auth atualiza esses registros.
 - Tabelas associativas (N:N) não têm `id` próprio; a chave primária é composta pelas duas FKs.
 - As estatísticas de uma música (`streams` e `rating`, a média das avaliações) ficam na própria `musics`, e não numa tabela separada.
 - `system_data` é uma tabela de linha única: guarda os totais agregados do sistema (usuários, músicas e playlists) e é sempre atualizada no lugar, nunca recebe novas linhas. Por isso não tem `id` de negócio nem relacionamentos. No banco, ela ganhou uma coluna `singleton`, sempre `true`, que é a chave primária: um CHECK impede outro valor, então um segundo `INSERT` falha. A coluna também serve de identificador para o Prisma, que exige um em toda tabela. A migration já cria a linha, com os totais zerados.
