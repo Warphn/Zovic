@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { CloseIcon } from "@/components/icons"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
@@ -144,10 +145,7 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
           aria-label="Fechar"
           className="absolute right-4 top-4 size-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer"
         >
-          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <CloseIcon size={16} />
         </button>
         {children}
       </dialog>
