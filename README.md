@@ -105,3 +105,13 @@ Os dois projetos usam [Oxlint](https://oxc.rs), configurado no `.oxlintrc.json` 
 bun run lint       # em api/ ou frontend/
 bun run lint:fix   # corrige o que for automático
 ```
+
+### Testes
+
+```bash
+bun run test               # em api/ ou frontend/: testes rápidos, sem banco
+bun run test:integration   # em api/: repositórios no Postgres (precisa do banco no ar)
+bun run typecheck          # em api/
+```
+
+Antes de todo `git push`, o hook `.husky/pre-push` roda o typecheck e os testes da API e os testes do frontend, e **cancela o push se algo falhar**. Os testes de integração só rodam se o container `db` estiver no ar; senão, o hook avisa e segue. Numa emergência, `git push --no-verify` pula o hook.
