@@ -94,7 +94,8 @@ export function createMockAuthClient(storage: KeyValueStorage) {
   return {
     getSession,
 
-    subscribe(listener: () => void) {
+    // Arrow property, not a method: useSyncExternalStore calls it detached from the object
+    subscribe: (listener: () => void) => {
       listeners.add(listener)
       // Keeps other tabs in sync when the session changes there
       const onStorage = (e: StorageEvent) => {
