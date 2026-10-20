@@ -35,7 +35,7 @@
   --secondary-foreground: var(--color-ink);
   --destructive: var(--color-red);
   --input: var(--color-rule);
-  --ring: var(--color-teal);
+  --ring: var(--color-red);
   --chart-1: var(--color-red);
   --chart-2: var(--color-teal);
   --chart-3: var(--color-ink);
@@ -49,7 +49,7 @@
   --sidebar-accent: var(--color-teal);
   --sidebar-accent-foreground: var(--color-paper-bright);
   --sidebar-border: var(--color-rule);
-  --sidebar-ring: var(--color-teal);
+  --sidebar-ring: var(--color-red);
 }
 
 @theme inline {
@@ -102,8 +102,42 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@theme {
+  --animate-marquee: marquee 40s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* Frosted bar (header): translucent page background with blur, feathered at the bottom so it
+   fades into the page instead of ending in a hard edge. The frost lives on a pseudo-element:
+   masking the element itself would fade its content too. The element must be positioned
+   (relative/absolute) for the pseudo-element to anchor to it. */
+@utility glass {
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 -6px 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: color-mix(in oklab, var(--background) 35%, transparent);
+    backdrop-filter: blur(8px);
+    mask-image: linear-gradient(to bottom, black 80%, transparent);
+    transition: background-color 300ms ease;
+  }
+}
+
 html {
   color-scheme: light;
+  scroll-behavior: smooth;
 }
 
 @layer base {
@@ -116,4 +150,25 @@ html {
   html {
     @apply font-sans;
   }
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+    color: var(--foreground);
+  }
+}
+
+/* react-grid-layout: themed drop placeholder and a resize handle above the card overlays.
+   The extra .react-grid-layout raises specificity over the library CSS, which is imported later.
+   var(--primary) follows the playlist accent on a playlist page. */
+.react-grid-layout .react-grid-item.react-grid-placeholder {
+  background: var(--primary);
+  opacity: 0.15;
+  border-radius: calc(var(--radius) * 1.8);
+}
+
+.react-grid-item > .react-resizable-handle {
+  z-index: 40;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-color: rgb(255 255 255 / 0.8);
 }

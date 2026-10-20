@@ -1,27 +1,26 @@
 'use client'
 
+import CallToAction from "@/components/call-to-action";
+import Footer from "@/components/footer";
 import Header from "@/components/header";
 import Hero from "@/components/hero";
-import Silk from "@/components/silk"
+import HowItWorks from "@/components/how-it-works";
+import { useLandingSectionScroll } from "@/components/section-link";
+import SilkBackground from "@/components/silk-background";
 
 export default function Home() {
+  useLandingSectionScroll();
+
   return (
     <div className="relative min-h-screen">
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <Silk
-          speed={5}
-          scale={0.7}
-          color="#c9bfa9"
-          noiseIntensity={2}
-          rotation={30}
-          lightMode
-          shadowOpacity={0.5}
-        />
-      </div>
+      <SilkBackground />
       <Header />
-      <main className="flex min-h-screen flex-1">
+      <main className="flex flex-1 flex-col">
         <Hero />
+        <HowItWorks />
+        <CallToAction />
       </main>
+      <Footer />
     </div>
   );
 }

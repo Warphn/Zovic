@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
-import { ColorPicker, getColorName, getContrastTextColor } from "@/components/color-picker"
+import { ColorPicker, getContrastTextColor } from "@/components/color-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,17 @@ import {
   useStoredPlaylists,
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+import { SortableList } from "@/components/sortable-list"
+import {
+  ArrowLeftIcon,
+  HeartIcon,
+  PauseIcon,
+  PlayIcon,
+  SearchIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
+  VolumeIcon,
+} from "@/components/icons"
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
@@ -39,6 +50,8 @@ export default function PlaylistDetailPage() {
   const [isPlaying, setIsPlaying] = React.useState(false)
   const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
   const [playbackProgress, setPlaybackProgress] = React.useState(35) // percentage 0-100
+  const [volume, setVolume] = React.useState(70) // percentage 0-100
+  const [isMuted, setIsMuted] = React.useState(false)
   const [likedTracks, setLikedTracks] = React.useState<Record<string, boolean>>({
     t1: true,
     t3: true,
@@ -56,6 +69,17 @@ export default function PlaylistDetailPage() {
     persistPlaylists(updated)
   }
 
+  // Reorder tracks (drag in the tracklist); the playing track stays the same one
+  const handleReorderTracks = (ids: string[]) => {
+    if (!currentPlaylist) return
+    const playingId = currentPlaylist.tracks[currentTrackIndex]?.id
+    const reordered = ids
+      .map((id) => currentPlaylist.tracks.find((t) => t.id === id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+    persistPlaylists(playlists.map((p) => (p.id === currentPlaylist.id ? { ...p, tracks: reordered } : p)))
+    setCurrentTrackIndex(Math.max(0, reordered.findIndex((t) => t.id === playingId)))
+  }
+
   // If playlist not found
   if (!currentPlaylist) {
     return (
@@ -70,8 +94,8 @@ export default function PlaylistDetailPage() {
             Esta playlist não foi encontrada ou pode ter sido removida.
           </p>
           <Link href="/playlist">
-            <Button variant="default" className="text-xs font-semibold cursor-pointer">
-              ← Voltar ao Catálogo
+            <Button variant="default" className="text-xs font-semibold cursor-pointer gap-1.5">
+              <ArrowLeftIcon size={14} /> Voltar ao Catálogo
             </Button>
           </Link>
         </main>
@@ -81,6 +105,18 @@ export default function PlaylistDetailPage() {
 
   const tracks = currentPlaylist.tracks
   const contrastText = getContrastTextColor(currentPlaylist.color)
+  // The playlist color becomes this page's accent: primary, focus ring and text selection
+  // (selection:bg-primary/20 below) all follow it. Light colors get a darker variant so
+  // accent text and icons stay readable on the paper background.
+  const isLightColor = contrastText === "text-black"
+  const playlistAccent = {
+    "--primary": isLightColor
+      ? `color-mix(in oklab, ${currentPlaylist.color} 70%, black)`
+      : currentPlaylist.color,
+    // Dark colors already carry light text; light ones are darkened above, so light text fits both
+    "--primary-foreground": "var(--color-paper-bright)",
+    "--ring": currentPlaylist.color,
+  } as React.CSSProperties
   const totalDurationMin = Math.round(
     tracks.reduce((acc, t) => acc + t.durationSec, 0) / 60
   )
@@ -106,11 +142,14 @@ export default function PlaylistDetailPage() {
   const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative">
+    <div
+      className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative"
+      style={playlistAccent}
+    >
       <Header />
 
       <main className="flex-1 pt-16 flex flex-col relative overflow-hidden">
-        {/* 
+        {/*
           FULL-WIDTH DYNAMIC COLOR WASH ACROSS THE ENTIRE SCREEN:
           Extends across 100% of the viewport width, bathing the entire page header smoothly.
         */}
@@ -135,8 +174,8 @@ export default function PlaylistDetailPage() {
               href="/playlist"
               className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer group"
             >
-              <span className="group-hover:-translate-x-1 transition-transform">←</span>
-              <span>Voltar ao Catálogo de Playlists</span>
+              <ArrowLeftIcon size={14} />
+              <span>Voltar ao Catálogo</span>
             </Link>
 
             <div className="flex items-center gap-2">
@@ -158,29 +197,9 @@ export default function PlaylistDetailPage() {
           {/* =========================================================================
               HERO SECTION: VINYL OBJECT + DISPLAY TYPOGRAPHY
               ========================================================================= */}
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-8 pb-8 border-b border-border/80">
-            {/* Tactile Vinyl Sleeve & Peeking Disc (No hover movement) */}
-            <div className="group relative shrink-0">
-              {/* Static Peeking Vinyl Disc */}
-              <div
-                className="absolute top-2 right-0 size-48 md:size-52 rounded-full bg-[#111] border border-white/10 shadow-2xl pointer-events-none flex items-center justify-center -z-10 translate-x-4"
-                style={{
-                  backgroundImage: `repeating-radial-gradient(circle, #1a1a1a 0px, #111 2px, #262626 4px, #111 6px)`,
-                }}
-              >
-                <div
-                  className="size-16 rounded-full border border-black/40 flex flex-col items-center justify-center text-center p-1 shadow-inner"
-                  style={{ backgroundColor: currentPlaylist.color }}
-                >
-                  <div className={cn("text-[7px] font-mono font-bold leading-tight uppercase", contrastText)}>
-                    ZOVIC LP
-                  </div>
-                  <div className={cn("text-[6px] font-mono opacity-80 leading-tight", contrastText)}>
-                    33⅓ RPM
-                  </div>
-                </div>
-              </div>
-
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-8 pb-8">
+            {/* Tactile Vinyl Sleeve */}
+            <div className="relative shrink-0">
               {/* Front Jacket Card */}
               <div
                 className="size-48 md:size-52 rounded-xl shadow-xl border border-black/10 p-5 flex flex-col justify-between relative overflow-hidden transition-all duration-500"
@@ -196,25 +215,11 @@ export default function PlaylistDetailPage() {
                   <span className={cn("text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-black/20", contrastText)}>
                     {currentPlaylist.isPrivate ? "PRIVADA" : "PÚBLICA"}
                   </span>
-                  {getColorName(currentPlaylist.color) ? (
-                    <span className={cn("text-[10px] font-mono opacity-80", contrastText)}>
-                      {getColorName(currentPlaylist.color)}
-                    </span>
-                  ) : null}
                 </div>
 
                 <div className="relative z-10 my-auto text-center">
                   <div className={cn("text-6xl font-black tracking-tighter drop-shadow-sm select-none", contrastText)}>
                     {getPlaylistInitials(currentPlaylist.name)}
-                  </div>
-                </div>
-
-                <div className="relative z-10 flex items-end justify-between">
-                  <div className={cn("text-xs font-bold leading-tight truncate max-w-[120px]", contrastText)}>
-                    {currentPlaylist.name}
-                  </div>
-                  <div className={cn("text-[9px] font-mono opacity-75", contrastText)}>
-                    STEREO
                   </div>
                 </div>
               </div>
@@ -223,10 +228,6 @@ export default function PlaylistDetailPage() {
             {/* Title & Objective Metadata Only */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-muted-foreground">
-                  Coleção Prensada em Vinil
-                </span>
-                <span className="text-muted-foreground/40">•</span>
                 <Badge variant="outline" className="text-[10px] py-0 border-border">
                   {currentPlaylist.isPrivate ? "Privada" : "Pública"}
                 </Badge>
@@ -250,7 +251,7 @@ export default function PlaylistDetailPage() {
               ========================================================================= */}
           <div className="pb-36 pt-6">
             {/* Search Bar without emoji */}
-            <div className="flex items-center justify-end mb-6 pb-3 border-b border-border">
+            <div className="flex items-center justify-end mb-6">
               <div className="relative w-full sm:w-72">
                 <Input
                   value={searchQuery}
@@ -258,31 +259,26 @@ export default function PlaylistDetailPage() {
                   placeholder="Buscar faixa, artista..."
                   className="h-8 text-xs bg-surface pl-8"
                 />
-                <svg
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
+                <SearchIcon
+                  size={14}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
               </div>
             </div>
 
-            {/* Tracklist Items */}
-            <div className="space-y-2.5">
-              {filteredTracks.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-xs font-mono">
-                  Nenhuma faixa encontrada na busca.
-                </div>
-              ) : (
-                filteredTracks.map((track) => {
+            {/* Tracklist Items (drag to reorder; off while searching, since only part of the list shows) */}
+            {filteredTracks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-xs font-mono">
+                Nenhuma faixa encontrada na busca.
+              </div>
+            ) : (
+              <SortableList
+                ids={filteredTracks.map((t) => t.id)}
+                rowHeight={66}
+                disabled={searchQuery.trim() !== ""}
+                onReorder={handleReorderTracks}
+              >
+                {filteredTracks.map((track) => {
                   const actualIdx = tracks.findIndex((t) => t.id === track.id)
                   const isTrackActive = isPlaying && currentTrackIndex === actualIdx
                   const isLiked = likedTracks[track.id] ?? false
@@ -291,15 +287,32 @@ export default function PlaylistDetailPage() {
                     <div
                       key={track.id}
                       className={cn(
-                        "group rounded-xl border p-3.5 transition-all flex items-center justify-between gap-4",
+                        // Pointer: a click plays the track; grabbing only while a drag is held
+                        "group relative h-full rounded-xl border p-3.5 transition-colors flex items-center justify-between gap-4 select-none cursor-pointer",
+                        !searchQuery.trim() && "active:cursor-grabbing",
                         isTrackActive
                           ? "border-primary bg-primary/5 shadow-xs"
                           : "border-border/70 bg-surface/70 hover:bg-surface hover:border-border"
                       )}
                     >
+                      {/* Row-wide play button: a click anywhere on the row plays the track. The
+                          other buttons sit above it (relative z-10) and keep their own action;
+                          data-row-action keeps the row draggable through it. */}
+                      <button
+                        type="button"
+                        data-row-action
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        onClick={() => {
+                          setCurrentTrackIndex(actualIdx)
+                          setIsPlaying(true)
+                        }}
+                        className="absolute inset-0 rounded-xl cursor-[inherit]"
+                      />
+                      {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
                       {/* Left: Track Number, Title & Artist */}
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        {/* Side & Track Badge */}
+                      <div className="relative pointer-events-none flex items-center gap-3.5 min-w-0">
+                        {/* Position Badge */}
                         <div
                           className={cn(
                             "size-8 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 border transition-colors",
@@ -308,7 +321,7 @@ export default function PlaylistDetailPage() {
                               : "bg-background text-muted-foreground border-border group-hover:text-foreground"
                           )}
                         >
-                          {isTrackActive ? "▶" : track.trackNum}
+                          {isTrackActive ? <PlayIcon size={12} /> : actualIdx + 1}
                         </div>
 
                         <div className="min-w-0">
@@ -319,7 +332,7 @@ export default function PlaylistDetailPage() {
                               setIsPlaying(true)
                             }}
                             className={cn(
-                              "font-bold text-sm text-left truncate cursor-pointer hover:underline block",
+                              "pointer-events-auto font-bold text-sm text-left truncate cursor-pointer hover:underline block",
                               isTrackActive ? "text-primary" : "text-foreground"
                             )}
                           >
@@ -332,11 +345,8 @@ export default function PlaylistDetailPage() {
                         </div>
                       </div>
 
-                      {/* Right: BPM, Inline Equalizer, Duration & Actions */}
-                      <div className="flex items-center gap-3 shrink-0 font-mono text-xs">
-                        <span className="hidden md:inline-block text-[10px] text-muted-foreground/80 font-mono">
-                          {track.bpm} BPM
-                        </span>
+                      {/* Right: Inline Equalizer, Duration & Actions */}
+                      <div className="relative pointer-events-none flex items-center gap-3 shrink-0 font-mono text-xs">
 
                         {/* Inline Equalizer Animation when playing */}
                         {isTrackActive && (
@@ -364,14 +374,14 @@ export default function PlaylistDetailPage() {
                             }
                           }}
                           className={cn(
-                            "size-7 rounded-lg border border-border flex items-center justify-center transition-all cursor-pointer",
+                            "pointer-events-auto size-7 rounded-lg border border-border flex items-center justify-center transition-all cursor-pointer",
                             isTrackActive
                               ? "bg-primary text-primary-foreground border-primary"
                               : "bg-background text-muted-foreground hover:text-foreground hover:bg-surface"
                           )}
                           aria-label={isTrackActive ? `Pausar ${track.title}` : `Tocar ${track.title}`}
                         >
-                          {isTrackActive ? "❚❚" : "▶"}
+                          {isTrackActive ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
                         </button>
 
                         {/* Like bookmark */}
@@ -382,18 +392,18 @@ export default function PlaylistDetailPage() {
                           }}
                           aria-label={isLiked ? "Descurtir faixa" : "Curtir faixa"}
                           className={cn(
-                            "text-sm transition-colors cursor-pointer",
+                            "pointer-events-auto size-7 flex items-center justify-center transition-colors cursor-pointer",
                             isLiked ? "text-primary" : "text-muted-foreground/40 hover:text-foreground"
                           )}
                         >
-                          ♥
+                          <HeartIcon size={16} className={cn(isLiked && "[&_svg]:fill-current")} />
                         </button>
                       </div>
                     </div>
                   )
-                })
-              )}
-            </div>
+                })}
+              </SortableList>
+            )}
           </div>
         </div>
 
@@ -408,8 +418,7 @@ export default function PlaylistDetailPage() {
               style={{ backgroundColor: currentPlaylist.color }}
             >
               <span className={cn(contrastText)}>
-                {currentPlayingTrack?.side}
-                {currentPlayingTrack?.trackNum}
+                {getPlaylistInitials(currentPlaylist.name)}
               </span>
             </div>
             <div className="min-w-0 hidden sm:block">
@@ -433,7 +442,7 @@ export default function PlaylistDetailPage() {
                 aria-label="Faixa anterior"
                 className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                ⏮
+                <SkipBackIcon size={18} />
               </button>
               <button
                 type="button"
@@ -441,7 +450,7 @@ export default function PlaylistDetailPage() {
                 aria-label={isPlaying ? "Pausar reprodução" : "Iniciar reprodução"}
                 className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
               >
-                {isPlaying ? "❚❚" : "▶"}
+                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
                 type="button"
@@ -451,7 +460,7 @@ export default function PlaylistDetailPage() {
                 aria-label="Próxima faixa"
                 className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                ⏭
+                <SkipForwardIcon size={18} />
               </button>
             </div>
 
@@ -490,10 +499,29 @@ export default function PlaylistDetailPage() {
             </div>
           </div>
 
-          {/* Right: Sound Spec */}
-          <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px] text-xs font-mono text-muted-foreground">
-            <span className="hidden sm:inline">STEREO</span>
-            <span>🔊</span>
+          {/* Right: Volume Control */}
+          <div className="flex items-center justify-end gap-2 w-1/4 min-w-[120px] text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => setIsMuted(!isMuted)}
+              aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
+              className="hover:text-foreground transition-colors cursor-pointer"
+            >
+              <VolumeIcon level={isMuted || volume === 0 ? "muted" : volume < 50 ? "low" : "high"} size={18} />
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={isMuted ? 0 : volume}
+              onChange={(e) => {
+                setVolume(Number(e.target.value))
+                setIsMuted(false)
+              }}
+              aria-label="Volume"
+              className="w-20 sm:w-28 h-1.5 cursor-pointer"
+              style={{ accentColor: currentPlaylist.color }}
+            />
           </div>
         </div>
       </main>
