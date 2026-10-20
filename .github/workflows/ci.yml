@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    services:
+      db:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: zovic
+          POSTGRES_PASSWORD: zovic
+          POSTGRES_DB: zovic
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U zovic -d zovic"
+          --health-interval 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: api/package.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-api-${{ runner.os }}-${{ hashFiles('api/bun.lock') }}
+          restore-keys: bun-api-${{ runner.os }}-
+
+      # Mesmo .env do ambiente local: o DATABASE_URL aponta para o service db acima
+      - run: cp ../.env.example ../.env
+
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
+
+      # Mesma imagem e flags do serviço flyway do docker-compose.yml
+      - name: Aplica migrations (Flyway)
+        working-directory: .
+        run: >-
+          docker run --rm --network host
+          -v "$PWD/db/migrations:/flyway/sql"
+          flyway/flyway:13.9.0
+          -url=jdbc:postgresql://localhost:5432/zovic -user=zovic -password=zovic
+          -connectRetries=10 -validateMigrationNaming=true migrate
+
+      - run: bun run test:integration
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: frontend/package.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-frontend-${{ runner.os }}-${{ hashFiles('frontend/bun.lock') }}
+          restore-keys: bun-frontend-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+      # Gera os tipos de rota do Next (LayoutProps, PageProps…) que o tsc precisa
+      - run: bunx next typegen
+      - run: bunx tsc --noEmit
+      - run: bun run lint
+      - run: bun test src

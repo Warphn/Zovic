@@ -1,4 +1,16 @@
 meta {
   name: Playlists
-  seq: 2
+  seq: 3
+}
+
+docs {
+  Estas requisições dependem do cookie `zovic.session_token`, guardado pelo Bruno.
+  
+  Ao rodar a pasta inteira, a ordem já resolve: "Sem cookie de sessão" roda primeiro
+  (sem cookie, responde 401), depois "Login" abre a sessão da Ana e as demais usam o cookie.
+  
+  Ao rodar uma requisição avulsa, rode antes o "Login" (ou `auth/Login`).
+  Para "Sem cookie de sessão" dar 401, o cookie não pode existir: rode `auth/Logout` antes (ou reinicie o Bruno CLI).
+  
+  Pré-requisitos: `COOKIE_SECURE=false` no `.env` e o banco populado com `bun run db:seed`.
 }

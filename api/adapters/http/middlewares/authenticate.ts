@@ -1,4 +1,6 @@
 import type { RequestHandler } from "express";
+import { fromNodeHeaders } from "better-auth/node";
+import type { Auth } from "../../auth/create-auth.ts";
 
 declare global {
   namespace Express {
@@ -8,14 +10,26 @@ declare global {
   }
 }
 
-export const authenticate: RequestHandler = (req, res, next) => {
-  const userId = Number(req.header("x-user-id"));
+export function makeAuthenticate(auth: Auth): RequestHandler {
+  return async (req, res, next) => {
+    const { headers, response } = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
+    });
 
-  if (!Number.isInteger(userId) || userId <= 0) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Missing or invalid x-user-id header" });
-    return;
-  }
+    // Na renovação deslizante o Better Auth devolve o cookie com a validade nova.
+    for (const cookie of headers.getSetCookie()) {
+      res.append("Set-Cookie", cookie);
+    }
 
-  res.locals.userId = userId;
-  next();
-};
+    // Soft delete: sessões que já existiam antes da remoção do usuário também deixam de valer.
+    const userId = Number(response?.user.id);
+    if (!response || response.user.deletedAt || !Number.isInteger(userId)) {
+      res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required" });
+      return;
+    }
+
+    res.locals.userId = userId;
+    next();
+  };
+}

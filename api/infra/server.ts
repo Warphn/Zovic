@@ -1,24 +1,9 @@
-import express from "express";
-import swaggerUi from "swagger-ui-express";
-import { errorHandler } from "../adapters/http/middlewares/error-handler.ts";
-import { openApiDocument } from "../adapters/http/openapi.ts";
-import { router } from "./composition-root.ts";
+import { auth } from "./auth.ts";
+import { composeApp } from "./composition-root.ts";
+import { config } from "./config.ts";
 
-const app = express();
+const app = composeApp(auth, config.trustProxy);
 
-app.use(express.json());
-app.get("/health", (_req, res) => {
-  res.sendStatus(200);
-});
-app.get("/docs/openapi.json", (_req, res) => {
-  res.json(openApiDocument);
-});
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));
-app.use("/api", router);
-app.use(errorHandler);
-
-const port = Number(process.env.PORT ?? 3333);
-
-app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
+app.listen(config.port, () => {
+  console.log(`API listening on port ${config.port}`);
 });

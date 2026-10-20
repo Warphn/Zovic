@@ -19,6 +19,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "better-auth": "^1.7.12",
     "express": "^5.2.1",
     "joi": "^18.2.9",
     "pg": "^8.23.1",

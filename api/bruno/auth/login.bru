@@ -1,0 +1,37 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "email": "ana.andrade@zovic.test",
+    "password": "zovic123"
+  }
+}
+
+tests {
+  test("responde 200 com o usuário", function () {
+    expect(res.getStatus()).to.equal(200);
+    const { user } = res.getBody();
+    expect(user.email).to.equal("ana.andrade@zovic.test");
+    expect(user.name).to.equal("Ana Andrade");
+  });
+
+  test("abre a sessão com o cookie zovic.session_token httpOnly", function () {
+    const cookie = [].concat(res.getHeader("set-cookie"))[0];
+    expect(cookie).to.match(/^zovic\.session_token=/);
+    expect(cookie).to.match(/HttpOnly/i);
+  });
+}
