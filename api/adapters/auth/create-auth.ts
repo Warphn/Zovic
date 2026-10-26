@@ -1,7 +1,10 @@
 import { betterAuth } from "better-auth";
+import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
+import { customSession } from "better-auth/plugins";
 import type { Pool } from "pg";
 import Joi from "joi";
+import { calendarDateIn, isAdult } from "../../domain/shared/age.ts";
 
 export interface AuthOptions {
   /** Segredo de assinatura/criptografia do Better Auth (mínimo de 32 caracteres). */
@@ -21,6 +24,9 @@ export interface AuthOptions {
  * O Better Auth lê o IP só daqui para o rate limit; um valor enviado pelo cliente é sempre sobrescrito.
  */
 export const CLIENT_IP_HEADER = "x-zovic-client-ip";
+
+/** Fuso que define "hoje" para a maioridade: o aniversário vale pelo dia do Brasil, não o de UTC. */
+const TIME_ZONE = "America/Sao_Paulo";
 
 const MINUTE = 60;
 const DAY = 24 * 60 * MINUTE;
@@ -45,7 +51,7 @@ const birthdateSchema = Joi.string()
   });
 
 export function createAuth(pool: Pool, options: AuthOptions) {
-  return betterAuth({
+  const config = {
     appName: "Zovic",
     database: pool,
     secret: options.secret,
@@ -91,11 +97,20 @@ export function createAuth(pool: Pool, options: AuthOptions) {
         updatedAt: "updated_at",
       },
       additionalFields: {
+        // Obrigatória no cadastro (issue #1: toda conta tem idade). A coluna continua aceitando
+        // NULL por causa dos usuários anteriores ao Better Auth; para eles, isAdult é false.
         birthdate: {
           type: "string",
-          required: false,
+          required: true,
           input: true,
           validator: { input: birthdateSchema },
+        },
+        // admin | assinante. Só o banco muda: input false faz o cadastro recusar o campo.
+        role: {
+          type: "string",
+          required: false,
+          input: false,
+          defaultValue: "assinante",
         },
         // Soft delete: só o banco escreve. Fica visível na resposta para o
         // middleware authenticate recusar sessões de usuários removidos.
@@ -132,6 +147,10 @@ export function createAuth(pool: Pool, options: AuthOptions) {
         updatedAt: "updated_at",
       },
     },
+
+    // A rota de alterar o usuário mudaria a data de nascimento (um menor viraria maior de idade)
+    // e nenhuma tela a usa. Fica desligada até existir uma regra para isso.
+    disabledPaths: ["/update-user"],
 
     rateLimit: {
       enabled: options.rateLimit,
@@ -179,6 +198,21 @@ export function createAuth(pool: Pool, options: AuthOptions) {
         },
       },
     },
+  } satisfies BetterAuthOptions;
+
+  return betterAuth({
+    ...config,
+    plugins: [
+      // A sessão devolvida ao cliente diz se o usuário é maior de idade, calculado agora (um
+      // valor gravado ficaria velho no aniversário). Recebe o config para tipar os campos extras.
+      customSession(
+        async ({ user, session }) => ({
+          user: { ...user, isAdult: isAdult(user.birthdate ?? null, calendarDateIn(new Date(), TIME_ZONE)) },
+          session,
+        }),
+        config,
+      ),
+    ],
   });
 }
 
