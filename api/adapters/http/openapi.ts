@@ -321,7 +321,7 @@ export const openApiDocument = {
     schemas: {
       SignUpRequest: {
         type: "object",
-        required: ["name", "email", "password"],
+        required: ["name", "email", "password", "birthdate"],
         properties: {
           name: {
             type: "string",
@@ -345,7 +345,7 @@ export const openApiDocument = {
           birthdate: {
             type: "string",
             format: "date",
-            description: "Opcional, no formato YYYY-MM-DD, uma data que não esteja no futuro.",
+            description: "Obrigatória, no formato YYYY-MM-DD, uma data que não esteja no futuro. Não pode ser trocada depois.",
             example: "1995-03-12",
           },
         },
@@ -368,6 +368,12 @@ export const openApiDocument = {
           emailVerified: { type: "boolean", example: false },
           image: { type: ["string", "null"] },
           birthdate: { type: ["string", "null"], format: "date", example: "1995-03-12" },
+          role: {
+            type: "string",
+            enum: ["admin", "assinante"],
+            description: "Papel na plataforma. Toda conta nasce assinante; só o banco promove a admin.",
+            example: "assinante",
+          },
           deletedAt: {
             type: ["string", "null"],
             format: "date-time",
@@ -379,11 +385,11 @@ export const openApiDocument = {
       },
       Session: {
         type: "object",
-        required: ["id", "userId", "token", "expiresAt", "createdAt", "updatedAt"],
+        description: "O token da sessão não é devolvido: ele só circula no cookie httpOnly.",
+        required: ["id", "userId", "expiresAt", "createdAt", "updatedAt"],
         properties: {
           id: { type: "string", example: "7" },
           userId: { type: "string", example: "1" },
-          token: { type: "string" },
           expiresAt: { type: "string", format: "date-time" },
           ipAddress: { type: ["string", "null"] },
           userAgent: { type: ["string", "null"] },
@@ -393,9 +399,9 @@ export const openApiDocument = {
       },
       AuthResponse: {
         type: "object",
-        required: ["token", "user"],
+        description: "A sessão vai só no cookie httpOnly (Set-Cookie); o token não aparece no corpo.",
+        required: ["user"],
         properties: {
-          token: { type: ["string", "null"], description: "Token da sessão (o valor do cookie, sem a assinatura)." },
           user: { $ref: "#/components/schemas/User" },
         },
       },
@@ -404,7 +410,22 @@ export const openApiDocument = {
         required: ["session", "user"],
         properties: {
           session: { $ref: "#/components/schemas/Session" },
-          user: { $ref: "#/components/schemas/User" },
+          user: {
+            allOf: [
+              { $ref: "#/components/schemas/User" },
+              {
+                type: "object",
+                required: ["isAdult"],
+                properties: {
+                  isAdult: {
+                    type: "boolean",
+                    description:
+                      "Maior de idade (18 anos completos, pelo dia de São Paulo), calculado a cada requisição. Sem data de nascimento, false.",
+                  },
+                },
+              },
+            ],
+          },
         },
       },
       CreatePlaylistRequest: {
