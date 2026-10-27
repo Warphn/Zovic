@@ -69,6 +69,7 @@ model User {
   emailVerified Boolean        @default(false) @map("email_verified")
   image         String?
   updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  role          String         @default("assinante") @db.VarChar(20)
   accounts      Account[]
   comments      Comment[]
   savedMusics   MusicUser[]

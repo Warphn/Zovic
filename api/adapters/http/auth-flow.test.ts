@@ -25,7 +25,7 @@ interface TestApp {
 }
 
 function startApp(options: Partial<AuthOptions>, trustProxy: number | null = null): TestApp {
-  const app = composeApp(createAuth(pool, { ...baseOptions, ...options }), trustProxy);
+  const app = composeApp(createAuth(pool, { ...baseOptions, ...options }), trustProxy, [ORIGIN]);
   const server = app.listen(0);
   const address = server.address();
   if (address === null || typeof address === "string") {
@@ -43,7 +43,7 @@ interface Body {
   error?: string;
   id?: number;
   name?: string;
-  user: { id: string; email: string; birthdate: string | null };
+  user: { id: string; email: string; birthdate: string | null; role?: string; isAdult?: boolean };
 }
 
 async function bodyOf(res: Response): Promise<Body> {
@@ -73,6 +73,19 @@ function sessionCookie(res: Response) {
   return { header: pair, name: pair.split("=")[0]!, value: pair.slice(pair.indexOf("=") + 1), attributes };
 }
 
+/** O cookie é "token.assinatura": devolve o token cru, que não pode aparecer em nenhum corpo de resposta. */
+function rawToken(cookie: { value: string }): string {
+  return decodeURIComponent(cookie.value).split(".")[0]!;
+}
+
+/** Data de nascimento de quem completa `age` anos daqui a `dayOffset` dias (negativo: já completou). */
+function birthdateForAge(age: number, dayOffset = 0): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + dayOffset);
+  date.setUTCFullYear(date.getUTCFullYear() - age);
+  return date.toISOString().slice(0, 10);
+}
+
 async function playlistsWith(app: TestApp, cookie: string | null, headers: Record<string, string> = {}) {
   return fetch(
     `${app.url}/api/playlists`,
@@ -80,8 +93,13 @@ async function playlistsWith(app: TestApp, cookie: string | null, headers: Recor
   );
 }
 
+const ADULT_BIRTHDATE = "1995-03-12";
+
 async function signUp(app: TestApp, email: string, extra: Record<string, unknown> = {}) {
-  const res = await fetch(`${app.url}/api/auth/sign-up/email`, json({ name: "Teste Auth", email, password: PASSWORD, ...extra }));
+  const res = await fetch(
+    `${app.url}/api/auth/sign-up/email`,
+    json({ name: "Teste Auth", email, password: PASSWORD, birthdate: ADULT_BIRTHDATE, ...extra }),
+  );
   return { res, cookie: sessionCookie(res) };
 }
 
@@ -268,6 +286,55 @@ describe("autenticação com Better Auth", () => {
     });
   });
 
+  describe("token da sessão fora do corpo das respostas", () => {
+    it("cadastro e login devolvem o usuário, sem o token, e ainda definem o cookie", async () => {
+      const email = uniqueEmail("sem-token");
+      const { res, cookie } = await signUp(app, email);
+      const signUpText = await res.text();
+      expect(cookie).not.toBeNull();
+      expect(signUpText).not.toContain(rawToken(cookie!));
+      expect(JSON.parse(signUpText)).not.toHaveProperty("token");
+      expect(JSON.parse(signUpText).user.email).toBe(email);
+
+      const login = await signIn(app, email, PASSWORD);
+      const loginCookie = sessionCookie(login);
+      const loginText = await login.text();
+      expect(loginCookie).not.toBeNull();
+      expect(loginText).not.toContain(rawToken(loginCookie!));
+      expect(JSON.parse(loginText)).not.toHaveProperty("token");
+    });
+
+    it("get-session e list-sessions não devolvem token de nenhuma sessão", async () => {
+      const email = uniqueEmail("lista");
+      const first = await signUp(app, email);
+      const second = sessionCookie(await signIn(app, email, PASSWORD))!;
+
+      const session = await fetch(`${app.url}/api/auth/get-session`, { headers: { Cookie: second.header } });
+      const sessionText = await session.text();
+      expect(JSON.parse(sessionText).session).not.toHaveProperty("token");
+      expect(sessionText).not.toContain(rawToken(second));
+
+      const list = await fetch(`${app.url}/api/auth/list-sessions`, { headers: { Cookie: second.header } });
+      const listText = await list.text();
+      expect(list.status).toBe(200);
+      expect(JSON.parse(listText)).toHaveLength(2);
+      expect(listText).not.toContain(rawToken(first.cookie!));
+      expect(listText).not.toContain(rawToken(second));
+    });
+
+    it("o Better Auth continua usando o token por dentro (revogar as outras sessões)", async () => {
+      const email = uniqueEmail("revoga");
+      const first = await signUp(app, email);
+      const second = sessionCookie(await signIn(app, email, PASSWORD))!;
+
+      const revoke = await fetch(`${app.url}/api/auth/revoke-other-sessions`, json({}, { Cookie: second.header }));
+      expect(revoke.status).toBe(200);
+
+      expect((await playlistsWith(app, first.cookie!.header)).status).toBe(401);
+      expect((await playlistsWith(app, second.header)).status).toBe(201);
+    });
+  });
+
   describe("logout", () => {
     it("invalida a sessão no servidor, inclusive para quem guardou o cookie", async () => {
       const { cookie } = await signUp(app, uniqueEmail("logout"));
@@ -323,6 +390,90 @@ describe("autenticação com Better Auth", () => {
       } finally {
         await pool.query(`DELETE FROM "user" WHERE id = $1`, [rows[0]!.id]);
       }
+    });
+  });
+
+  async function sessionUser(cookieHeader: string) {
+    const res = await fetch(`${app.url}/api/auth/get-session`, { headers: { Cookie: cookieHeader } });
+    return (await bodyOf(res)).user;
+  }
+
+  describe("papel e maioridade", () => {
+    it("toda conta nova é assinante, e a sessão diz se é maior de idade", async () => {
+      const adult = await signUp(app, uniqueEmail("adulto"));
+      expect(await sessionUser(adult.cookie!.header)).toMatchObject({ role: "assinante", isAdult: true });
+
+      const minor = await signUp(app, uniqueEmail("menor"), { birthdate: "2012-01-17" });
+      expect(await sessionUser(minor.cookie!.header)).toMatchObject({ role: "assinante", isAdult: false });
+    });
+
+    it("cadastro e login também devolvem o papel e a maioridade", async () => {
+      const email = uniqueEmail("login-papel");
+      const { res } = await signUp(app, email, { birthdate: "2012-01-17" });
+      expect((await bodyOf(res)).user).toMatchObject({ role: "assinante" });
+
+      const login = await signIn(app, email, PASSWORD);
+      expect((await bodyOf(login)).user).toMatchObject({ role: "assinante" });
+    });
+
+    it("a maioridade sai da data de nascimento na hora da requisição", async () => {
+      // O dia exato (e o 29/02) está nos testes de domain/shared/age.test.ts. Aqui há folga
+      // de um dia nas pontas: o servidor usa o dia de São Paulo, o teste o de UTC.
+      const turnsTomorrow = await signUp(app, uniqueEmail("vespera"), { birthdate: birthdateForAge(18, 2) });
+      expect((await sessionUser(turnsTomorrow.cookie!.header)).isAdult).toBe(false);
+
+      const turnedYesterday = await signUp(app, uniqueEmail("aniversario"), { birthdate: birthdateForAge(18, -1) });
+      expect((await sessionUser(turnedYesterday.cookie!.header)).isAdult).toBe(true);
+    });
+
+    it("ninguém se cadastra como admin: o campo role é ignorado", async () => {
+      const email = uniqueEmail("quer-admin");
+      const { res, cookie } = await signUp(app, email, { role: "admin" });
+
+      expect((await bodyOf(res)).user.role).toBe("assinante");
+      expect((await sessionUser(cookie!.header)).role).toBe("assinante");
+      const { rows } = await pool.query<{ role: string }>(`SELECT role FROM "user" WHERE email = $1`, [email]);
+      expect(rows[0]!.role).toBe("assinante");
+    });
+
+    it("a data de nascimento é obrigatória no cadastro", async () => {
+      const res = await fetch(
+        `${app.url}/api/auth/sign-up/email`,
+        json({ name: "Sem Data", email: uniqueEmail("sem-data"), password: PASSWORD }),
+      );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("depois do cadastro, não dá para trocar a data de nascimento nem o papel pela API", async () => {
+      const minor = await signUp(app, uniqueEmail("troca"), { birthdate: "2012-01-17" });
+
+      for (const change of [{ birthdate: "1990-01-01" }, { role: "admin" }, { name: "Outro Nome" }]) {
+        const res = await fetch(`${app.url}/api/auth/update-user`, json(change, { Cookie: minor.cookie!.header }));
+        expect(res.status).toBe(404);
+      }
+
+      expect(await sessionUser(minor.cookie!.header)).toMatchObject({
+        role: "assinante",
+        isAdult: false,
+        birthdate: "2012-01-17",
+      });
+    });
+
+    it("quem vira admin no banco aparece como admin na sessão", async () => {
+      const email = uniqueEmail("admin");
+      const { cookie } = await signUp(app, email);
+      await pool.query(`UPDATE "user" SET role = 'admin' WHERE email = $1`, [email]);
+
+      expect((await sessionUser(cookie!.header)).role).toBe("admin");
+    });
+
+    it("o banco recusa papel desconhecido", async () => {
+      const email = uniqueEmail("papel-invalido");
+      await signUp(app, email);
+
+      const error = await pool.query(`UPDATE "user" SET role = 'root' WHERE email = $1`, [email]).catch((e: unknown) => e);
+      expect(String(error)).toContain("user_role_check");
     });
   });
 
@@ -405,7 +556,7 @@ describe("rate limit", () => {
       for (let attempt = 1; attempt <= 11; attempt += 1) {
         const res = await fetch(
           `${app.url}/api/auth/sign-up/email`,
-          json({ name: "Limite", email: uniqueEmail("cadastros"), password: PASSWORD }, ip),
+          json({ name: "Limite", email: uniqueEmail("cadastros"), password: PASSWORD, birthdate: ADULT_BIRTHDATE }, ip),
         );
         statuses.push(res.status);
       }
@@ -414,6 +565,72 @@ describe("rate limit", () => {
       expect(statuses[10]).toBe(429);
     } finally {
       await stopApp(app);
+    }
+  });
+});
+
+describe("CORS", () => {
+  let app: TestApp;
+
+  beforeAll(() => {
+    app = startApp({});
+  });
+
+  afterAll(async () => {
+    await stopApp(app);
+  });
+
+  function preflight(path: string, origin: string) {
+    return fetch(`${app.url}${path}`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+      },
+    });
+  }
+
+  it("libera a origem do frontend, com credenciais, no preflight das rotas de auth e da API", async () => {
+    for (const path of ["/api/auth/sign-in/email", "/api/playlists"]) {
+      const res = await preflight(path, ORIGIN);
+
+      expect(res.status).toBe(204);
+      expect(res.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+      expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+      expect(res.headers.get("vary")).toContain("Origin");
+    }
+  });
+
+  it("não libera outra origem, nem reflete a que o cliente mandar", async () => {
+    const res = await preflight("/api/auth/sign-in/email", "https://evil.example");
+
+    // Sem Allow-Origin o navegador não entrega a resposta (o pacote cors manda Allow-Credentials
+    // mesmo assim, o que não libera nada sozinho).
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("a resposta do login com a origem do frontend pode ser lida por ela", async () => {
+    const res = await signIn(app, uniqueEmail("cors"), "senha-errada-123");
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+  });
+
+  it("sem origens configuradas, nenhuma é liberada", async () => {
+    const closed = composeApp(createAuth(pool, baseOptions), null, []).listen(0);
+    try {
+      const address = closed.address();
+      if (address === null || typeof address === "string") {
+        throw new Error("Test server has no port");
+      }
+      const res = await fetch(`http://127.0.0.1:${address.port}/api/auth/sign-in/email`, {
+        method: "OPTIONS",
+        headers: { Origin: ORIGIN, "Access-Control-Request-Method": "POST" },
+      });
+      expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    } finally {
+      await new Promise<void>((resolve) => closed.close(() => resolve()));
     }
   });
 });
