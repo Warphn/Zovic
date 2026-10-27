@@ -23,6 +23,7 @@ import {
 import { useActiveUser } from "@/lib/user-store"
 import { TrackComments } from "@/components/comments/track-comments"
 import { cn } from "@/lib/utils"
+import { useLikedTracks } from "@/lib/likes-store"
 
 const PLAYER_BAR_HEIGHT = 80       // h-20
 const DEFAULT_PANEL_HEIGHT = 540
@@ -34,6 +35,9 @@ export default function PlaylistDetailPage() {
 
   // Active user profile (Ana Andrade, Heitor Costa, etc.)
   const { user: currentUser } = useActiveUser()
+
+  // Liked tracks state for the current user)
+  const { isLiked: isTrackLiked, toggleLike } = useLikedTracks(currentUser.id)
 
   // All playlists in memory / localStorage with hydration safety
   const { playlists, persistPlaylists } = useStoredPlaylists()
@@ -65,10 +69,6 @@ export default function PlaylistDetailPage() {
   const [isPlaying, setIsPlaying] = React.useState(false)
   const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
   const [playbackSec, setPlaybackSec] = React.useState(0)
-  const [likedTracks, setLikedTracks] = React.useState<Record<string, boolean>>({
-    t1: true,
-    t3: true,
-  })
 
   // Find the playlist
   const currentPlaylist = playlists.find((p) => p.id === playlistId) ?? null
@@ -351,7 +351,7 @@ export default function PlaylistDetailPage() {
                 filteredTracks.map((track) => {
                   const actualIdx = tracks.findIndex((t) => t.id === track.id)
                   const isTrackActive = isPlaying && currentTrackIndex === actualIdx
-                  const isLiked = likedTracks[track.id] ?? false
+                  const isLiked = isTrackLiked(track.id)
 
                   return (
                     <div
@@ -464,9 +464,7 @@ export default function PlaylistDetailPage() {
                         {/* Like bookmark */}
                         <button
                           type="button"
-                          onClick={() => {
-                            setLikedTracks((prev) => ({ ...prev, [track.id]: !prev[track.id] }))
-                          }}
+                          onClick={() => toggleLike(track.id)}
                           aria-label={isLiked ? "Descurtir faixa" : "Curtir faixa"}
                           className={cn(
                             "text-sm transition-colors cursor-pointer",
