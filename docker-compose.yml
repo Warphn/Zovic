@@ -3,10 +3,12 @@
 #   docker compose up                            → banco + migrations
 #   docker compose --profile frontend up --build → + API (para quem trabalha no frontend)
 #   docker compose --profile full up --build     → + frontend (sistema inteiro)
+#   docker compose --profile prod up -d --build  → servidor: API + túnel da Cloudflare, sem frontend
 
 services:
   db:
     image: postgres:16.15
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -31,8 +33,9 @@ services:
       db: { condition: service_healthy }
 
   api:
-    profiles: [frontend, full]
+    profiles: [frontend, full, prod]
     build: ./api
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       PORT: 3333
@@ -41,7 +44,16 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3333}
       # cookie de sessão sem Secure em http local (padrão do compose); veja .env.example
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-    ports: ["3333:3333"]
+      # vazio desliga; no servidor, 1 (o cloudflared é o proxy à frente da API)
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    # só esta máquina alcança a porta; de fora, a API chega pelo túnel
+    ports: ["127.0.0.1:3333:3333"]
+    networks: [default, tunnel]
+    healthcheck:
+      # a imagem oven/bun não garante ter curl
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3333/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      retries: 10
     depends_on:
       db: { condition: service_healthy }
       flyway: { condition: service_completed_successfully }
@@ -51,6 +63,22 @@ services:
     build: ./frontend
     ports: ["3000:3000"]
     depends_on: [api]
+
+  cloudflared:
+    profiles: [prod]
+    image: cloudflare/cloudflared:2026.10.4
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # token do túnel: só no .env do servidor, nunca versionado
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    # só na rede do túnel: alcança a api, não o banco
+    networks: [tunnel]
+    depends_on:
+      api: { condition: service_healthy }
+
+networks:
+  tunnel:
 
 volumes:
   pgdata:

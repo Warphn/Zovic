@@ -204,8 +204,8 @@ async function start(args: string[]) {
 async function stop() {
   p.intro("Zovic · parando o ambiente");
   await ensureDocker();
-  // --profile full inclui todos os serviços, qualquer que tenha sido o ambiente.
-  await $`docker compose --profile full down`;
+  // full e prod juntos incluem todos os serviços, qualquer que tenha sido o ambiente.
+  await $`docker compose --profile full --profile prod down`;
   p.outro("Containers parados. O banco continua salvo no volume.");
 }
 

@@ -58,6 +58,22 @@ Rode `up -d` para deixar os serviços em segundo plano.
 
 Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
 
+## Produção (desktop)
+
+O servidor roda o profile `prod`: banco, migrations, API e o `cloudflared`, que publica a API pelo Cloudflare Tunnel sem abrir portas no roteador. O frontend não sobe ali; ele fica na Vercel.
+
+```bash
+docker compose --profile prod up -d --build   # sobe ou atualiza (depois de um git pull)
+docker compose ps                             # db e api healthy, flyway exited (0)
+docker compose logs -f api                    # logs da API
+docker compose logs cloudflared               # "Registered tunnel connection" = túnel no ar
+```
+
+- O `.env` do servidor é diferente do de desenvolvimento: senhas e segredos fortes, `COOKIE_SECURE=true`, `TRUST_PROXY=1` e o `CLOUDFLARE_TUNNEL_TOKEN`. Ele só existe no servidor e nunca vai para o git.
+- A API e o banco só aceitam conexões da própria máquina (`127.0.0.1`). De fora, a API chega pelo túnel; o banco não chega de jeito nenhum.
+- O `cloudflared` fica numa rede só com a API: ele não alcança o banco.
+- `db`, `api` e `cloudflared` têm `restart: unless-stopped` e voltam sozinhos depois de um reinício. O `bun stop` derruba todos, inclusive o túnel.
+
 ## Adicionando coisas
 
 ### Uma biblioteca nova
@@ -102,7 +118,7 @@ Acrescente uma entrada em `services:` no `docker-compose.yml`, sempre com uma **
     ports: ["127.0.0.1:6379:6379"]
 ```
 
-- Se só a API usa o serviço, coloque-o nos mesmos profiles dela: `profiles: [frontend, full]`.
+- Se só a API usa o serviço, coloque-o nos mesmos profiles dela: `profiles: [frontend, full, prod]`.
 - Se a aplicação precisa esperar o serviço subir, use `depends_on` na aplicação.
 - Dentro do compose, os serviços se encontram **pelo nome**: a API acessa `redis:6379`, não `localhost:6379`.
 
