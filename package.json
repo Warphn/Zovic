@@ -5,7 +5,8 @@
   "scripts": {
     "prepare": "husky",
     "start": "bun scripts/env.ts start",
-    "stop": "bun scripts/env.ts stop"
+    "stop": "bun scripts/env.ts stop",
+    "server": "bun scripts/server.ts"
   },
   "devDependencies": {
     "@clack/prompts": "^1.8.1",
