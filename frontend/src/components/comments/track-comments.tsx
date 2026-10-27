@@ -19,6 +19,139 @@ export interface TrackCommentsProps {
   onSeek: (seconds: number) => void
 }
 
+function clampSeconds(seconds: number, duration: number): number {
+  return Math.max(0, Math.min(duration, Math.round(seconds)))
+}
+
+/* ---------------------------------------------------------------------------
+   Seletor de momento: linha do tempo arrastável com as marcas dos comentários
+   que já estão ligados a um tempo, ajuste fino em ±1s / ±5s, atalho para o
+   tempo atual do player e pré-escuta do trecho escolhido.
+   --------------------------------------------------------------------------- */
+
+function StepButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-6 px-1.5 rounded-md border border-border bg-background text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+    >
+      {label}
+    </button>
+  )
+}
+
+interface CommentTimePickerProps {
+  value: number
+  duration: number
+  playerTime: number
+  markers: number[]
+  onChange: (seconds: number) => void
+  onPreview: (seconds: number) => void
+  onClear: () => void
+}
+
+function CommentTimePicker({
+  value,
+  duration,
+  playerTime,
+  markers,
+  onChange,
+  onPreview,
+  onClear,
+}: CommentTimePickerProps) {
+  const percent = duration > 0 ? (value / duration) * 100 : 0
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-2.5 space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Ajuste fino */}
+        <div className="flex items-center gap-1">
+          <StepButton label="−5s" onClick={() => onChange(clampSeconds(value - 5, duration))} />
+          <StepButton label="−1s" onClick={() => onChange(clampSeconds(value - 1, duration))} />
+          <span
+            className="min-w-[3.5rem] text-center text-sm font-mono font-bold text-primary tabular-nums"
+            aria-live="polite"
+          >
+            {formatTime(value)}
+          </span>
+          <StepButton label="+1s" onClick={() => onChange(clampSeconds(value + 1, duration))} />
+          <StepButton label="+5s" onClick={() => onChange(clampSeconds(value + 5, duration))} />
+        </div>
+
+        {/* Atalhos */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onChange(clampSeconds(playerTime, duration))}
+            title="Usar o tempo atual do player"
+            className="h-6 px-2 rounded-md border border-border bg-background text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+          >
+            Tempo do player ({formatTime(playerTime)})
+          </button>
+          <button
+            type="button"
+            onClick={() => onPreview(value)}
+            title="Levar o player até este momento"
+            className="h-6 px-2 rounded-md border border-primary/30 bg-primary/10 text-[10px] font-mono font-bold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+          >
+            ▶ Ouvir trecho
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label="Remover marcação de tempo"
+            title="Comentar sem ligar a um momento"
+            className="h-6 w-6 rounded-md text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Linha do tempo arrastável */}
+      <div className="relative h-6 rounded focus-within:ring-1 focus-within:ring-primary">
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-border" />
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-primary/60"
+          style={{ width: `${percent}%` }}
+        />
+        {markers.map((sec, idx) => (
+          <span
+            key={`${sec}-${idx}`}
+            className="absolute top-1 bottom-1 w-0.5 -translate-x-1/2 rounded-full bg-foreground/40 pointer-events-none"
+            style={{ left: `${duration > 0 ? (sec / duration) * 100 : 0}%` }}
+          />
+        ))}
+        <span
+          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary border-2 border-background shadow-sm pointer-events-none"
+          style={{ left: `${percent}%` }}
+        />
+        {/* Controle nativo invisível por cima: cuida de arraste, toque e teclado */}
+        <input
+          type="range"
+          min={0}
+          max={duration}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(clampSeconds(Number(e.target.value), duration))}
+          aria-label="Momento da faixa"
+          aria-valuetext={formatTime(value)}
+          className="absolute inset-0 m-0 size-full cursor-pointer appearance-none bg-transparent opacity-0 focus:outline-none [&::-moz-range-thumb]:size-0 [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:size-0 [&::-webkit-slider-thumb]:appearance-none"
+        />
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+        <span>0:00</span>
+        {markers.length > 0 && (
+          <span className="hidden sm:inline">Os traços na linha são comentários já ligados a um momento</span>
+        )}
+        <span>{formatTime(duration)}</span>
+      </div>
+    </div>
+  )
+}
+
 export function TrackComments({
   track,
   user,
@@ -32,7 +165,8 @@ export function TrackComments({
   )
 
   const [commentText, setCommentText] = React.useState("")
-  const [syncWithAudio, setSyncWithAudio] = React.useState(false)
+  // null = comentário sem tempo; número = segundos da faixa ligados ao comentário
+  const [markedTime, setMarkedTime] = React.useState<number | null>(null)
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null)
 
   // Denúncia inline
@@ -43,15 +177,20 @@ export function TrackComments({
   const charCount = commentText.length
   const isOverLimit = charCount > 280
 
+  // Marcas dos comentários que já têm tempo, para exibir na linha do tempo
+  const timeMarkers = React.useMemo(
+    () => comments.flatMap((c) => (c.timestamp !== null ? [c.timestamp] : [])),
+    [comments],
+  )
+
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg(null)
 
     try {
-      const timestamp = syncWithAudio ? currentPlaybackSec : null
-      addComment(commentText, timestamp, user.name)
+      addComment(commentText, markedTime, user.name)
       setCommentText("")
-      setSyncWithAudio(false)
+      setMarkedTime(null)
     } catch (err: unknown) {
       if (err instanceof Error) {
         setErrorMsg(err.message)
@@ -266,19 +405,34 @@ export function TrackComments({
           />
         </div>
 
+        {/* Seletor de momento da faixa (aparece ao marcar um tempo) */}
+        {markedTime !== null && (
+          <CommentTimePicker
+            value={markedTime}
+            duration={track.durationSec}
+            playerTime={currentPlaybackSec}
+            markers={timeMarkers}
+            onChange={setMarkedTime}
+            onPreview={onSeek}
+            onClear={() => setMarkedTime(null)}
+          />
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          {/* Opção de sincronizar com a posição atual da música */}
-          <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none">
-            <input
-              type="checkbox"
-              checked={syncWithAudio}
-              onChange={(e) => setSyncWithAudio(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary size-3.5 cursor-pointer"
-            />
-            <span className="text-[11px] font-mono">
-              Sincronizar no tempo atual ({formatTime(currentPlaybackSec)})
+          {markedTime === null ? (
+            <button
+              type="button"
+              onClick={() => setMarkedTime(clampSeconds(currentPlaybackSec, track.durationSec))}
+              className="inline-flex items-center gap-1.5 self-start text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <span aria-hidden="true">⏱</span>
+              <span>Marcar um momento da faixa</span>
+            </button>
+          ) : (
+            <span className="text-[11px] font-mono text-primary">
+              Ligado ao momento {formatTime(markedTime)}
             </span>
-          </label>
+          )}
 
           <div className="flex items-center justify-end gap-3">
             <span
@@ -304,4 +458,3 @@ export function TrackComments({
     </div>
   )
 }
-

@@ -78,6 +78,8 @@ const COMMENTS_STORAGE_KEY = "zovic_comments_v1"
 const REPORTS_STORAGE_KEY = "zovic_comment_reports_v1"
 const COMMENTS_EVENT = "zovic_comments_updated"
 
+const EMPTY_REPORTS: CommentReportItem[] = []
+
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {}
   window.addEventListener(COMMENTS_EVENT, callback)
@@ -88,37 +90,44 @@ function subscribe(callback: () => void) {
   }
 }
 
-function getStoredComments(): CommentItem[] {
-  if (typeof window === "undefined") return INITIAL_COMMENTS
-  try {
-    const raw = localStorage.getItem(COMMENTS_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+function createStoredReader<T>(key: string, fallback: T[]) {
+  let cachedRaw: string | null | undefined
+  let cachedValue: T[] = fallback
+
+  return function read(): T[] {
+    if (typeof window === "undefined") return fallback
+
+    let raw: string | null = null
+    try {
+      raw = localStorage.getItem(key)
+    } catch {
+      return fallback
     }
-  } catch {
-    // fallback
+
+    if (raw === cachedRaw) return cachedValue
+
+    cachedRaw = raw
+    cachedValue = fallback
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) cachedValue = parsed
+      } catch {
+        // mantém fallback
+      }
+    }
+    return cachedValue
   }
-  return INITIAL_COMMENTS
 }
 
-function getStoredReports(): CommentReportItem[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(REPORTS_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return parsed
-    }
-  } catch {
-    // fallback
-  }
-  return []
-}
+const getStoredComments = createStoredReader<CommentItem>(COMMENTS_STORAGE_KEY, INITIAL_COMMENTS)
+const getStoredReports = createStoredReader<CommentReportItem>(REPORTS_STORAGE_KEY, EMPTY_REPORTS)
+const getServerComments = () => INITIAL_COMMENTS
+const getServerReports = () => EMPTY_REPORTS
 
 export function useComments(trackId: string, currentUserId: number, isUnderage: boolean) {
-  const allComments = React.useSyncExternalStore(subscribe, getStoredComments, () => INITIAL_COMMENTS)
-  const reports = React.useSyncExternalStore(subscribe, getStoredReports, () => [])
+  const allComments = React.useSyncExternalStore(subscribe, getStoredComments, getServerComments)
+  const reports = React.useSyncExternalStore(subscribe, getStoredReports, getServerReports)
 
   // Se o usuário for menor de idade, NÃO visualiza comentários de terceiros nem próprios
   const trackComments = React.useMemo(() => {
@@ -232,4 +241,3 @@ export function useComments(trackId: string, currentUserId: number, isUnderage: 
     reportComment,
   }
 }
-

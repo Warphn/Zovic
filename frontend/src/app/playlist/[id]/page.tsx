@@ -24,6 +24,10 @@ import { useActiveUser } from "@/lib/user-store"
 import { TrackComments } from "@/components/comments/track-comments"
 import { cn } from "@/lib/utils"
 
+const PLAYER_BAR_HEIGHT = 80       // h-20
+const DEFAULT_PANEL_HEIGHT = 540
+const MIN_PANEL_HEIGHT = 260       // soltar abaixo disso fecha os comentários
+
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
   const playlistId = params?.id
@@ -60,7 +64,7 @@ export default function PlaylistDetailPage() {
   // Audio Playback state
   const [isPlaying, setIsPlaying] = React.useState(false)
   const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
-  const [playbackProgress, setPlaybackProgress] = React.useState(35) // percentage 0-100
+  const [playbackSec, setPlaybackSec] = React.useState(0)
   const [likedTracks, setLikedTracks] = React.useState<Record<string, boolean>>({
     t1: true,
     t3: true,
@@ -76,6 +80,47 @@ export default function PlaylistDetailPage() {
       p.id === currentPlaylist.id ? { ...p, color: newColor } : p
     )
     persistPlaylists(updated)
+  }
+
+  const [panelHeight, setPanelHeight] = React.useState(DEFAULT_PANEL_HEIGHT)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const dragRef = React.useRef<{ startY: number; startHeight: number } | null>(null)
+
+  const handleResizeStart = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { startY: e.clientY, startHeight: panelHeight }
+    setIsDragging(true)
+  }
+
+  const handleResizeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const next = drag.startHeight + (drag.startY - e.clientY) // arrastar p/ cima aumenta
+    const max = Math.round(window.innerHeight * 0.85)
+    setPanelHeight(Math.max(PLAYER_BAR_HEIGHT, Math.min(max, next)))
+  }
+
+  const handleResizeEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!dragRef.current) return
+    dragRef.current = null
+    setIsDragging(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    if (panelHeight < MIN_PANEL_HEIGHT) {
+      setIsCommentsExpanded(false)
+      setPanelHeight(DEFAULT_PANEL_HEIGHT)
+    }
+  }
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setPanelHeight((h) => Math.min(Math.round(window.innerHeight * 0.85), h + 24))
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setPanelHeight((h) => Math.max(MIN_PANEL_HEIGHT, h - 24))
+    }
   }
 
   // If playlist not found
@@ -120,10 +165,9 @@ export default function PlaylistDetailPage() {
 
   const currentPlayingTrack = tracks[currentTrackIndex]
 
-  // Calculate current elapsed time in mm:ss from playbackProgress
-  const currentElapsedSec = Math.round(
-    ((currentPlayingTrack?.durationSec ?? 240) * playbackProgress) / 100
-  )
+  const currentDurationSec = currentPlayingTrack?.durationSec || 240
+  const currentElapsedSec = Math.min(playbackSec, currentDurationSec)
+  const playbackProgress = (currentElapsedSec / currentDurationSec) * 100
   const elapsedMin = Math.floor(currentElapsedSec / 60)
   const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
 
@@ -447,15 +491,25 @@ export default function PlaylistDetailPage() {
             ========================================================================= */}
         <div
           className={cn(
-            "fixed bottom-0 inset-x-0 bg-surface/98 backdrop-blur-md border-t border-border z-50 shadow-2xl transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
-            isCommentsExpanded && !currentUser.isUnderage
-              ? "h-[540px] max-h-[85vh] rounded-t-2xl border-t-2 border-primary/30"
-              : "h-20"
+            "fixed bottom-0 inset-x-0 bg-surface/98 backdrop-blur-md border-t border-border z-50 shadow-2xl ease-in-out flex flex-col overflow-hidden",
+            !isDragging && "transition-all duration-300",
+            isCommentsOpen ? "rounded-t-2xl border-t-2 border-primary/30" : "h-20"
           )}
+          style={isCommentsOpen ? { height: `min(${panelHeight}px, 85vh)` } : undefined}
         >
-          {/* Alça visual no topo do painel expandido */}
-          {isCommentsExpanded && !currentUser.isUnderage && (
-            <div className="w-12 h-1 bg-border rounded-full mx-auto mt-2 mb-0.5 shrink-0" />
+          {isCommentsOpen && (
+            <button
+              type="button"
+              aria-label="Redimensionar painel de comentários"
+              onPointerDown={handleResizeStart}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+              onPointerCancel={handleResizeEnd}
+              onKeyDown={handleResizeKeyDown}
+              className="group w-full h-5 shrink-0 flex items-center justify-center cursor-row-resize touch-none select-none focus-visible:outline-none"
+            >
+              <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/60 group-focus-visible:bg-primary transition-colors" />
+            </button>
           )}
 
           {/* Barra de Áudio / Controles (altura fixa h-20) */}
@@ -516,20 +570,19 @@ export default function PlaylistDetailPage() {
 
             {/* Dynamic Scrubber colored with the playlist color */}
             <div className="w-full flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-              <span>{isPlaying ? `${elapsedMin}:${elapsedSecFormatted}` : "0:00"}</span>
+              <span>{`${elapsedMin}:${elapsedSecFormatted}`}</span>
               <button
                 type="button"
                 onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const clickX = e.clientX - rect.left
-                  const percentage = Math.max(0, Math.min(100, (clickX / rect.width) * 100))
-                  setPlaybackProgress(Math.round(percentage))
+                const rect = e.currentTarget.getBoundingClientRect()
+                const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                setPlaybackSec(Math.round(ratio * currentDurationSec))
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowRight") {
-                    setPlaybackProgress((p) => Math.min(100, p + 5))
+                    setPlaybackSec((s) => Math.min(currentDurationSec, s + 5))
                   } else if (e.key === "ArrowLeft") {
-                    setPlaybackProgress((p) => Math.max(0, p - 5))
+                    setPlaybackSec((s) => Math.max(0, s - 5))
                   }
                 }}
                 aria-label="Avançar ou retroceder na reprodução"
@@ -561,11 +614,11 @@ export default function PlaylistDetailPage() {
                     ? "border-primary bg-primary/10 text-primary font-semibold"
                     : "border-border bg-background/80 hover:bg-surface text-foreground"
                 )}
-                title={isCommentsExpanded ? "Recolher painel de comentários" : "Comentários da faixa atual"}
+                title={isCommentsExpanded ? "Fechar painel de comentários" : "Comentários da faixa atual"}
               >
                 <span>{isCommentsExpanded ? "✕" : "💬"}</span>
                 <span className="hidden md:inline font-medium text-[11px]">
-                  {isCommentsExpanded ? "Recolher" : "Comentários"}
+                  {isCommentsExpanded ? "Fechar" : "Comentários"}
                 </span>
               </button>
             )}
@@ -577,14 +630,13 @@ export default function PlaylistDetailPage() {
         {/* Seção de comentários integrada: revelada quando a barra de música sobe */}
         {isCommentsExpanded && !currentUser.isUnderage && currentPlayingTrack && (
           <TrackComments
+            key={currentPlayingTrack.id}
             track={currentPlayingTrack}
             user={currentUser}
             currentPlaybackSec={currentElapsedSec}
             onSeek={(seconds) => {
-              const duration = currentPlayingTrack?.durationSec || 240
-              const percentage = Math.min(100, Math.max(0, (seconds / duration) * 100))
-              setPlaybackProgress(Math.round(percentage))
-              setIsPlaying(true)
+            setPlaybackSec(Math.max(0, Math.min(currentDurationSec, Math.round(seconds))))
+            setIsPlaying(true)
             }}
           />
         )}
