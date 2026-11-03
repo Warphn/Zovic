@@ -2,10 +2,14 @@ import type { RequestHandler } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import type { Auth } from "../../auth/create-auth.ts";
 
+/** Papel global na plataforma (coluna user.role). */
+export type PlatformRole = "admin" | "assinante";
+
 declare global {
   namespace Express {
     interface Locals {
       userId: number;
+      role: PlatformRole;
     }
   }
 }
@@ -30,6 +34,8 @@ export function makeAuthenticate(auth: Auth): RequestHandler {
     }
 
     res.locals.userId = userId;
+    // Qualquer valor desconhecido vale como assinante.
+    res.locals.role = response.user.role === "admin" ? "admin" : "assinante";
     next();
   };
 }

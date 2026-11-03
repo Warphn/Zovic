@@ -1,0 +1,29 @@
+meta {
+  name: Listar minhas playlists
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/playlists
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com uma lista", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+
+  test("inclui a playlist criada, como admin", function () {
+    const playlist = res.getBody().find((p) => p.id === bru.getVar("playlistId"));
+    expect(playlist).to.not.equal(undefined);
+    expect(playlist.isAdmin).to.equal(true);
+  });
+
+  test("vem da mais nova para a mais antiga", function () {
+    const dates = res.getBody().map((p) => p.createdAt);
+    expect(dates).to.deep.equal([...dates].sort().reverse());
+  });
+}

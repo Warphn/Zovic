@@ -1,0 +1,33 @@
+meta {
+  name: Criar playlist privada para buscar
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "{{searchPlaylistName}}",
+    "isPrivate": true
+  }
+}
+
+script:pre-request {
+  // Nome único por execução: a busca seguinte precisa achar exatamente esta playlist.
+  bru.setVar("searchPlaylistName", "Busca privada " + Date.now().toString(36));
+}
+
+script:post-response {
+  bru.setVar("searchPlaylistId", res.getBody().id);
+}
+
+tests {
+  test("responde 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

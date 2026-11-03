@@ -17,6 +17,7 @@ erDiagram
     user ||--o{ session : "abre"
     user ||--o{ account : "autentica por"
     user ||--o{ user_event : "gera"
+    musics |o--o{ user_event : "tocada em"
     user ||--o{ playlist_user : "participa"
     playlists ||--|{ playlist_user : "tem membros"
     user ||--o{ music_user : "salva"
@@ -110,6 +111,7 @@ erDiagram
         int id PK
         int user_id FK
         enum event_type
+        int music_id FK
         datetime created_at
     }
     playlist_user {
@@ -219,7 +221,7 @@ erDiagram
 | `plan` | `id`, `name`, `type_id`, `deleted_at`, `created_at` | `type_id` → `plan_type.id` |
 | `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário, e todo usuário assina ao menos um plano |
 | `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
-| `user_event` | `id`, `user_id`, `event_type` (ENUM), `created_at` | `user_id` → `user.id` |
+| `user_event` | `id`, `user_id`, `event_type` (ENUM), `music_id`, `created_at` | `user_id` → `user.id`; `music_id` → `musics.id`, preenchido só em `music_play` e `music_skip` (CHECK). É a base das estatísticas do painel de admin e das reproduções recentes |
 | `system_data` | `users`, `songs`, `playlists`, `created_at` | Tabela de linha única com contagens agregadas do sistema (sem `id` e sem FK) |
 
 ### Interações do usuário com músicas

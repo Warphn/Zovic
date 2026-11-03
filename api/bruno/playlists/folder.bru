@@ -3,14 +3,22 @@ meta {
   seq: 3
 }
 
+vars:pre-request {
+  baseUrl: http://localhost:3333
+}
+
 docs {
   Estas requisições dependem do cookie `zovic.session_token`, guardado pelo Bruno.
-  
-  Ao rodar a pasta inteira, a ordem já resolve: "Sem cookie de sessão" roda primeiro
-  (sem cookie, responde 401), depois "Login" abre a sessão da Ana e as demais usam o cookie.
-  
-  Ao rodar uma requisição avulsa, rode antes o "Login" (ou `auth/Login`).
+
+  Uma subpasta por escopo: Sessão, Criar, Listar, Buscar, Editar, Apagar e Acesso de outro usuário.
+  Ao rodar a pasta inteira (`bru run playlists -r`), a ordem já resolve: em "Sessão", "Sem cookie de sessão"
+  roda primeiro (sem cookie, responde 401) e "Login" abre a sessão da Ana, que as subpastas seguintes usam.
+  Requisições soltas na raiz desta pasta rodariam depois das subpastas, por isso não há nenhuma.
+  "Criar" guarda os ids que Listar, Buscar, Editar e Acesso de outro usuário usam; "Apagar" cria a própria playlist.
+  "Acesso de outro usuário" roda por último e deixa a sessão do Bruno Andrade aberta.
+
+  Ao rodar uma subpasta ou requisição avulsa, rode antes "Sessão/Login" (ou `auth/Login`) e a pasta "Criar".
   Para "Sem cookie de sessão" dar 401, o cookie não pode existir: rode `auth/Logout` antes (ou reinicie o Bruno CLI).
-  
+
   Pré-requisitos: `COOKIE_SECURE=false` no `.env` e o banco populado com `bun run db:seed`.
 }

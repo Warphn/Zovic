@@ -21,6 +21,10 @@ body:json {
   }
 }
 
+vars:pre-request {
+  baseUrl: http://localhost:3333
+}
+
 tests {
   test("responde 200 com o usuário", function () {
     expect(res.getStatus()).to.equal(200);
@@ -28,7 +32,7 @@ tests {
     expect(user.email).to.equal("ana.andrade@zovic.test");
     expect(user.name).to.equal("Ana Andrade");
   });
-
+  
   test("abre a sessão com o cookie zovic.session_token httpOnly", function () {
     const cookie = [].concat(res.getHeader("set-cookie"))[0];
     expect(cookie).to.match(/^zovic\.session_token=/);

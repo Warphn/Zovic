@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { authClient, useSession } from "@/lib/auth/client";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, LogOutIcon, MenuIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
 import { Badge } from "@/components/ui/badge";
 
@@ -78,16 +78,23 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
     router.push("/");
   };
 
+  // Admins get the pill in the brand red-orange. --color-red, not --primary: on a playlist page
+  // --primary follows the playlist accent, and the admin cue should look the same everywhere.
+  const isAdmin = session.user.role === "admin";
+  const pillClasses = isAdmin
+    ? "border-transparent bg-[var(--color-red)] text-[var(--color-paper-bright)] hover:bg-[color-mix(in_oklab,var(--color-red),black_10%)] data-[popup-open]:bg-[color-mix(in_oklab,var(--color-red),black_10%)]"
+    : "border-border bg-surface/60 text-foreground hover:bg-surface data-[popup-open]:bg-surface";
+
   return (
     <div className={className}>
       {/* Base UI Menu: keyboard support, focus handling, outside-click/Escape to close. The
           popup is portaled to <body>, so it keeps the light palette even over dark sections. */}
       <Menu.Root>
         <Menu.Trigger
-          aria-label={`Conta de ${session.user.name}`}
-          className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface/60 pl-2.5 pr-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface data-[popup-open]:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          aria-label={`Conta de ${session.user.name}${isAdmin ? " (admin)" : ""}`}
+          className={`flex h-9 cursor-pointer items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${pillClasses}`}
         >
-          <span className="flex size-6 items-center justify-center rounded-full bg-foreground/10">
+          <span className={`flex size-6 items-center justify-center rounded-full ${isAdmin ? "bg-white/20" : "bg-foreground/10"}`}>
             <UserIcon size={14} />
           </span>
           {session.user.name.split(" ")[0]}
@@ -100,8 +107,8 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
                 {/* What the account can access: platform role and age group, as the API reports them */}
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Badge variant={session.user.role === "admin" ? "default" : "secondary"} className="text-[10px]">
-                    {session.user.role === "admin" ? "Admin" : "Assinante"}
+                  <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px]">
+                    {isAdmin ? "Admin" : "Assinante"}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">
                     {session.user.isAdult ? "Maior de idade" : "Menor de idade"}
@@ -109,6 +116,18 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 </div>
               </div>
               <div className="my-1 h-px bg-border" />
+              {isAdmin && (
+                <Menu.Item
+                  onClick={() => {
+                    onNavigate?.();
+                    router.push("/admin");
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-[var(--color-red)] outline-none data-[highlighted]:bg-[color-mix(in_oklab,var(--color-red),transparent_88%)]"
+                >
+                  <ShieldIcon size={16} />
+                  Painel de admin
+                </Menu.Item>
+              )}
               <Menu.Item
                 onClick={signOut}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"

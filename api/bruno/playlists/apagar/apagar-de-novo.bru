@@ -1,0 +1,17 @@
+meta {
+  name: Apagar a mesma playlist de novo
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/playlists/{{deletePlaylistId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404: a playlist apagada já não é encontrada", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

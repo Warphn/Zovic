@@ -17,6 +17,6 @@ docs {
   - Banco populado com `bun run db:seed` (usuário `ana.andrade@zovic.test`, senha `zovic123`).
   
   Limites (por IP, em memória): o cadastro aceita 10 por hora e o login 5 por 15 minutos,
-  somando acertos e erros. A coleção inteira usa 3 logins, então a segunda rodada seguida
-  recebe 429: reinicie a API para zerar os limites.
+  somando acertos e erros. A coleção inteira usa 5 logins (3 aqui e 2 em `playlists`), exatamente o
+  limite, então a segunda rodada seguida recebe 429: reinicie a API para zerar os limites.
 }
