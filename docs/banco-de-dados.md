@@ -120,7 +120,7 @@ Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o 
 | --- | --- | --- |
 | Tipos de plano | `ALL` | Os tipos do produto, com preço e limite de usuários (`plan-types.ts`) |
 | Gêneros | `ALL` | Os gêneros do produto, com cor (`genres.ts`) |
-| Usuários | `LOCAL` | Usuários fictícios, alguns com soft delete, todos com login (`nome.sobrenome@zovic.test`, senha `zovic123`); a conta de credencial é criada como o Better Auth espera, com o hash da própria lib |
+| Usuários | `LOCAL` | Usuários fictícios, alguns com soft delete, todos com login (`nome.sobrenome@zovic.test`, senha `zovic123`) e Rafaela Dias como admin da plataforma; a conta de credencial é criada como o Better Auth espera, com o hash da própria lib |
 | Planos | `LOCAL` | Planos assinados; todo usuário em ao menos um, todo plano com admin e dentro do limite do tipo |
 | Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações (feat) e um álbum em parceria (`catalog-data.ts`) |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
