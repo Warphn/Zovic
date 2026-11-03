@@ -124,12 +124,13 @@ export function PlaybackBar({
 
   return (
     <div
-      className="sticky bottom-0 z-30 h-20 w-full shrink-0 bg-surface/95 backdrop-blur-md border-t border-border px-6 flex items-center justify-between shadow-lg"
+      className="sticky bottom-0 z-30 h-20 w-full shrink-0 bg-surface/95 backdrop-blur-md border-t border-border px-4 sm:px-6 flex items-center justify-between shadow-lg"
       // The bar sits outside the pages, so it carries the accent of what it plays itself
       style={getPlaylistAccentStyle(color)}
     >
       {/* Left: Track Name & Mini Cover */}
-      <div className="flex items-center gap-3 w-1/4 min-w-[140px]">
+      {/* Phones show only the cover, so the column reserves its width from sm up */}
+      <div className="flex items-center gap-3 shrink-0 sm:w-1/4 sm:min-w-[140px]">
         <div
           className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
           style={{ backgroundColor: color }}
@@ -208,7 +209,7 @@ export function PlaybackBar({
       </div>
 
       {/* Right: Queue (player view) & Volume */}
-      <div className="flex items-center justify-end gap-2 w-1/4 min-w-[120px] text-xs text-muted-foreground">
+      <div className="flex items-center justify-end gap-2 shrink-0 sm:w-1/4 sm:min-w-[120px] text-xs text-muted-foreground">
         <button
           type="button"
           onClick={toggleQueue}
@@ -242,7 +243,8 @@ export function PlaybackBar({
             setIsMuted(false)
           }}
           aria-label="Volume"
-          className="w-20 sm:w-28 h-1.5 cursor-pointer"
+          // Phones set the volume with their own buttons; the mute toggle stays
+          className="hidden sm:block w-28 h-1.5 cursor-pointer"
           style={{ accentColor: color }}
         />
       </div>

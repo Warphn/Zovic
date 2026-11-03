@@ -11,6 +11,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { Badge } from "@/components/ui/badge";
 
 const NAV_LINKS = [
+  { label: "Recursos", href: "/#recursos" },
   { label: "Como funciona", href: "/#como-funciona" },
   { label: "Contato", href: "/#contato" },
 ];
@@ -196,8 +197,10 @@ export default function Header() {
 
         <div className={`relative z-10 ${menuMounted ? "" : "glass"}`}>
           <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6 md:px-8">
+            {/* Signed in, the logo leads home to the playlists; signed out, to the landing page,
+                since playlists are behind login */}
             <Link
-              href="/"
+              href={session ? "/playlist" : "/"}
               className="rounded-sm text-lg font-semibold tracking-tight text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               Zovic
@@ -215,7 +218,9 @@ export default function Header() {
                     {link.label}
                   </SiteLink>
                 ))}
-              <SessionControls className={isLanding ? "border-l border-border pl-8" : undefined} />
+              {/* A straight divider of its own: a border on the link would follow its rounded focus corners */}
+              {isLanding && <span aria-hidden="true" className="h-4 w-px bg-border" />}
+              <SessionControls />
             </nav>
 
             <button

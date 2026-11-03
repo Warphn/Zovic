@@ -90,8 +90,8 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      <Label htmlFor="playlist-color" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
-        Cor da Playlist
+      <Label htmlFor="playlist-color" className="block text-sm font-medium">
+        Cor
       </Label>
 
       {/* Main Color preview and manual Hex controller */}

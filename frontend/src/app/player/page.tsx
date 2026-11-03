@@ -9,18 +9,16 @@ import { Button } from "@/components/ui/button"
 import { resolveQueue, selectTrack, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, useStoredPlaylists, type Track } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+import { LevelBars } from "@/components/playback-marks"
+import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 
 // Depth of the row: each track further down sits this much deeper and turns this much away
 const DEPTH_STEP_PX = 90
 const CURRENT_TILT_DEG = 8
 const QUEUE_TILT_DEG = 14
-
-// "2h 14min" past an hour, "23 min" below it
-function formatTotalDuration(totalSec: number): string {
-  const hours = Math.floor(totalSec / 3600)
-  const minutes = Math.round((totalSec % 3600) / 60)
-  return hours > 0 ? `${hours}h ${minutes}min` : `${minutes} min`
-}
+// The current card is this many slots wide; the others are drawn at its size and scaled down
+// by it (square cards, so 2 slots fill the row's height)
+const CURRENT_SCALE = 2
 
 // Keys typed into a field belong to it (the header search, for one), not to the player
 function isTextField(target: EventTarget | null): boolean {
@@ -125,11 +123,11 @@ export default function PlayerPage() {
       <div className="flex-1 bg-background text-foreground flex flex-col">
         <Header />
         <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
-          <h1 className="text-2xl font-bold mb-2">Nada tocando</h1>
+          <h1 className="text-2xl font-medium mb-2">Nada tocando</h1>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            Toque uma playlist ou busque uma música para começar.
+            Toque uma playlist ou busque uma faixa para começar
           </p>
-          <Button render={<Link href="/playlist" />} nativeButton={false} className="text-xs font-semibold">
+          <Button render={<Link href="/playlist" />} nativeButton={false} size="lg" className="h-9 px-4 text-sm">
             Ver playlists
           </Button>
         </main>
@@ -137,28 +135,25 @@ export default function PlayerPage() {
     )
   }
 
-  const totalSec = tracks.reduce((acc, t) => acc + t.durationSec, 0)
+  const totalSec = sumDurationSec(tracks)
   const startTrack = tracks[0]
 
   return (
     <div
-      className="flex-1 bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-foreground"
+      className="flex-1 bg-background text-foreground flex flex-col"
       // A playlist lends its color to the page; tracks played on their own keep the default red
       style={playlist ? getPlaylistAccentStyle(playlist.color) : undefined}
     >
       <Header />
 
       <main className="relative flex-1 pt-16 flex flex-col overflow-hidden">
-        {/* Soft glow of the accent color from the right edge */}
-        <div className="pointer-events-none absolute -right-40 top-1/4 size-[36rem] rounded-full bg-primary opacity-15 blur-3xl" />
-
         {/* Title block: the playlist, or the suggestions that follow a lone track */}
         <div className="relative w-full max-w-6xl mx-auto px-6 md:px-8 pt-10">
           {playlist ? (
             <>
-              <p className="text-sm font-medium text-muted-foreground">Playlist</p>
+              <p className="mb-3 font-mono text-xs text-muted-foreground">Playlist</p>
               {/* The arrow flows inline with the name, so it follows the last word when the name wraps */}
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
+              <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl">
                 <Link
                   href={`/playlist/${playlist.id}`}
                   className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -167,20 +162,18 @@ export default function PlayerPage() {
                   <ArrowRightIcon size={24} className="ml-2 align-middle text-primary" />
                 </Link>
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {tracks.length} {tracks.length === 1 ? "música" : "músicas"}
-                <span className="mx-2 opacity-50">•</span>
-                {formatTotalDuration(totalSec)}
+              <p className="mt-4 font-mono text-xs text-muted-foreground tabular-nums">
+                {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {formatTotalDuration(totalSec)}
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm font-medium text-muted-foreground">Tocando agora</p>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">Sugestões para você</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mb-3 font-mono text-xs text-muted-foreground">Tocando agora</p>
+              <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl">
                 A partir de {startTrack?.title}
-                <span className="mx-2 opacity-50">•</span>
-                {tracks.length - 1} {tracks.length - 1 === 1 ? "sugestão" : "sugestões"}
+              </h1>
+              <p className="mt-4 font-mono text-xs text-muted-foreground tabular-nums">
+                {tracks.length - 1} {tracks.length - 1 === 1 ? "sugestão" : "sugestões"} · {formatTotalDuration(totalSec)}
               </p>
             </>
           )}
@@ -203,10 +196,10 @@ export default function PlayerPage() {
             className="w-full max-w-6xl mx-auto px-6 md:px-8 perspective-[1600px] [--gap:1rem] [--step:11rem] [--pad:1.5rem] [--prev-slots:0] sm:[--step:13rem] sm:[--prev-slots:1] md:[--pad:2rem]"
             style={{ perspectiveOrigin: "calc(var(--pad) + var(--step) * var(--prev-slots)) 50%" }}
           >
-            {/* Fixed height: the cards swap sizes while they animate, and a row that followed
-                them would shake the page up and down */}
+            {/* Fixed height, the current card's size: the cards sit absolutely over their slots,
+                so the row would otherwise be only as tall as a slot */}
             <ul
-              className="h-80 sm:h-96 flex items-center gap-(--gap) transform-3d transition-transform duration-500 ease-out motion-reduce:transition-none"
+              className="h-80 sm:h-96 flex items-center gap-(--gap) transform-3d transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
               style={{ transform: `translateX(calc(var(--step) * (var(--prev-slots) - ${currentIndex})))` }}
             >
               {tracks.map((track, index) => (
@@ -219,8 +212,6 @@ export default function PlayerPage() {
                 />
               ))}
             </ul>
-            {/* Reflection of the current card on the floor */}
-            <div className="pointer-events-none mt-2 ml-[calc(var(--step)*var(--prev-slots))] h-10 w-[min(70vw,24rem)] rounded-full bg-primary opacity-20 blur-2xl" />
           </div>
         </div>
 
@@ -228,12 +219,12 @@ export default function PlayerPage() {
         <div className="relative w-full max-w-6xl mx-auto px-6 md:px-8 pb-10">
           <p className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-2">
-              <kbd className="rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd>
+              <kbd className="rounded-sm border border-border bg-surface px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
               {isPlaying ? "Pausar" : "Tocar"}
             </span>
             <span className="inline-flex items-center gap-2">
-              <kbd className="rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px]">← →</kbd>
-              Navegar (ou role e arraste)
+              <kbd className="rounded-sm border border-border bg-surface px-1.5 py-0.5 font-mono text-xs">← →</kbd>
+              Navegar · role ou arraste
             </span>
           </p>
         </div>
@@ -261,62 +252,63 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
   const tilt = isPast ? -QUEUE_TILT_DEG : isCurrent ? CURRENT_TILT_DEG : QUEUE_TILT_DEG
   // Past cards fade through classes, since the previous one shows only where it has room (sm+)
   const opacity = isPast ? undefined : Math.max(0.5, 1 - distance * 0.1)
+  // Each slot in the row is a small square (one --step minus the gap). The card itself is drawn
+  // at the current card's size, two slots wide, and the others are scaled down to fit their slot:
+  // scaling down stays sharp, scaling a small card up would blur it. The card is centered on its
+  // slot's middle line and scaled from its own center, so a small card needs half a slot to the
+  // left to sit on its slot, the current card none (it starts at its slot and covers the next
+  // one), and the cards after it half a slot to the right to clear it. Only transforms change.
+  const shift = isCurrent ? "0px" : isPast ? "calc(var(--slot) / -2)" : "calc(var(--slot) / 2)"
 
   return (
-    <li
-      // Older tracks left the row; keep them out of reach until they come back
-      inert={isPast && !isPrevious}
-      className={cn(
-        "relative shrink-0 rounded-2xl border border-black/10 overflow-hidden bg-primary text-primary-foreground transition-all duration-500 ease-out motion-reduce:transition-none",
-        isPast && (isPrevious ? "opacity-0 sm:opacity-55 sm:hover:opacity-80" : "opacity-0"),
-        isCurrent
-          ? "w-[min(78vw,26rem)] h-80 sm:h-96 p-6 sm:p-8 shadow-[0_32px_60px_-24px_var(--primary)]"
-          : "w-[calc(var(--step)-var(--gap))] h-56 sm:h-64 p-4 shadow-[0_20px_40px_-20px_var(--primary)]"
-      )}
-      style={{
-        transform: `translateZ(${-depth}px) rotateY(${tilt}deg)`,
-        // Nearer cards cover the ones behind them
-        zIndex: 100 - Math.abs(distance),
-        opacity,
-      }}
-    >
-      {/* Sheen over the flat color */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/25" />
+    // The slot: keeps the row's spacing; its card is positioned over it
+    <li className="relative size-(--slot) shrink-0 transform-3d [--slot:calc(var(--step)-var(--gap))]">
+      <div
+        // Older tracks left the row; keep them out of reach until they come back
+        inert={isPast && !isPrevious}
+        className={cn(
+          "absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8 text-primary-foreground",
+          "shadow-[0_32px_60px_-24px_rgba(23,21,18,0.55)] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isPast && (isPrevious ? "opacity-0 sm:opacity-55 sm:hover:opacity-80" : "opacity-0")
+        )}
+        style={{
+          transform: `translateX(${shift}) translateZ(${-depth}px) rotateY(${tilt}deg) scale(${isCurrent ? 1 : 1 / CURRENT_SCALE})`,
+          // Nearer cards cover the ones behind them
+          zIndex: 100 - Math.abs(distance),
+          opacity,
+        }}
+      >
+        {/* Printed frame, the same rule as on the sleeves of the playlist pages */}
+        <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
 
-      {/* Card-wide button: a click anywhere plays or pauses this track */}
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={isPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
-        aria-pressed={isPlaying}
-        className="absolute inset-0 z-10 cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/60"
-      />
+        {/* Card-wide button: a click anywhere plays or pauses this track */}
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={isPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
+          aria-pressed={isPlaying}
+          className="absolute inset-0 z-10 cursor-pointer rounded-[24px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/60"
+        />
 
-      <div className="relative h-full flex flex-col justify-between pointer-events-none">
-        {/* Cover: no artwork yet, so the album's initials on a lighter tile */}
-        <div
-          className={cn(
-            "aspect-square rounded-xl bg-white/15 border border-white/20 flex items-center justify-center font-black tracking-tighter select-none transition-all duration-500",
-            isCurrent ? "w-40 sm:w-48 text-5xl" : "w-24 sm:w-28 text-3xl"
-          )}
-        >
-          {getPlaylistInitials(track.album)}
-        </div>
-
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className={cn("font-bold truncate", isCurrent ? "text-2xl" : "text-sm")}>{track.title}</p>
-            <p className={cn("truncate opacity-75", isCurrent ? "text-base" : "text-xs")}>{track.artist}</p>
-          </div>
-          <span
-            aria-hidden="true"
-            className={cn(
-              "shrink-0 rounded-full bg-surface text-primary flex items-center justify-center shadow-md",
-              isCurrent ? "size-14" : "size-8"
-            )}
-          >
-            {isPlaying ? <PauseIcon size={isCurrent ? 22 : 14} /> : <PlayIcon size={isCurrent ? 22 : 14} />}
+        {/* One layout for every card, at the current card's size; small cards are this at half size */}
+        <div className="pointer-events-none relative flex h-full flex-col justify-between">
+          <span className="select-none text-6xl leading-none font-medium tracking-[-0.03em]">
+            {getPlaylistInitials(track.album)}
           </span>
+
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="flex min-w-0 items-center gap-3 text-[28px] leading-tight font-medium tracking-[-0.02em]">
+                <span className="truncate">{track.title}</span>
+                {isPlaying && <LevelBars playing className="h-5 shrink-0" />}
+              </p>
+              <p className="truncate text-xl opacity-75">{track.artist}</p>
+            </div>
+            {/* Flat, in the sleeve's own ink */}
+            <span aria-hidden="true" className="flex size-14 shrink-0 items-center justify-center rounded-full bg-black/15">
+              {isPlaying ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
+            </span>
+          </div>
         </div>
       </div>
     </li>

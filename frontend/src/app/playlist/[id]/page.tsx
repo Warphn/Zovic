@@ -5,9 +5,8 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
 import { ColorPicker, getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +21,8 @@ import {
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
+import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
+import { LevelBars, Record } from "@/components/playback-marks"
 import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
@@ -31,6 +32,44 @@ import {
   SearchIcon,
 } from "@/components/icons"
 
+// The playlist cover as a record sleeve in the playlist color, with the record half out of it.
+// While this playlist plays, the record slides a little further out and turns
+function RecordSleeve({ color, initials, playing }: { color: string; initials: string; playing: boolean }) {
+  const contrastText = getContrastTextColor(color)
+
+  return (
+    <div className="relative h-48 w-64 shrink-0 md:h-52 md:w-72">
+      {/* Record */}
+      <div
+        className={cn(
+          "absolute top-2 left-0 size-44 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:size-48",
+          playing ? "translate-x-20" : "translate-x-14"
+        )}
+      >
+        <Record
+          color={color}
+          playing={playing}
+          className="size-full shadow-[0_8px_20px_-10px_rgba(23,21,18,0.6)]"
+        />
+      </div>
+
+      {/* Sleeve */}
+      <div
+        className={cn(
+          "relative z-10 flex size-48 items-center justify-center rounded-md md:size-52",
+          "shadow-[0_1px_2px_rgba(23,21,18,0.12),0_16px_32px_-16px_rgba(23,21,18,0.45)]",
+          contrastText
+        )}
+        style={{ backgroundColor: color }}
+      >
+        {/* Printed frame, like the rule around a sleeve's artwork */}
+        <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
+        <span className="select-none text-6xl font-medium tracking-[-0.03em]">{initials}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
   const playlistId = params?.id
@@ -38,10 +77,7 @@ export default function PlaylistDetailPage() {
   // All playlists in memory / localStorage with hydration safety
   const { playlists, persistPlaylists } = useStoredPlaylists()
 
-  // Modal State for Editing Color
   const [isColorModalOpen, setIsColorModalOpen] = React.useState(false)
-
-  // Track search filter
   const [searchQuery, setSearchQuery] = React.useState("")
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
@@ -53,10 +89,8 @@ export default function PlaylistDetailPage() {
     t3: true,
   })
 
-  // Find the playlist
   const currentPlaylist = playlists.find((p) => p.id === playlistId) ?? null
 
-  // Update Color handler
   const handleUpdateColor = (newColor: string) => {
     if (!currentPlaylist) return
     const updated = playlists.map((p) =>
@@ -75,23 +109,19 @@ export default function PlaylistDetailPage() {
     persistPlaylists(playlists.map((p) => (p.id === currentPlaylist.id ? { ...p, tracks: reordered } : p)))
   }
 
-  // If playlist not found
   if (!currentPlaylist) {
     return (
       <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
         <Header />
         <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
-          <div className="size-16 rounded-2xl border border-border bg-surface flex items-center justify-center text-2xl mb-4 font-mono shadow-xs">
-            ∅
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Playlist não encontrada</h1>
-          <p className="text-sm text-muted-foreground mb-6 font-light max-w-sm">
-            Esta playlist não foi encontrada ou pode ter sido removida.
+          {/* An empty sleeve: just its printed frame */}
+          <div className="mb-6 size-20 rounded-md border border-dashed border-border" aria-hidden="true" />
+          <h1 className="text-2xl font-medium mb-2">Playlist não encontrada</h1>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+            Ela pode ter sido removida ou o link está incorreto
           </p>
-          <Link href="/playlist">
-            <Button variant="default" className="text-xs font-semibold cursor-pointer gap-1.5">
-              <ArrowLeftIcon size={14} /> Voltar ao Catálogo
-            </Button>
+          <Link href="/playlist" className={cn(buttonVariants({ size: "lg" }), "gap-2")}>
+            <ArrowLeftIcon size={16} /> Voltar ao catálogo
           </Link>
         </main>
       </div>
@@ -99,21 +129,20 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = currentPlaylist.tracks
+  // The current track of this playlist is marked even while paused, so the list shows where
+  // playback stands
   const currentTrackIndex = isThisPlaylist
-    ? Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
-    : 0
+    ? tracks.findIndex((t) => t.id === playback?.currentTrackId)
+    : -1
   const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
   const playAt = (index: number, playing = true) => {
     const track = tracks[index]
     if (track) playPlaylist(currentPlaylist.id, track.id, playing)
   }
-  const contrastText = getContrastTextColor(currentPlaylist.color)
   const playlistAccent = getPlaylistAccentStyle(currentPlaylist.color)
-  const totalDurationMin = Math.round(
-    tracks.reduce((acc, t) => acc + t.durationSec, 0) / 60
-  )
+  const totalDuration = formatTotalDuration(sumDurationSec(tracks))
+  const isSearching = searchQuery.trim() !== ""
 
-  // Filtered tracks by search query only
   const filteredTracks = tracks.filter((track) => {
     const query = searchQuery.toLowerCase().trim()
     if (!query) return true
@@ -124,151 +153,101 @@ export default function PlaylistDetailPage() {
     )
   })
 
-
   return (
     <div
-      className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative"
+      className="flex-1 bg-background text-foreground flex flex-col font-sans"
       style={playlistAccent}
     >
       <Header />
 
-      <main className="flex-1 pt-16 flex flex-col relative overflow-hidden">
-        {/*
-          FULL-WIDTH DYNAMIC COLOR WASH ACROSS THE ENTIRE SCREEN:
-          Extends across 100% of the viewport width, bathing the entire page header smoothly.
-        */}
-        <div
-          className="absolute inset-x-0 top-0 w-full h-[540px] pointer-events-none transition-all duration-700 ease-out"
-          style={{
-            background: `linear-gradient(180deg, ${currentPlaylist.color}45 0%, ${currentPlaylist.color}15 360px, transparent 100%)`,
-          }}
-        />
-        {/* Full-width ambient glow filling the whole viewport width symmetrically */}
-        <div
-          className="absolute inset-x-0 top-0 w-full h-[460px] pointer-events-none blur-3xl opacity-35 transition-all duration-700 ease-out"
-          style={{
-            background: `radial-gradient(ellipse 100% 70% at 50% 0%, ${currentPlaylist.color} 0%, transparent 100%)`,
-          }}
-        />
-
-        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 flex-1 flex flex-col relative z-10">
-          {/* Navigation & Header Actions */}
-          <div className="flex items-center justify-between pb-6">
+      <main className="flex-1 pt-16 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
+          {/* Back and the one setting this page has */}
+          <div className="flex h-8 items-center justify-between">
             <Link
               href="/playlist"
-              className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer group"
+              className="inline-flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              <ArrowLeftIcon size={14} />
-              <span>Voltar ao Catálogo</span>
+              <ArrowLeftIcon size={16} />
+              <span>Catálogo</span>
             </Link>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsColorModalOpen(true)}
-                className="h-8 text-xs border-border bg-surface/80 hover:bg-surface gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <span
-                  className="size-3 rounded-full border border-black/20"
-                  style={{ backgroundColor: currentPlaylist.color }}
-                />
-                Alterar Cor
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setIsColorModalOpen(true)}
+              className="gap-2"
+            >
+              <span
+                className="size-3 rounded-full ring-1 ring-ink/15"
+                style={{ backgroundColor: currentPlaylist.color }}
+              />
+              Alterar cor
+            </Button>
           </div>
 
-          {/* =========================================================================
-              HERO SECTION: VINYL OBJECT + DISPLAY TYPOGRAPHY
-              ========================================================================= */}
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-8 pb-8">
-            {/* Tactile Vinyl Sleeve */}
-            <div className="relative shrink-0">
-              {/* Front Jacket Card */}
-              <div
-                className="size-48 md:size-52 rounded-xl shadow-xl border border-black/10 p-5 flex flex-col justify-between relative overflow-hidden transition-all duration-500"
-                style={{
-                  backgroundColor: currentPlaylist.color,
-                  boxShadow: `0 16px 36px -12px ${currentPlaylist.color}66, 0 8px 16px -4px rgba(0,0,0,0.12)`,
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/35 via-transparent to-white/20 pointer-events-none" />
-                <div className="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
+          {/* Sleeve and title, aligned on their bottom edge like an album page */}
+          <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
+            <RecordSleeve
+              color={currentPlaylist.color}
+              initials={getPlaylistInitials(currentPlaylist.name)}
+              playing={isPlaying}
+            />
 
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className={cn("text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-black/20", contrastText)}>
-                    {currentPlaylist.isPrivate ? "PRIVADA" : "PÚBLICA"}
-                  </span>
-                </div>
-
-                <div className="relative z-10 my-auto text-center">
-                  <div className={cn("text-6xl font-black tracking-tighter drop-shadow-sm select-none", contrastText)}>
-                    {getPlaylistInitials(currentPlaylist.name)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Title & Objective Metadata Only */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className="text-[10px] py-0 border-border">
-                  {currentPlaylist.isPrivate ? "Privada" : "Pública"}
-                </Badge>
-              </div>
-
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-foreground leading-none mb-3 break-words">
+            <div className="min-w-0 flex-1 md:pb-2">
+              <p className="mb-3 font-mono text-xs text-muted-foreground">
+                Playlist {currentPlaylist.isPrivate ? "privada" : "pública"}
+              </p>
+              <h1 className="mb-4 break-words text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl md:text-6xl">
                 {currentPlaylist.name}
               </h1>
-
-              {/* Objective specs only: track count and total duration */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                <span>{tracks.length} {tracks.length === 1 ? "faixa" : "faixas"}</span>
-                <span>•</span>
-                <span>{totalDurationMin} min total</span>
-              </div>
+              <p className="font-mono text-xs text-muted-foreground tabular-nums">
+                {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {totalDuration}
+              </p>
             </div>
-          </div>
+          </section>
 
-          {/* =========================================================================
-              TRACKLIST SECTION (Waveforms removed, filters removed, search without emoji)
-              ========================================================================= */}
-          <div className="pb-12 pt-6">
-            {/* Search Bar without emoji */}
-            <div className="flex items-center justify-end mb-6">
-              <div className="relative w-full sm:w-72">
+          {/* Tracklist, set like the back of a record */}
+          <section>
+            <div className="mb-2 flex items-center justify-between gap-4 border-b border-ink/10 pb-3">
+              {/* Same 32px box as the search field, so the label sits on its middle */}
+              <h2 className="flex h-8 items-center text-sm font-medium">Faixas</h2>
+              <div className="relative w-full max-w-64">
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar faixa, artista..."
-                  className="h-8 text-xs bg-surface pl-8"
+                  placeholder="Buscar na playlist"
+                  aria-label="Buscar na playlist"
+                  className="h-8 bg-surface pl-8 text-sm"
                 />
                 <SearchIcon
-                  size={14}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  size={16}
+                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
               </div>
             </div>
 
-            {/* Tracklist Items (drag to reorder; off while searching, since only part of the list shows) */}
+            {/* Drag to reorder; off while searching, since only part of the list shows */}
             {filteredTracks.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-xs font-mono">
-                Nenhuma faixa encontrada na busca.
-              </div>
+              <p className="py-12 text-center font-mono text-xs text-muted-foreground">
+                Nenhuma faixa com “{searchQuery.trim()}”
+              </p>
             ) : (
               <SortableList
                 ids={filteredTracks.map((t) => t.id)}
-                rowHeight={66}
-                disabled={searchQuery.trim() !== ""}
+                rowHeight={56}
+                gap={2}
+                disabled={isSearching}
                 onReorder={handleReorderTracks}
               >
                 {filteredTracks.map((track) => {
                   const actualIdx = tracks.findIndex((t) => t.id === track.id)
-                  const isTrackActive = isPlaying && currentTrackIndex === actualIdx
+                  const isCurrent = currentTrackIndex === actualIdx
+                  const isTrackPlaying = isCurrent && isPlaying
                   const isLiked = likedTracks[track.id] ?? false
                   // Clicking the playing track pauses it; any other click plays the clicked track
                   const playOrPauseRow = () => {
-                    if (isTrackActive) togglePlayback()
+                    if (isTrackPlaying) togglePlayback()
                     else playAt(actualIdx)
                   }
 
@@ -277,15 +256,13 @@ export default function PlaylistDetailPage() {
                       key={track.id}
                       className={cn(
                         // Pointer: a click plays the track; grabbing only while a drag is held
-                        "group relative h-full rounded-xl border p-3.5 transition-colors flex items-center justify-between gap-4 select-none cursor-pointer",
-                        !searchQuery.trim() && "active:cursor-grabbing",
-                        isTrackActive
-                          ? "border-primary bg-primary/5 shadow-xs"
-                          : "border-border/70 bg-surface/70 hover:bg-surface hover:border-border"
+                        "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
+                        !isSearching && "active:cursor-grabbing",
+                        isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
                       {/* Row-wide play button: a click anywhere on the row plays the track, or pauses it while it plays. The
-                          other buttons sit above it (relative z-10) and keep their own action;
+                          other buttons sit above it and keep their own action;
                           data-row-action keeps the row draggable through it. */}
                       <button
                         type="button"
@@ -293,83 +270,66 @@ export default function PlaylistDetailPage() {
                         tabIndex={-1}
                         aria-hidden="true"
                         onClick={playOrPauseRow}
-                        className="absolute inset-0 rounded-xl cursor-[inherit]"
+                        className="absolute inset-0 rounded-lg cursor-[inherit]"
                       />
-                      {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
-                      {/* Left: Track Number, Title & Artist */}
-                      <div className="relative pointer-events-none flex items-center gap-3.5 min-w-0">
-                        {/* Position Badge */}
-                        <div
-                          className={cn(
-                            "size-8 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 border transition-colors",
-                            isTrackActive
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-border group-hover:text-foreground"
-                          )}
-                        >
-                          {isTrackActive ? <PlayIcon size={12} /> : actualIdx + 1}
-                        </div>
 
-                        <div className="min-w-0">
-                          <button
-                            type="button"
-                            onClick={playOrPauseRow}
-                            className={cn(
-                              "pointer-events-auto font-bold text-sm text-left truncate cursor-pointer hover:underline block",
-                              isTrackActive ? "text-primary" : "text-foreground"
-                            )}
-                          >
-                            {track.title}
-                          </button>
+                      {/* The current track carries a thin rule in the accent on its left edge */}
+                      {isCurrent && (
+                        <span className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary" />
+                      )}
 
-                          <div className="text-xs text-muted-foreground truncate">
-                            {track.artist} <span className="opacity-40">•</span> {track.album} ({track.year})
-                          </div>
-                        </div>
+                      {/* Number, or the play state: level bars while playing, pause on hover */}
+                      <div className="pointer-events-none relative flex w-6 shrink-0 justify-end font-mono text-xs tabular-nums text-muted-foreground">
+                        {isTrackPlaying ? (
+                          <>
+                            <span className="text-primary group-hover:hidden"><LevelBars playing /></span>
+                            <PauseIcon size={16} className="hidden text-foreground group-hover:block" />
+                          </>
+                        ) : (
+                          <>
+                            <span className={cn("group-hover:hidden", isCurrent && "text-primary")}>
+                              {String(actualIdx + 1).padStart(2, "0")}
+                            </span>
+                            <PlayIcon size={16} className="hidden text-foreground group-hover:block" />
+                          </>
+                        )}
                       </div>
 
-                      {/* Right: Inline Equalizer, Duration & Actions */}
-                      <div className="relative pointer-events-none flex items-center gap-3 shrink-0 font-mono text-xs">
-
-                        {/* Inline Equalizer Animation when playing */}
-                        {isTrackActive && (
-                          <div className="flex items-end gap-0.5 h-3.5">
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.3s] h-2.5" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.1s] h-3.5" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.2s] h-2" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.4s] h-3" />
-                          </div>
-                        )}
-
-                        <span className="text-muted-foreground font-mono">
-                          {track.duration}
-                        </span>
-
-                        {/* Play / Pause button */}
+                      {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
+                      <div className="pointer-events-none relative min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={playOrPauseRow}
+                          aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
                           className={cn(
-                            "pointer-events-auto size-7 rounded-lg border border-border flex items-center justify-center transition-all cursor-pointer",
-                            isTrackActive
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground hover:text-foreground hover:bg-surface"
+                            "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
+                            isCurrent ? "text-primary" : "text-foreground"
                           )}
-                          aria-label={isTrackActive ? `Pausar ${track.title}` : `Tocar ${track.title}`}
                         >
-                          {isTrackActive ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+                          {track.title}
                         </button>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {track.artist} · {track.album}, {track.year}
+                        </div>
+                      </div>
 
-                        {/* Like bookmark */}
+                      <div className="pointer-events-none relative flex shrink-0 items-center gap-3">
+                        <span className="w-10 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                          {track.duration}
+                        </span>
+
                         <button
                           type="button"
                           onClick={() => {
                             setLikedTracks((prev) => ({ ...prev, [track.id]: !prev[track.id] }))
                           }}
                           aria-label={isLiked ? "Descurtir faixa" : "Curtir faixa"}
+                          aria-pressed={isLiked}
                           className={cn(
-                            "pointer-events-auto size-7 flex items-center justify-center transition-colors cursor-pointer",
-                            isLiked ? "text-primary" : "text-muted-foreground/40 hover:text-foreground"
+                            "pointer-events-auto flex size-8 items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-2",
+                            isLiked
+                              ? "text-primary"
+                              : "text-muted-foreground/50 hover:text-foreground"
                           )}
                         >
                           <HeartIcon size={16} className={cn(isLiked && "[&_svg]:fill-current")} />
@@ -380,20 +340,16 @@ export default function PlaylistDetailPage() {
                 })}
               </SortableList>
             )}
-          </div>
+          </section>
         </div>
-
       </main>
 
-      {/* =========================================================================
-          EDIT COLOR MODAL
-          ========================================================================= */}
       <Dialog open={isColorModalOpen} onOpenChange={setIsColorModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Alterar Cor da Playlist</DialogTitle>
+            <DialogTitle>Cor da playlist</DialogTitle>
             <DialogDescription>
-              A cor selecionada atualiza o encarte e o fundo dinâmico da página.
+              A cor vale para o encarte, o disco e os destaques desta página
             </DialogDescription>
           </DialogHeader>
 
@@ -404,11 +360,7 @@ export default function PlaylistDetailPage() {
             />
 
             <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                onClick={() => setIsColorModalOpen(false)}
-                className="h-9 text-xs font-bold"
-              >
+              <Button type="button" size="lg" onClick={() => setIsColorModalOpen(false)}>
                 Concluir
               </Button>
             </DialogFooter>
