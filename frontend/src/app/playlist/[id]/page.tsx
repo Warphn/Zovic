@@ -22,7 +22,6 @@ import {
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
-import { PlaybackBar } from "@/components/playback-bar"
 import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
@@ -79,7 +78,7 @@ export default function PlaylistDetailPage() {
   // If playlist not found
   if (!currentPlaylist) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
         <Header />
         <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
           <div className="size-16 rounded-2xl border border-border bg-surface flex items-center justify-center text-2xl mb-4 font-mono shadow-xs">
@@ -108,8 +107,6 @@ export default function PlaylistDetailPage() {
     const track = tracks[index]
     if (track) playPlaylist(currentPlaylist.id, track.id, playing)
   }
-  // Skipping keeps a paused playlist paused; on a playlist that is not playing, it starts it
-  const skipTo = (index: number) => playAt(index, isThisPlaylist ? isPlaying : true)
   const contrastText = getContrastTextColor(currentPlaylist.color)
   const playlistAccent = getPlaylistAccentStyle(currentPlaylist.color)
   const totalDurationMin = Math.round(
@@ -127,12 +124,10 @@ export default function PlaylistDetailPage() {
     )
   })
 
-  const currentPlayingTrack = tracks[currentTrackIndex]
-
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative"
+      className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative"
       style={playlistAccent}
     >
       <Header />
@@ -238,7 +233,7 @@ export default function PlaylistDetailPage() {
           {/* =========================================================================
               TRACKLIST SECTION (Waveforms removed, filters removed, search without emoji)
               ========================================================================= */}
-          <div className="pb-36 pt-6">
+          <div className="pb-12 pt-6">
             {/* Search Bar without emoji */}
             <div className="flex items-center justify-end mb-6">
               <div className="relative w-full sm:w-72">
@@ -388,22 +383,6 @@ export default function PlaylistDetailPage() {
           </div>
         </div>
 
-        {/* Bottom audio controller; its queue button opens this playlist in the player */}
-        <PlaybackBar
-          track={currentPlayingTrack}
-          coverLabel={getPlaylistInitials(currentPlaylist.name)}
-          color={currentPlaylist.color}
-          isPlaying={isPlaying}
-          onTogglePlay={() => (isThisPlaylist ? togglePlayback() : playAt(currentTrackIndex))}
-          onPrevious={() => skipTo(currentTrackIndex > 0 ? currentTrackIndex - 1 : tracks.length - 1)}
-          onNext={() => skipTo(currentTrackIndex < tracks.length - 1 ? currentTrackIndex + 1 : 0)}
-          queueOpen={false}
-          // Opening the queue plays this playlist, unless it is already the one playing
-          onOpenQueue={() => {
-            if (!isThisPlaylist) playAt(currentTrackIndex)
-          }}
-          closeQueueHref={`/playlist/${currentPlaylist.id}`}
-        />
       </main>
 
       {/* =========================================================================

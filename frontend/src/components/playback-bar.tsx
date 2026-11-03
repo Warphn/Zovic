@@ -2,10 +2,23 @@
 
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { getContrastTextColor } from "@/components/color-picker"
+import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
-import type { Track } from "@/lib/playlist-store"
+import {
+  playPlaylist,
+  resolveQueue,
+  selectTrack,
+  togglePlayback,
+  usePlayback,
+} from "@/lib/playback-store"
+import { getPlaylistInitials, useStoredPlaylists, type Track } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+
+// Tracks played on their own use the default accent (--color-red in globals.css)
+const DEFAULT_COLOR = "#d33a2c"
+
+// Pages without the bar: the landing and the sign-in/sign-up pages
+const HIDDEN_ON = new Set(["/", "/entrar", "/cadastro"])
 
 // Where the queue button returns to when it closes the player: the page it was opened from.
 // Module state, so it survives the client-side navigation; after a reload the fallback is used.
@@ -29,8 +42,52 @@ interface PlaybackBarProps {
   closeQueueHref: string
 }
 
+// The app's bottom bar, on every page but the landing and the sign-in/sign-up pages. It shows what is playing (see
+// playback-store). With nothing playing, a playlist page offers its own playlist: play or the
+// queue button start it; elsewhere the bar shows "Nada tocando" with the controls off.
+export function AppPlaybackBar() {
+  const pathname = usePathname()
+  const playback = usePlayback()
+  const { playlists } = useStoredPlaylists()
+  if (HIDDEN_ON.has(pathname)) return null
+
+  const pagePlaylistId = /^\/playlist\/([^/]+)$/.exec(pathname)?.[1]
+  const pagePlaylist = playback ? null : (playlists.find((p) => p.id === pagePlaylistId) ?? null)
+  const { tracks, playlist } = playback
+    ? resolveQueue(playback, playlists)
+    : { tracks: pagePlaylist?.tracks ?? [], playlist: pagePlaylist }
+  const currentIndex = Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
+  const track = tracks[currentIndex]
+
+  // Moves within the queue (wrapping); with nothing playing yet, starts the page's playlist there
+  const goTo = (index: number) => {
+    const next = tracks[(index + tracks.length) % tracks.length]
+    if (!next) return
+    if (playback) selectTrack(next.id)
+    else if (pagePlaylist) playPlaylist(pagePlaylist.id, next.id)
+  }
+
+  return (
+    <PlaybackBar
+      track={track}
+      coverLabel={getPlaylistInitials(playlist?.name ?? track?.album ?? "")}
+      color={playlist?.color ?? DEFAULT_COLOR}
+      isPlaying={Boolean(playback?.isPlaying)}
+      onTogglePlay={() => (playback ? togglePlayback() : goTo(currentIndex))}
+      onPrevious={() => goTo(currentIndex - 1)}
+      onNext={() => goTo(currentIndex + 1)}
+      queueOpen={pathname === "/player"}
+      onOpenQueue={() => {
+        if (!playback) goTo(currentIndex)
+      }}
+      closeQueueHref={playlist ? `/playlist/${playlist.id}` : "/playlist"}
+    />
+  )
+}
+
 // Bottom audio controller: current track, play controls with a scrubber, the queue button
-// (opens or closes the player) and volume.
+// (opens or closes the player) and volume. Sticky at the end of the page, so it stays on screen
+// without covering the end of the content.
 export function PlaybackBar({
   track,
   coverLabel,
@@ -55,7 +112,8 @@ export function PlaybackBar({
       return
     }
     onOpenQueue?.()
-    playerReturnPath = pathname
+    // With the query string, so closing returns to the same search or filter
+    playerReturnPath = pathname + window.location.search
     router.push("/player")
   }
 
@@ -65,7 +123,11 @@ export function PlaybackBar({
   const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
 
   return (
-    <div className="fixed bottom-0 inset-x-0 h-20 bg-surface/95 backdrop-blur-md border-t border-border px-6 flex items-center justify-between z-40 shadow-lg">
+    <div
+      className="sticky bottom-0 z-30 h-20 w-full shrink-0 bg-surface/95 backdrop-blur-md border-t border-border px-6 flex items-center justify-between shadow-lg"
+      // The bar sits outside the pages, so it carries the accent of what it plays itself
+      style={getPlaylistAccentStyle(color)}
+    >
       {/* Left: Track Name & Mini Cover */}
       <div className="flex items-center gap-3 w-1/4 min-w-[140px]">
         <div
@@ -75,7 +137,7 @@ export function PlaybackBar({
           <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
         </div>
         <div className="min-w-0 hidden sm:block">
-          <div className="font-bold text-xs text-foreground truncate">{track?.title}</div>
+          <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
           <div className="text-[11px] text-muted-foreground truncate">{track?.artist}</div>
         </div>
       </div>
@@ -87,7 +149,8 @@ export function PlaybackBar({
             type="button"
             onClick={onPrevious}
             aria-label="Faixa anterior"
-            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            disabled={!track}
+            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:pointer-events-none disabled:opacity-40"
           >
             <SkipBackIcon size={18} />
           </button>
@@ -95,7 +158,8 @@ export function PlaybackBar({
             type="button"
             onClick={onTogglePlay}
             aria-label={isPlaying ? "Pausar reprodução" : "Iniciar reprodução"}
-            className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
+            disabled={!track}
+            className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform disabled:pointer-events-none disabled:opacity-40"
           >
             {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
           </button>
@@ -103,7 +167,8 @@ export function PlaybackBar({
             type="button"
             onClick={onNext}
             aria-label="Próxima faixa"
-            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            disabled={!track}
+            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:pointer-events-none disabled:opacity-40"
           >
             <SkipForwardIcon size={18} />
           </button>
@@ -128,6 +193,7 @@ export function PlaybackBar({
               }
             }}
             aria-label="Avançar ou retroceder na reprodução"
+            disabled={!track}
             className="relative flex-1 h-3 flex items-center cursor-pointer group focus:outline-none"
           >
             <span className="w-full h-1.5 bg-border rounded-full overflow-hidden block">

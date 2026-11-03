@@ -129,7 +129,7 @@ export default function PlaylistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative">
+    <div className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative">
       <Header />
 
       <main className="flex-1 pt-16 flex flex-col">

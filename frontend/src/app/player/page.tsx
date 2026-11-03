@@ -5,14 +5,10 @@ import Link from "next/link"
 import Header from "@/components/header"
 import { getPlaylistAccentStyle } from "@/components/color-picker"
 import { ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons"
-import { PlaybackBar } from "@/components/playback-bar"
 import { Button } from "@/components/ui/button"
 import { resolveQueue, selectTrack, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, useStoredPlaylists, type Track } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
-
-// Tracks played on their own use the default accent (--color-red in globals.css)
-const DEFAULT_COLOR = "#d33a2c"
 
 // Depth of the row: each track further down sits this much deeper and turns this much away
 const DEPTH_STEP_PX = 90
@@ -126,7 +122,7 @@ export default function PlayerPage() {
 
   if (tracks.length === 0) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <div className="flex-1 bg-background text-foreground flex flex-col">
         <Header />
         <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
           <h1 className="text-2xl font-bold mb-2">Nada tocando</h1>
@@ -143,23 +139,16 @@ export default function PlayerPage() {
 
   const totalSec = tracks.reduce((acc, t) => acc + t.durationSec, 0)
   const startTrack = tracks[0]
-  const currentTrack = tracks[currentIndex]
-  // The bar's skip buttons wrap around the queue
-  const skip = (step: number) => {
-    const next = tracks[(currentIndex + step + tracks.length) % tracks.length]
-    if (next) selectTrack(next.id)
-  }
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-foreground"
+      className="flex-1 bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-foreground"
       // A playlist lends its color to the page; tracks played on their own keep the default red
       style={playlist ? getPlaylistAccentStyle(playlist.color) : undefined}
     >
       <Header />
 
-      {/* pb-20 keeps the footer clear of the fixed playback bar */}
-      <main className="relative flex-1 pt-16 pb-20 flex flex-col overflow-hidden">
+      <main className="relative flex-1 pt-16 flex flex-col overflow-hidden">
         {/* Soft glow of the accent color from the right edge */}
         <div className="pointer-events-none absolute -right-40 top-1/4 size-[36rem] rounded-full bg-primary opacity-15 blur-3xl" />
 
@@ -250,18 +239,6 @@ export default function PlayerPage() {
         </div>
       </main>
 
-      {/* Same bottom bar as the other pages; its queue button closes the player */}
-      <PlaybackBar
-        track={currentTrack}
-        coverLabel={getPlaylistInitials(playlist?.name ?? currentTrack?.album ?? "")}
-        color={playlist?.color ?? DEFAULT_COLOR}
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlayback}
-        onPrevious={() => skip(-1)}
-        onNext={() => skip(1)}
-        queueOpen
-        closeQueueHref={playlist ? `/playlist/${playlist.id}` : "/playlist"}
-      />
     </div>
   )
 }

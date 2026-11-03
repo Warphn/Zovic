@@ -92,7 +92,7 @@ function SearchResults() {
 
 export default function SearchPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
+    <div className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
       <Header />
       <main className="flex-1 pt-16">
         {/* useSearchParams needs a Suspense boundary so the page can still prerender */}
