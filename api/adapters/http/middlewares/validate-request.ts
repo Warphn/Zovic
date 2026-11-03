@@ -1,6 +1,15 @@
 import type { RequestHandler, Response } from "express";
 import type { Schema, ValidationError } from "joi";
 
+declare global {
+  namespace Express {
+    interface Locals {
+      /** A query string validada por `validateQuery`, já convertida e com os padrões aplicados. */
+      query: Record<string, unknown>;
+    }
+  }
+}
+
 /** Valida o corpo; o valor limpo (trim, campos fora do schema descartados) substitui `req.body`. */
 export function validateBody(schema: Schema): RequestHandler {
   return (req, res, next) => {
@@ -32,6 +41,24 @@ export function validateParams(schema: Schema): RequestHandler {
       return;
     }
 
+    next();
+  };
+}
+
+/**
+ * Valida a query string. No Express 5 `req.query` é só leitura, então o valor limpo (trim,
+ * números convertidos, padrões aplicados, chaves fora do schema descartadas) vai para `res.locals.query`.
+ */
+export function validateQuery(schema: Schema): RequestHandler {
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.query, { abortEarly: false, stripUnknown: true });
+
+    if (error) {
+      sendValidationError(res, error);
+      return;
+    }
+
+    res.locals.query = value;
     next();
   };
 }

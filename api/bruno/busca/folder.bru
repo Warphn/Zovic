@@ -1,0 +1,15 @@
+meta {
+  name: Busca
+  seq: 4
+}
+
+docs {
+  GET /api/search?q=&limit=: músicas, artistas e playlists que casam com o termo, sem diferenciar
+  maiúsculas nem acentos. As buscas de música e artista usam o catálogo do seed (`bun run db:seed`);
+  a de playlist privada cria a própria playlist, com nome único, e procura por ela.
+
+  Esta pasta não faz login: a coleção já usa os 5 logins do limite. Ela usa a sessão que estiver
+  aberta, de qualquer usuário do seed menos a Rafaela Dias (dona de "Só as tristes", que outro
+  usuário não pode achar). Ao rodar a coleção inteira, "playlists" termina com a sessão do Bruno Andrade
+  aberta; ao rodar esta pasta sozinha, rode antes `auth/Login` ou `playlists/Sessão/Login`.
+}

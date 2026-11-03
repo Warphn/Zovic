@@ -1,0 +1,30 @@
+meta {
+  name: Playlist privada de que é membro
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/search?q={{searchPlaylistName}}
+  body: none
+  auth: none
+}
+
+params:query {
+  q: {{searchPlaylistName}}
+}
+
+docs {
+  A playlist privada criada na requisição anterior aparece para quem a criou (é membro e admin).
+}
+
+tests {
+  test("responde 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("inclui a playlist privada de que o usuário é membro", function () {
+    const playlist = res.getBody().playlists.find((p) => p.id === bru.getVar("searchPlaylistId"));
+    expect(playlist).to.include({ isPrivate: true, musicCount: 0 });
+  });
+}

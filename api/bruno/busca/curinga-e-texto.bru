@@ -1,0 +1,26 @@
+meta {
+  name: Curinga é texto
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=%25
+  body: none
+  auth: none
+}
+
+params:query {
+  q: %25
+}
+
+docs {
+  "%" é texto, não o curinga do LIKE: nenhum nome do seed tem "%", então nada volta.
+}
+
+tests {
+  test("responde 200 com os grupos vazios", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ musics: [], artists: [], playlists: [] });
+  });
+}

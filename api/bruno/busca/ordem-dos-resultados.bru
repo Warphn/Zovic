@@ -1,0 +1,35 @@
+meta {
+  name: Ordem dos resultados
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=lago&limit=3
+  body: none
+  auth: none
+}
+
+params:query {
+  q: lago
+  limit: 3
+}
+
+docs {
+  Primeiro o que começa com o termo ("Lago Parado"), depois o que tem uma palavra começando
+  com ele ("Margem" e "Pedra na Água", do artista Tomás Lago), em ordem alfabética.
+}
+
+tests {
+  test("responde 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("ordena as músicas pelo tipo de correspondência e depois pelo nome", function () {
+    expect(res.getBody().musics.map((m) => m.name)).to.deep.equal(["Lago Parado", "Margem", "Pedra na Água"]);
+  });
+
+  test("respeita o limite", function () {
+    expect(res.getBody().musics.length).to.be.at.most(3);
+  });
+}
