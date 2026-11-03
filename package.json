@@ -6,7 +6,8 @@
     "prepare": "husky",
     "start": "bun scripts/env.ts start",
     "stop": "bun scripts/env.ts stop",
-    "server": "bun scripts/server.ts"
+    "server": "bun scripts/server.ts",
+    "admin:promote": "bun run --cwd api admin:promote"
   },
   "devDependencies": {
     "@clack/prompts": "^1.8.1",

@@ -118,13 +118,27 @@ Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do 
 
 > **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
 
-**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, só pelo banco:
+**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, use o script, que grava direto no banco do `DATABASE_URL` do `.env` (roda da raiz ou de `api/`):
 
-```sql
-UPDATE "user" SET role = 'admin' WHERE email = 'pessoa@exemplo.com';
+```bash
+bun run admin:promote pessoa@exemplo.com
 ```
 
+```bash
+bun run admin:promote pessoa@exemplo.com --revoke
+```
+
+O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
+
 A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
+
+**Painel de admin.** Para quem tem `role = 'admin'`, o menu da conta (botão laranja no header) mostra **Painel de admin**, em `/admin`, com três abas:
+
+- **Visão geral**: usuários ativos, admins, contas removidas, reproduções e catálogo; acessos por conteúdo (as 10 músicas mais tocadas) e por categoria (reproduções por gênero).
+- **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
+- **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
+
+As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
 
 **No frontend**, as telas `/entrar` e `/cadastro` usam o cliente do Better Auth (`frontend/src/lib/auth/client.ts`), e as áreas logadas (`/playlist`, `/busca`) mandam para `/entrar` quem não tem sessão. O navegador chama a API **direto** (não passa pelo servidor do Next): a API libera a origem do frontend por CORS (`CORS_ORIGIN`) e o cookie é dela, então o JavaScript da página nunca vê a sessão. Para isso funcionar:
 

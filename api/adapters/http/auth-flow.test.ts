@@ -119,7 +119,8 @@ async function cleanup(): Promise<void> {
 
 afterAll(async () => {
   await cleanup();
-  await pool.end();
+  // O pool é o da app (infra/db/pool.ts), compartilhado pelos testes HTTP: não fechar aqui,
+  // senão o próximo arquivo a rodar fica sem conexão. O bun test encerra o processo no fim.
 });
 
 describe("autenticação com Better Auth", () => {
