@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
-import { ColorPicker, getContrastTextColor } from "@/components/color-picker"
+import { ColorPicker, getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -22,15 +22,14 @@ import {
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
+import { PlaybackBar } from "@/components/playback-bar"
+import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
   HeartIcon,
   PauseIcon,
   PlayIcon,
   SearchIcon,
-  SkipBackIcon,
-  SkipForwardIcon,
-  VolumeIcon,
 } from "@/components/icons"
 
 export default function PlaylistDetailPage() {
@@ -46,12 +45,10 @@ export default function PlaylistDetailPage() {
   // Track search filter
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  // Audio Playback state
-  const [isPlaying, setIsPlaying] = React.useState(false)
-  const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
-  const [playbackProgress, setPlaybackProgress] = React.useState(35) // percentage 0-100
-  const [volume, setVolume] = React.useState(70) // percentage 0-100
-  const [isMuted, setIsMuted] = React.useState(false)
+  // Playback is shared by every page (see playback-store); this page shows it when it comes
+  // from this playlist, and starts this playlist when one of its tracks is played
+  const playback = usePlayback()
+  const isThisPlaylist = isPlayingFrom(playback, playlistId ?? "")
   const [likedTracks, setLikedTracks] = React.useState<Record<string, boolean>>({
     t1: true,
     t3: true,
@@ -69,15 +66,14 @@ export default function PlaylistDetailPage() {
     persistPlaylists(updated)
   }
 
-  // Reorder tracks (drag in the tracklist); the playing track stays the same one
+  // Reorder tracks (drag in the tracklist); playback follows the track id, so the playing
+  // track stays the same one
   const handleReorderTracks = (ids: string[]) => {
     if (!currentPlaylist) return
-    const playingId = currentPlaylist.tracks[currentTrackIndex]?.id
     const reordered = ids
       .map((id) => currentPlaylist.tracks.find((t) => t.id === id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t))
     persistPlaylists(playlists.map((p) => (p.id === currentPlaylist.id ? { ...p, tracks: reordered } : p)))
-    setCurrentTrackIndex(Math.max(0, reordered.findIndex((t) => t.id === playingId)))
   }
 
   // If playlist not found
@@ -104,19 +100,18 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = currentPlaylist.tracks
+  const currentTrackIndex = isThisPlaylist
+    ? Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
+    : 0
+  const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
+  const playAt = (index: number, playing = true) => {
+    const track = tracks[index]
+    if (track) playPlaylist(currentPlaylist.id, track.id, playing)
+  }
+  // Skipping keeps a paused playlist paused; on a playlist that is not playing, it starts it
+  const skipTo = (index: number) => playAt(index, isThisPlaylist ? isPlaying : true)
   const contrastText = getContrastTextColor(currentPlaylist.color)
-  // The playlist color becomes this page's accent: primary, focus ring and text selection
-  // (selection:bg-primary/20 below) all follow it. Light colors get a darker variant so
-  // accent text and icons stay readable on the paper background.
-  const isLightColor = contrastText === "text-black"
-  const playlistAccent = {
-    "--primary": isLightColor
-      ? `color-mix(in oklab, ${currentPlaylist.color} 70%, black)`
-      : currentPlaylist.color,
-    // Dark colors already carry light text; light ones are darkened above, so light text fits both
-    "--primary-foreground": "var(--color-paper-bright)",
-    "--ring": currentPlaylist.color,
-  } as React.CSSProperties
+  const playlistAccent = getPlaylistAccentStyle(currentPlaylist.color)
   const totalDurationMin = Math.round(
     tracks.reduce((acc, t) => acc + t.durationSec, 0) / 60
   )
@@ -134,12 +129,6 @@ export default function PlaylistDetailPage() {
 
   const currentPlayingTrack = tracks[currentTrackIndex]
 
-  // Calculate current elapsed time in mm:ss from playbackProgress
-  const currentElapsedSec = Math.round(
-    ((currentPlayingTrack?.durationSec ?? 240) * playbackProgress) / 100
-  )
-  const elapsedMin = Math.floor(currentElapsedSec / 60)
-  const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
 
   return (
     <div
@@ -282,6 +271,11 @@ export default function PlaylistDetailPage() {
                   const actualIdx = tracks.findIndex((t) => t.id === track.id)
                   const isTrackActive = isPlaying && currentTrackIndex === actualIdx
                   const isLiked = likedTracks[track.id] ?? false
+                  // Clicking the playing track pauses it; any other click plays the clicked track
+                  const playOrPauseRow = () => {
+                    if (isTrackActive) togglePlayback()
+                    else playAt(actualIdx)
+                  }
 
                   return (
                     <div
@@ -295,7 +289,7 @@ export default function PlaylistDetailPage() {
                           : "border-border/70 bg-surface/70 hover:bg-surface hover:border-border"
                       )}
                     >
-                      {/* Row-wide play button: a click anywhere on the row plays the track. The
+                      {/* Row-wide play button: a click anywhere on the row plays the track, or pauses it while it plays. The
                           other buttons sit above it (relative z-10) and keep their own action;
                           data-row-action keeps the row draggable through it. */}
                       <button
@@ -303,10 +297,7 @@ export default function PlaylistDetailPage() {
                         data-row-action
                         tabIndex={-1}
                         aria-hidden="true"
-                        onClick={() => {
-                          setCurrentTrackIndex(actualIdx)
-                          setIsPlaying(true)
-                        }}
+                        onClick={playOrPauseRow}
                         className="absolute inset-0 rounded-xl cursor-[inherit]"
                       />
                       {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
@@ -327,10 +318,7 @@ export default function PlaylistDetailPage() {
                         <div className="min-w-0">
                           <button
                             type="button"
-                            onClick={() => {
-                              setCurrentTrackIndex(actualIdx)
-                              setIsPlaying(true)
-                            }}
+                            onClick={playOrPauseRow}
                             className={cn(
                               "pointer-events-auto font-bold text-sm text-left truncate cursor-pointer hover:underline block",
                               isTrackActive ? "text-primary" : "text-foreground"
@@ -365,14 +353,7 @@ export default function PlaylistDetailPage() {
                         {/* Play / Pause button */}
                         <button
                           type="button"
-                          onClick={() => {
-                            if (isTrackActive) {
-                              setIsPlaying(!isPlaying)
-                            } else {
-                              setCurrentTrackIndex(actualIdx)
-                              setIsPlaying(true)
-                            }
-                          }}
+                          onClick={playOrPauseRow}
                           className={cn(
                             "pointer-events-auto size-7 rounded-lg border border-border flex items-center justify-center transition-all cursor-pointer",
                             isTrackActive
@@ -407,123 +388,22 @@ export default function PlaylistDetailPage() {
           </div>
         </div>
 
-        {/* =========================================================================
-            PERSISTENT BOTTOM AUDIO CONTROLLER (LIGHT THEME & PLAYLIST ACCENT)
-            ========================================================================= */}
-        <div className="fixed bottom-0 inset-x-0 h-20 bg-surface/95 backdrop-blur-md border-t border-border px-6 flex items-center justify-between z-40 shadow-lg">
-          {/* Left: Track Name & Mini Cover */}
-          <div className="flex items-center gap-3 w-1/4 min-w-[140px]">
-            <div
-              className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
-              style={{ backgroundColor: currentPlaylist.color }}
-            >
-              <span className={cn(contrastText)}>
-                {getPlaylistInitials(currentPlaylist.name)}
-              </span>
-            </div>
-            <div className="min-w-0 hidden sm:block">
-              <div className="font-bold text-xs text-foreground truncate">
-                {currentPlayingTrack?.title}
-              </div>
-              <div className="text-[11px] text-muted-foreground truncate">
-                {currentPlayingTrack?.artist}
-              </div>
-            </div>
-          </div>
-
-          {/* Center: Playback Controls & Progress Scrubber */}
-          <div className="flex flex-col items-center gap-1.5 flex-1 max-w-md px-2">
-            <div className="flex items-center gap-4 text-sm">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentTrackIndex((prev) => (prev > 0 ? prev - 1 : tracks.length - 1))
-                }}
-                aria-label="Faixa anterior"
-                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <SkipBackIcon size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
-                aria-label={isPlaying ? "Pausar reprodução" : "Iniciar reprodução"}
-                className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-              >
-                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentTrackIndex((prev) => (prev < tracks.length - 1 ? prev + 1 : 0))
-                }}
-                aria-label="Próxima faixa"
-                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <SkipForwardIcon size={18} />
-              </button>
-            </div>
-
-            {/* Dynamic Scrubber colored with the playlist color */}
-            <div className="w-full flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-              <span>{isPlaying ? `${elapsedMin}:${elapsedSecFormatted}` : "0:00"}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const clickX = e.clientX - rect.left
-                  const percentage = Math.max(0, Math.min(100, (clickX / rect.width) * 100))
-                  setPlaybackProgress(Math.round(percentage))
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    setPlaybackProgress((p) => Math.min(100, p + 5))
-                  } else if (e.key === "ArrowLeft") {
-                    setPlaybackProgress((p) => Math.max(0, p - 5))
-                  }
-                }}
-                aria-label="Avançar ou retroceder na reprodução"
-                className="relative flex-1 h-3 flex items-center cursor-pointer group focus:outline-none"
-              >
-                <span className="w-full h-1.5 bg-border rounded-full overflow-hidden block">
-                  <span
-                    className="h-full rounded-full transition-all block"
-                    style={{
-                      width: `${playbackProgress}%`,
-                      backgroundColor: currentPlaylist.color,
-                    }}
-                  />
-                </span>
-              </button>
-              <span>{currentPlayingTrack?.duration || "0:00"}</span>
-            </div>
-          </div>
-
-          {/* Right: Volume Control */}
-          <div className="flex items-center justify-end gap-2 w-1/4 min-w-[120px] text-xs text-muted-foreground">
-            <button
-              type="button"
-              onClick={() => setIsMuted(!isMuted)}
-              aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
-              className="hover:text-foreground transition-colors cursor-pointer"
-            >
-              <VolumeIcon level={isMuted || volume === 0 ? "muted" : volume < 50 ? "low" : "high"} size={18} />
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={isMuted ? 0 : volume}
-              onChange={(e) => {
-                setVolume(Number(e.target.value))
-                setIsMuted(false)
-              }}
-              aria-label="Volume"
-              className="w-20 sm:w-28 h-1.5 cursor-pointer"
-              style={{ accentColor: currentPlaylist.color }}
-            />
-          </div>
-        </div>
+        {/* Bottom audio controller; its queue button opens this playlist in the player */}
+        <PlaybackBar
+          track={currentPlayingTrack}
+          coverLabel={getPlaylistInitials(currentPlaylist.name)}
+          color={currentPlaylist.color}
+          isPlaying={isPlaying}
+          onTogglePlay={() => (isThisPlaylist ? togglePlayback() : playAt(currentTrackIndex))}
+          onPrevious={() => skipTo(currentTrackIndex > 0 ? currentTrackIndex - 1 : tracks.length - 1)}
+          onNext={() => skipTo(currentTrackIndex < tracks.length - 1 ? currentTrackIndex + 1 : 0)}
+          queueOpen={false}
+          // Opening the queue plays this playlist, unless it is already the one playing
+          onOpenQueue={() => {
+            if (!isThisPlaylist) playAt(currentTrackIndex)
+          }}
+          closeQueueHref={`/playlist/${currentPlaylist.id}`}
+        />
       </main>
 
       {/* =========================================================================

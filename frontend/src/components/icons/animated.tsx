@@ -15,6 +15,7 @@ import { PlusIcon as AnimatedPlus } from "./lucide-animated/plus"
 import { SearchIcon as AnimatedSearch } from "./lucide-animated/search"
 import { XIcon as AnimatedX } from "./lucide-animated/x"
 import { UserIcon as AnimatedUser } from "./lucide-animated/user"
+import { GalleryHorizontalEndIcon as AnimatedGalleryHorizontalEnd } from "./lucide-animated/gallery-horizontal-end"
 import { ListIcon as AnimatedList } from "./custom/list"
 
 // Animated icon set: lucide-animated (https://lucide-animated.com, MIT, copied into
@@ -90,6 +91,8 @@ export const MenuIcon = withParentHover(AnimatedMenu, "MenuIcon")
 export const PlusIcon = withParentHover(AnimatedPlus, "PlusIcon")
 export const ListIcon = withParentHover(AnimatedList, "ListIcon")
 export const UserIcon = withParentHover(AnimatedUser, "UserIcon")
+// The play queue: a card in front with more stacked behind it, like the player itself
+export const QueueIcon = withParentHover(AnimatedGalleryHorizontalEnd, "QueueIcon")
 
 export const AlertIcon = staticLucide(CircleAlert)
 export const LogOutIcon = staticLucide(LogOut)
