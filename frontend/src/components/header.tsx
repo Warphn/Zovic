@@ -8,6 +8,7 @@ import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
 import { CloseIcon, LogOutIcon, MenuIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
+import { Badge } from "@/components/ui/badge";
 
 const NAV_LINKS = [
   { label: "Como funciona", href: "/#como-funciona" },
@@ -70,7 +71,9 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
   }
 
   const signOut = async () => {
-    await authClient.signOut();
+    // If the API could not end the session, stay put: the account pill shows it is still open
+    const { error } = await authClient.signOut();
+    if (error) return;
     onNavigate?.();
     router.push("/");
   };
@@ -95,6 +98,15 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
               <div className="px-2.5 py-2">
                 <div className="truncate text-sm font-semibold">{session.user.name}</div>
                 <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
+                {/* What the account can access: platform role and age group, as the API reports them */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge variant={session.user.role === "admin" ? "default" : "secondary"} className="text-[10px]">
+                    {session.user.role === "admin" ? "Admin" : "Assinante"}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {session.user.isAdult ? "Maior de idade" : "Menor de idade"}
+                  </Badge>
+                </div>
               </div>
               <div className="my-1 h-px bg-border" />
               <Menu.Item

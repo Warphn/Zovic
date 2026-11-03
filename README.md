@@ -114,9 +114,25 @@ curl -b cookies.txt -X POST http://localhost:3333/api/auth/sign-out \
 
 O `sign-out` (e qualquer POST feito com cookie) precisa do header `Origin`, que o navegador já manda; a origem tem de estar em `CORS_ORIGIN`. Os usuários que existiam antes do Better Auth não têm email nem senha e não conseguem entrar. O seed PROD não cria credenciais.
 
-Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do Better Auth); a sessão dura 30 dias, renovada a cada 15 dias de uso; o login permite 5 tentativas por 15 minutos por IP e o cadastro 10 por hora. Usuário com soft delete (`deleted_at`) não loga e perde as sessões que tinha. Esqueci minha senha, confirmação de email e login social ainda não estão ligados, mas o schema já tem as tabelas `account` e `verification`.
+Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do Better Auth); a sessão dura 30 dias, renovada a cada 15 dias de uso; o login permite 5 tentativas por 15 minutos por IP e o cadastro 10 por hora. Usuário com soft delete (`deleted_at`) não loga e perde as sessões que tinha. O token da sessão só circula no cookie: a API o tira do corpo de todas as respostas de `/api/auth/*` (`api/adapters/http/hide-session-tokens.ts`), para o JavaScript da página nunca lê-lo. Esqueci minha senha, confirmação de email e login social ainda não estão ligados, mas o schema já tem as tabelas `account` e `verification`.
 
 > **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
+
+**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, só pelo banco:
+
+```sql
+UPDATE "user" SET role = 'admin' WHERE email = 'pessoa@exemplo.com';
+```
+
+A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
+
+**No frontend**, as telas `/entrar` e `/cadastro` usam o cliente do Better Auth (`frontend/src/lib/auth/client.ts`), e as áreas logadas (`/playlist`, `/busca`) mandam para `/entrar` quem não tem sessão. O navegador chama a API **direto** (não passa pelo servidor do Next): a API libera a origem do frontend por CORS (`CORS_ORIGIN`) e o cookie é dela, então o JavaScript da página nunca vê a sessão. Para isso funcionar:
+
+- a origem do frontend (ex.: `http://localhost:3000`) precisa estar em `CORS_ORIGIN`;
+- frontend e API precisam estar no **mesmo site** (mesmo domínio, portas e subdomínios podem mudar: `localhost:3000` + `localhost:3333`, ou `zovic.com` + `api.zovic.com`), senão o navegador não envia o cookie `SameSite=Lax`;
+- o endereço da API vem de `NEXT_PUBLIC_API_URL` (padrão `http://localhost:3333`), lido **no build** do Next. Para mudar, crie `frontend/.env.local` ou passe `--build-arg NEXT_PUBLIC_API_URL=...` na imagem.
+
+O redirecionamento para `/entrar` é só de interface: quem protege os dados é a API, que confere o cookie em toda requisição.
 
 Variáveis do `.env`:
 
@@ -124,7 +140,7 @@ Variáveis do `.env`:
 | --- | --- |
 | `BETTER_AUTH_SECRET` | **Obrigatória.** Segredo (32+ caracteres) que assina o cookie de sessão. O `.env.example` traz um valor só para desenvolvimento; em produção gere um segredo forte (`openssl rand -base64 32`). **Quem já tem um `.env` precisa acrescentar essa linha.** |
 | `BETTER_AUTH_URL` | URL pública da API, sem o `/api/auth`. Padrão: `http://localhost:<PORT>`. |
-| `CORS_ORIGIN` | Origens do frontend (separadas por vírgula) aceitas pelo Better Auth nas requisições com cookie. |
+| `CORS_ORIGIN` | Origens do frontend (separadas por vírgula, exatas) liberadas no CORS da API e aceitas pelo Better Auth nas requisições com cookie. Vazia, nenhuma origem é liberada. |
 | `COOKIE_SECURE` | Se a variável faltar, a API (fora do docker compose) emite o cookie com `Secure` (e o nome ganha o prefixo `__Secure-`), e o navegador (ou o curl) não o guarda em `http://`. Em desenvolvimento use `COOKIE_SECURE=false`; o docker compose já assume `false` quando ela falta. Em produção, com HTTPS, deixe ligado. |
 | `TRUST_PROXY` | Opcional. Número de proxies confiáveis (inteiro >= 1) para quando a API roda atrás de um proxy reverso com TLS: sem isso o rate limit vê o IP do proxy, não o do cliente. Deixe vazio se a API for exposta direto. |
 
