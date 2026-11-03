@@ -12,6 +12,8 @@ Não confunda com os `model` do `schema.prisma`: aqueles só espelham as tabelas
 | **Porta** | `api/domain/ports/` | Interface do repositório: diz *o que* o domínio precisa do banco (`save`, `findById`…), sem dizer *como*. |
 | **Repositório** | `api/adapters/db/` | Implementa a porta com SQL no Postgres. Converte linha do banco ↔ entidade. |
 | **Caso de uso** | `api/domain/use-cases/` | Orquestra: pede um id, cria/carrega a entidade, chama os métodos e salva. |
+| **Porta de consulta** | `api/domain/ports/` | Para leituras que cruzam muitas tabelas (como a busca, `SearchQuery`): devolve os dados já no formato da resposta, sem montar entidades. A implementação fica em `api/adapters/db/postgres-<nome>-query.ts`. |
+| **Controller e rotas** | `api/adapters/http/` | Validam a requisição com Joi (`schemas/` e `middlewares/validate-request.ts`), chamam o caso de uso e respondem. A ligação das peças fica em `api/infra/composition-root.ts`. |
 
 O fluxo típico de um caso de uso:
 
@@ -190,8 +192,9 @@ As portas ficam em `api/domain/ports/` e as implementações em `api/adapters/db
 | --- | --- | --- |
 | `nextId()` | Todos | Reserva o próximo id da tabela (antes do `create`). |
 | `save(entidade)` | Todos | Insere ou atualiza (upsert pelo `id`). Quando há vínculos, regrava as tabelas associativas na **mesma transação**: se algo falhar, nada é gravado. |
-| `findById(id)` | Genre, Artist, Album, Music | Carrega a entidade com seus vínculos. Devolve `null` se não existir **ou estiver apagada**. |
+| `findById(id)` | Todos | Carrega a entidade com seus vínculos. Devolve `null` se não existir **ou estiver apagada**. |
 | `findByIds(ids)` | Music | Carrega várias músicas ativas, **na ordem dos ids pedidos**. Ids inexistentes são ignorados. |
+| `listByUser(userId)` | Playlist | As playlists ativas de que o usuário é membro, da mais nova para a mais antiga. |
 
 Erros do banco traduzidos para erros de domínio:
 
