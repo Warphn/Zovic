@@ -1,0 +1,28 @@
+meta {
+  name: Reordenar com lista velha
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics/order
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicIds": [{{musicB}}]
+  }
+}
+
+docs {
+  Falta uma música: é o que acontece quando outro admin pôs ou tirou música depois que a lista foi carregada.
+}
+
+tests {
+  test("responde 409 e não muda a ordem", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().error).to.equal("BUSINESS_RULE_ERROR");
+  });
+}

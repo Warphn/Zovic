@@ -362,6 +362,149 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/playlists/{id}/musics": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      get: {
+        tags: ["Playlists"],
+        summary: "Lista as músicas de uma playlist",
+        description:
+          "As músicas ativas da playlist, na ordem dela (a mesma para todos que a veem). Quem vê a playlist vê as músicas: a privada de outra pessoa responde 404. Músicas apagadas ficam de fora, e artistas apagados saem da lista de artistas.",
+        operationId: "listPlaylistMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas da playlist, por posição (lista vazia se não houver nenhuma)",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      post: {
+        tags: ["Playlists"],
+        summary: "Põe uma música na playlist",
+        description:
+          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova.",
+        operationId: "addPlaylistMusic",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AddPlaylistMusicRequest" },
+              example: { musicId: 12 },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Música incluída; a lista inteira, por posição",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": {
+            description: "Id da playlist ou `musicId` inválido, ou JSON malformado",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a música não existe ou foi apagada",
+            content: {
+              "application/json": {
+                schema: errorResponse("NOT_FOUND", "Music not found"),
+              },
+            },
+          },
+          "409": {
+            description: "A música já está na playlist",
+            content: {
+              "application/json": {
+                schema: errorResponse("BUSINESS_RULE_ERROR", "Music is already in this playlist"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/musics/order": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      put: {
+        tags: ["Playlists"],
+        summary: "Reordena as músicas da playlist",
+        description:
+          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Responde com a lista na ordem nova.",
+        operationId: "reorderPlaylistMusics",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ReorderPlaylistMusicsRequest" },
+              example: { musicIds: [31, 12, 7] },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Ordem gravada; a lista inteira na ordem nova",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": {
+            description: "Id da playlist inválido, `musicIds` ausente, com id inválido ou repetido, ou JSON malformado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FieldValidationError" },
+                example: { error: "VALIDATION_ERROR", fields: [{ field: "musicIds.1", message: '"musicIds[1]" contains a duplicate value' }] },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": {
+            description: "A lista não tem exatamente as músicas da playlist: recarregue e tente de novo",
+            content: {
+              "application/json": {
+                schema: errorResponse(
+                  "BUSINESS_RULE_ERROR",
+                  "The new order must have exactly the playlist's musics; reload it and try again",
+                ),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/musics/{musicId}": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }, { $ref: "#/components/parameters/MusicId" }],
+      delete: {
+        tags: ["Playlists"],
+        summary: "Tira uma música da playlist",
+        description: "Só admins da playlist. As outras músicas mantêm a ordem.",
+        operationId: "removePlaylistMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música tirada da playlist" },
+          "400": {
+            description: "Id da playlist ou da música não é um inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a música não está nela",
+            content: {
+              "application/json": { schema: errorResponse("NOT_FOUND", "Music is not in this playlist") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/search": {
       get: {
         tags: ["Busca"],
@@ -408,6 +551,13 @@ export const openApiDocument = {
   },
   components: {
     parameters: {
+      MusicId: {
+        name: "musicId",
+        in: "path",
+        required: true,
+        description: "Id da música: inteiro positivo, sem zero à esquerda.",
+        schema: { type: "integer", minimum: 1, maximum: 2_147_483_647, example: 12 },
+      },
       PlaylistId: {
         name: "id",
         in: "path",
@@ -457,7 +607,7 @@ export const openApiDocument = {
         },
       },
       NotPlaylistAdmin: {
-        description: "O usuário vê a playlist, mas não é admin dela",
+        description: "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas)",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
         },
@@ -654,6 +804,70 @@ export const openApiDocument = {
             type: "boolean",
             description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
             example: true,
+          },
+        },
+      },
+      PlaylistMusicList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/PlaylistMusic" },
+      },
+      PlaylistMusic: {
+        type: "object",
+        required: ["id", "name", "duration", "artists", "album", "addedAt"],
+        properties: {
+          id: { type: "integer", example: 12 },
+          name: { type: "string", example: "Ressaca" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: {
+                id: { type: "integer", example: 1 },
+                name: { type: "string", example: "Maré Alta" },
+              },
+            },
+          },
+          album: {
+            description: "O álbum ativo de menor id que contém a música, ou null se ela não está em nenhum.",
+            oneOf: [
+              {
+                type: "object",
+                required: ["id", "name"],
+                properties: {
+                  id: { type: "integer", example: 3 },
+                  name: { type: "string", example: "Ondas de Concreto" },
+                },
+              },
+              { type: "null" },
+            ],
+          },
+          addedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Quando a música entrou na playlist.",
+            example: "2026-11-03T18:20:00.000Z",
+          },
+        },
+      },
+      AddPlaylistMusicRequest: {
+        type: "object",
+        required: ["musicId"],
+        properties: { musicId: { type: "integer", minimum: 1, example: 12 } },
+      },
+      ReorderPlaylistMusicsRequest: {
+        type: "object",
+        required: ["musicIds"],
+        properties: {
+          musicIds: {
+            type: "array",
+            uniqueItems: true,
+            maxItems: 10_000,
+            description: "Todas as músicas da playlist, na ordem nova.",
+            items: { type: "integer", minimum: 1 },
+            example: [31, 12, 7],
           },
         },
       },

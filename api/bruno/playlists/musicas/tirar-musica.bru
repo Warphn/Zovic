@@ -1,0 +1,17 @@
+meta {
+  name: Tirar música
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics/{{musicB}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
