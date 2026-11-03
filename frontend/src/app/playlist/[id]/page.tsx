@@ -17,8 +17,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { apiErrorMessage } from "@/lib/api/client"
-import { parsePlaylistId, useReorderPlaylistMusics, useUpdatePlaylist } from "@/lib/api/playlists"
-import { getPlaylistInitials, usePlaylistData } from "@/lib/playlist-store"
+import {
+  parsePlaylistId,
+  useRemovePlaylistMusic,
+  useReorderPlaylistMusics,
+  useUpdatePlaylist,
+} from "@/lib/api/playlists"
+import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
+import { Label } from "@/components/ui/label"
+import {
+  getPlaylistInitials,
+  MAX_PLAYLIST_NAME_LENGTH,
+  type PlaylistDraft,
+  playlistChanges,
+  usePlaylistData,
+} from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -27,7 +40,9 @@ import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/
 import {
   ArrowLeftIcon,
   HeartIcon,
+  ListMinusIcon,
   PauseIcon,
+  PencilIcon,
   PlayIcon,
   SearchIcon,
 } from "@/components/icons"
@@ -40,10 +55,11 @@ export default function PlaylistDetailPage() {
   const { data: currentPlaylist, isPending, error, tracksError } = usePlaylistData(playlistId)
   const updatePlaylist = useUpdatePlaylist()
   const reorderTracks = useReorderPlaylistMusics()
+  const removeTrack = useRemovePlaylistMusic()
 
-  const [isColorModalOpen, setIsColorModalOpen] = React.useState(false)
-  // The color being picked: previewed on the page, saved once when the dialog closes
-  const [draftColor, setDraftColor] = React.useState<string | null>(null)
+  // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
+  // color is previewed on the page; nothing is saved until "Salvar"
+  const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
@@ -55,20 +71,35 @@ export default function PlaylistDetailPage() {
     t3: true,
   })
 
-  const openColorModal = () => {
+  const openEditor = () => {
+    if (!currentPlaylist) return
     updatePlaylist.reset()
-    setIsColorModalOpen(true)
+    setDraft({ name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color })
   }
 
-  // Closing the dialog saves the picked color, if it changed; on failure the old color comes back
-  const closeColorModal = () => {
-    setIsColorModalOpen(false)
+  // Closing without saving drops the draft, color preview included
+  const closeEditor = () => setDraft(null)
+
+  // One PATCH with only what changed; on failure the dialog stays open with the reason
+  const saveEditor = (e: React.FormEvent) => {
+    e.preventDefault()
     const id = parsePlaylistId(playlistId)
-    if (id !== null && draftColor !== null && draftColor !== currentPlaylist?.color) {
-      updatePlaylist.mutate({ id, input: { color: draftColor } }, { onSettled: () => setDraftColor(null) })
-    } else {
-      setDraftColor(null)
+    if (!currentPlaylist || !draft || id === null) return
+    const changes = playlistChanges(
+      { name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color },
+      draft
+    )
+    if (!changes) {
+      if (draft.name.trim()) closeEditor()
+      return
     }
+    updatePlaylist.mutate({ id, input: changes }, { onSuccess: closeEditor })
+  }
+
+  // Takes a track out of the playlist (admins only); the list refreshes from the API
+  const handleRemoveTrack = (trackId: string) => {
+    const id = parsePlaylistId(playlistId)
+    if (id !== null) removeTrack.mutate({ id, musicId: Number(trackId) })
   }
 
   // Reorder tracks (drag in the tracklist): saved for everyone who sees the playlist. The list
@@ -99,12 +130,10 @@ export default function PlaylistDetailPage() {
           <div className="mb-6 size-20 rounded-md border border-dashed border-border" aria-hidden="true" />
           <h1 className="text-2xl font-medium mb-2">Playlist não encontrada</h1>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            {error && !error.startsWith("Registro não encontrado")
-              ? error
-              : "Ela pode ter sido removida, ser privada ou o link está incorreto"}
+            {error ?? "Ela pode ter sido removida, ser privada ou o link está incorreto"}
           </p>
           <Link href="/playlist" className={cn(buttonVariants({ size: "lg" }), "gap-2")}>
-            <ArrowLeftIcon size={16} /> Voltar ao catálogo
+            <ArrowLeftIcon size={16} /> Voltar às playlists
           </Link>
         </main>
       </div>
@@ -112,7 +141,7 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = currentPlaylist.tracks
-  const color = draftColor ?? currentPlaylist.color
+  const color = draft?.color ?? currentPlaylist.color
   // The current track of this playlist is marked even while paused, so the list shows where
   // playback stands
   const currentTrackIndex = isThisPlaylist
@@ -153,28 +182,15 @@ export default function PlaylistDetailPage() {
               className="inline-flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               <ArrowLeftIcon size={16} />
-              <span>Catálogo</span>
+              <span>Playlists</span>
             </Link>
 
             {/* Only a playlist admin can edit it; the API refuses anyone else */}
             {currentPlaylist.canEdit && (
-              <div className="flex items-center gap-3">
-                {updatePlaylist.isError && (
-                  <p role="alert" className="text-xs text-destructive">
-                    Não deu para salvar a cor. {apiErrorMessage(updatePlaylist.error)}
-                  </p>
-                )}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={openColorModal}
-                  disabled={updatePlaylist.isPending}
-                  className="gap-2"
-                >
-                  <span className="size-3 rounded-full ring-1 ring-ink/15" style={{ backgroundColor: color }} />
-                  Alterar cor
-                </Button>
-              </div>
+              <Button variant="outline" size="lg" onClick={openEditor} className="gap-2">
+                <PencilIcon size={16} className="text-muted-foreground" />
+                Editar playlist
+              </Button>
             )}
           </div>
 
@@ -226,6 +242,11 @@ export default function PlaylistDetailPage() {
                 Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
               </p>
             )}
+            {removeTrack.isError && (
+              <p role="alert" className="py-2 text-xs text-destructive">
+                Não deu para tirar a faixa. {apiErrorMessage(removeTrack.error)}
+              </p>
+            )}
 
             {/* Drag to reorder (playlist admins only); off while searching, since only part of the list shows */}
             {tracksError ? (
@@ -233,9 +254,15 @@ export default function PlaylistDetailPage() {
                 Não deu para carregar as faixas. {tracksError}
               </p>
             ) : tracks.length === 0 ? (
-              <p className="py-12 text-center font-mono text-xs text-muted-foreground">
-                Nenhuma faixa nesta playlist ainda
-              </p>
+              // An empty playlist: admins get the way to fill it, everyone else just an empty list
+              currentPlaylist.canEdit && (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Busque uma música e use{" "}
+                  <Link href="/busca" className="text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground">
+                    Adicionar à playlist
+                  </Link>
+                </p>
+              )
             ) : filteredTracks.length === 0 ? (
               <p className="py-12 text-center font-mono text-xs text-muted-foreground">
                 Nenhuma faixa com “{searchQuery.trim()}”
@@ -342,6 +369,20 @@ export default function PlaylistDetailPage() {
                         >
                           <HeartIcon size={16} className={cn(isLiked && "[&_svg]:fill-current")} />
                         </button>
+
+                        {currentPlaylist.canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTrack(track.id)}
+                            disabled={removeTrack.isPending && removeTrack.variables?.musicId === Number(track.id)}
+                            aria-label={`Tirar ${track.title} da playlist`}
+                            title="Tirar da playlist"
+                            // Shown on the row's hover or focus, like delete on the shelf; always on touch screens
+                            className="pointer-events-auto flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,opacity] duration-150 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 disabled:opacity-40 [@media(hover:none)]:opacity-100"
+                          >
+                            <ListMinusIcon size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -352,24 +393,48 @@ export default function PlaylistDetailPage() {
         </div>
       </main>
 
-      <Dialog open={isColorModalOpen} onOpenChange={(open) => (open ? openColorModal() : closeColorModal())}>
+      <Dialog open={draft !== null} onOpenChange={(open) => (open ? openEditor() : closeEditor())}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cor da playlist</DialogTitle>
-            <DialogDescription>
-              A cor vale para o encarte, o disco e os destaques desta página
-            </DialogDescription>
+            <DialogTitle>Editar playlist</DialogTitle>
+            <DialogDescription>A cor vale para o encarte, o disco e os destaques desta página</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-1">
-            <ColorPicker color={color} onChange={setDraftColor} />
+          {draft && (
+            <form onSubmit={saveEditor} className="space-y-5 pt-1">
+              <div className="space-y-2">
+                <Label htmlFor="edit-playlist-name" className="text-sm font-medium">
+                  Nome
+                </Label>
+                <Input
+                  id="edit-playlist-name"
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  maxLength={MAX_PLAYLIST_NAME_LENGTH}
+                  required
+                />
+              </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" size="lg" onClick={closeColorModal}>
-                Concluir
-              </Button>
-            </DialogFooter>
-          </div>
+              <ColorPicker color={draft.color} onChange={(next) => setDraft({ ...draft, color: next })} />
+
+              <PlaylistPrivacyField isPrivate={draft.isPrivate} onChange={(next) => setDraft({ ...draft, isPrivate: next })} />
+
+              {updatePlaylist.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {apiErrorMessage(updatePlaylist.error)}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" size="lg" onClick={closeEditor}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="lg" disabled={!draft.name.trim() || updatePlaylist.isPending}>
+                  {updatePlaylist.isPending ? "Salvando…" : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

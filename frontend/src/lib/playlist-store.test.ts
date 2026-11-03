@@ -5,6 +5,7 @@ import {
   DEFAULT_TRACKS,
   getPlaylistInitials,
   musicToTrack,
+  playlistChanges,
   toPlaylistData,
 } from "./playlist-store"
 
@@ -67,5 +68,25 @@ describe("playlist-store", () => {
     })
     // No album: the field stays empty and the covers fall back to the title
     expect(musicToTrack({ ...musics[1], album: null }).album).toBe("")
+  })
+})
+
+describe("playlistChanges", () => {
+  const current = { name: "Para correr", isPrivate: false, color: "#E4572E" }
+
+  it("sends only the fields that changed, with the name trimmed", () => {
+    expect(playlistChanges(current, { ...current, name: "  Treino  " })).toEqual({ name: "Treino" })
+    expect(playlistChanges(current, { ...current, isPrivate: true, color: "#1e7f82" })).toEqual({
+      isPrivate: true,
+      color: "#1e7f82",
+    })
+  })
+
+  it("is null when nothing changed, even if the color differs only in case or the name only in spaces", () => {
+    expect(playlistChanges(current, { ...current, name: " Para correr ", color: "#e4572e" })).toBeNull()
+  })
+
+  it("is null for a blank name, which the API refuses", () => {
+    expect(playlistChanges(current, { ...current, name: "   ", isPrivate: true })).toBeNull()
   })
 })
