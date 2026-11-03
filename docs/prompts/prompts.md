@@ -63,7 +63,6 @@ Depois, a equipe revisou e ajustou os dados gerados: os tipos de plano e os pre�
 
 Durante a sessão, a equipe também pediu vários ajustes pequenos de visual (alinhamentos, tamanho do feather, cursores, remoção de cores e de rótulos), revisou cada mudança no navegador e voltou atrás em ideias que não funcionaram, como um tema escuro para o app inteiro.
 
-<<<<<<< HEAD
 ### 03/11/2026: admin da plataforma e painel de admin
 
 | # | Prompt                                                                                                                                                                                                                                                                                                                                                                                                                                         | Resultado |
@@ -74,7 +73,7 @@ Durante a sessão, a equipe também pediu vários ajustes pequenos de visual (al
 | 4 | Me ajude com os conflitos ao mergear a `main` na minha branch.                                                                                                                                                                                                                                                                                                                                                                                 | Conflitos em [`routes.ts`](../../api/adapters/http/routes.ts) e [`composition-root.ts`](../../api/infra/composition-root.ts) resolvidos mantendo os dois lados; a migration de reproduções foi renomeada para depois da migration da `main`, para o Flyway não recusar uma versão fora de ordem |
 
 O primeiro desenho do papel de admin foi revertido porque a `main` já tinha uma versão parecida; o trabalho seguiu sobre a versão da `main`. A equipe testou o cadastro e o painel no navegador, pediu os ajustes de visual da linha 6 depois de ver as telas e decidiu manter o registro de reproduções na API mesmo com o player do frontend ainda simulado.
-=======
+
 ### 03/11/2026: rotas de playlist e busca
 
 | # | Prompt | Resultado |
@@ -84,4 +83,3 @@ O primeiro desenho do papel de admin foi revertido porque a `main` já tinha uma
 | 3 | Verifique o estado do repositório e atualize as documentações. | Seção "Rotas da API" no [`README.md`](../../README.md), [`docs/models.md`](../models.md), [`docs/banco-de-dados.md`](../banco-de-dados.md) e este registro |
 
 A equipe revisou o desenho da busca antes da implementação e fez os merges dos dois PRs.
->>>>>>> eb45abe (docs: update docs)
