@@ -69,6 +69,9 @@
 
   --color-ink: var(--ink);
   --color-paper: var(--paper);
+
+  /* Floating panels (search suggestions, account menu): a small, soft shadow in ink */
+  --shadow-popover: 0 1px 2px rgb(23 21 18 / 0.08), 0 12px 24px -12px rgb(23 21 18 / 0.3);
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);

@@ -11,3 +11,16 @@ export function formatTotalDuration(totalSec: number): string {
 export function sumDurationSec(tracks: { durationSec: number }[]): number {
   return tracks.reduce((acc, t) => acc + t.durationSec, 0)
 }
+
+/** 258 → "4:18". */
+export function formatDuration(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+}
+
+/** "4:18" or "258" → 258; null when it is neither. */
+export function parseDuration(value: string): number | null {
+  const text = value.trim()
+  const match = /^(\d+):([0-5]\d)$/.exec(text)
+  const seconds = match ? Number(match[1]) * 60 + Number(match[2]) : /^\d+$/.test(text) ? Number(text) : NaN
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : null
+}

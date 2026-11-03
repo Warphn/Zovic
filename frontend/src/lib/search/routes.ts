@@ -2,7 +2,7 @@ import type { SearchSuggestion } from "./suggestions"
 
 // Where each suggestion leads. Tracks and artists have no pages of their own yet: artists open
 // the results page, and tracks are played in place by the search bar and the results page
-// (their href, the playlist they are in, is only a fallback). When those pages exist, only
+// (their href, the results for the title, is only a fallback). When those pages exist, only
 // this file changes.
 
 export const SEARCH_PATH = "/busca"
@@ -16,7 +16,7 @@ export function suggestionHref(suggestion: SearchSuggestion): string {
     case "query":
       return searchHref(suggestion.text)
     case "track":
-      return `/playlist/${suggestion.playlistId}`
+      return searchHref(suggestion.title)
     case "artist":
       return searchHref(suggestion.name)
     case "playlist":

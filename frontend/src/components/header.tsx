@@ -10,7 +10,6 @@ import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
 import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
-import { Badge } from "@/components/ui/badge";
 
 const NAV_LINKS = [
   { label: "Recursos", href: "/#recursos" },
@@ -19,6 +18,9 @@ const NAV_LINKS = [
 ];
 
 const HEADER_HEIGHT = 64;
+
+// The sign-in and sign-up pages are where "Entrar" leads, so the header does not offer it there
+const AUTH_PATHS = new Set(["/entrar", "/cadastro"]);
 
 // True while a section marked data-header-theme="dark" sits under the header, so the header
 // can switch to light text there.
@@ -62,11 +64,13 @@ const navLinkClasses =
 // flash the wrong state.
 function SessionControls({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session, isPending } = useSession();
   const { subscription } = useSubscription();
 
   if (isPending) return null;
   if (!session) {
+    if (AUTH_PATHS.has(pathname)) return null;
     return (
       <Link href="/entrar" onClick={onNavigate} className={`${navLinkClasses} text-foreground ${className ?? ""}`}>
         Entrar
@@ -82,12 +86,11 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
     router.push("/");
   };
 
-  // Admins get the pill in the brand red-orange. --color-red, not --primary: on a playlist page
-  // --primary follows the playlist accent, and the admin cue should look the same everywhere.
+  // Admins are marked by a small red dot, the same in the pill and in the menu. --color-red, not
+  // --primary: on a playlist page --primary follows the playlist accent, and the admin cue should
+  // look the same everywhere.
   const isAdmin = session.user.role === "admin";
-  const pillClasses = isAdmin
-    ? "border-transparent bg-[var(--color-red)] text-[var(--color-paper-bright)] hover:bg-[color-mix(in_oklab,var(--color-red),black_10%)] data-[popup-open]:bg-[color-mix(in_oklab,var(--color-red),black_10%)]"
-    : "border-border bg-surface/60 text-foreground hover:bg-surface data-[popup-open]:bg-surface";
+  const adminDot = <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--color-red)]" />;
 
   return (
     <div className={className}>
@@ -96,28 +99,29 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
       <Menu.Root>
         <Menu.Trigger
           aria-label={`Conta de ${session.user.name}${isAdmin ? " (admin)" : ""}`}
-          className={`flex h-9 cursor-pointer items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${pillClasses}`}
+          className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface/60 pl-1.5 pr-3.5 text-sm font-medium text-foreground transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 data-[popup-open]:bg-surface"
         >
-          <span className={`flex size-6 items-center justify-center rounded-full ${isAdmin ? "bg-white/20" : "bg-foreground/10"}`}>
+          <span className="flex size-6 items-center justify-center rounded-full bg-foreground/10 text-muted-foreground">
             <UserIcon size={14} />
           </span>
           {session.user.name.split(" ")[0]}
+          {isAdmin && adminDot}
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner sideOffset={8} align="end" className="z-[60]">
-            <Menu.Popup className="min-w-52 rounded-xl border border-border bg-surface p-1.5 text-foreground shadow-xl outline-none origin-[var(--transform-origin)] transition-[transform,opacity] duration-150 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
+            <Menu.Popup className="min-w-52 rounded-xl border border-border bg-surface p-1.5 text-foreground shadow-popover outline-none origin-[var(--transform-origin)] transition-[transform,opacity] duration-150 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0">
               <div className="px-2.5 py-2">
-                <div className="truncate text-sm font-semibold">{session.user.name}</div>
+                <div className="truncate text-sm font-medium">{session.user.name}</div>
                 <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
-                {/* What the account can access: platform role and age group, as the API reports them */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {isAdmin && <Badge className="text-[10px]">Admin</Badge>}
-                  <Badge variant="secondary" className="text-[10px]">
-                    {subscription ? `Plano ${planType(subscription.typeId).name}` : "Sem assinatura"}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    {session.user.isAdult ? "Maior de idade" : "Menor de idade"}
-                  </Badge>
+                {/* One label for what the account is: admin, or the plan (with "conta infantil" for
+                    minors, from the API's birthdate check), or no subscription yet */}
+                <div className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                  {isAdmin && adminDot}
+                  {isAdmin
+                    ? "Admin"
+                    : !subscription
+                      ? "Sem assinatura"
+                      : `Plano ${planType(subscription.typeId).name}${session.user.isAdult ? "" : " · conta infantil"}`}
                 </div>
               </div>
               <div className="my-1 h-px bg-border" />
@@ -127,9 +131,9 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                     onNavigate?.();
                     router.push("/admin");
                   }}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-[var(--color-red)] outline-none data-[highlighted]:bg-[color-mix(in_oklab,var(--color-red),transparent_88%)]"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
                 >
-                  <ShieldIcon size={16} />
+                  <ShieldIcon size={16} className="text-muted-foreground" />
                   Painel de admin
                 </Menu.Item>
               )}
@@ -138,16 +142,16 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                   onNavigate?.();
                   router.push(subscription ? "/meu-plano" : "/planos");
                 }}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
               >
-                <ListIcon size={16} />
+                <ListIcon size={16} className="text-muted-foreground" />
                 {subscription ? "Meu plano" : "Assinar um plano"}
               </Menu.Item>
               <Menu.Item
                 onClick={signOut}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
+                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
               >
-                <LogOutIcon size={16} />
+                <LogOutIcon size={16} className="text-muted-foreground" />
                 Sair
               </Menu.Item>
             </Menu.Popup>
@@ -175,9 +179,12 @@ export default function Header() {
   const overDark = useHeaderOverDarkSection();
   // The landing page shows its section links; every other page shows the search instead.
   // Search is for signed-in users: the catalog it searches is behind login.
-  const isLanding = usePathname() === "/";
+  const pathname = usePathname();
+  const isLanding = pathname === "/";
   const { data: session } = useSession();
   const showSearch = !isLanding && Boolean(session);
+  // Signed out on an auth page the menu would be empty (no links, no search, no "Entrar")
+  const hasMenu = isLanding || Boolean(session) || !AUTH_PATHS.has(pathname);
 
   const menuAnimationClasses = open
     ? "animate-in fade-in fill-mode-forwards"
@@ -237,15 +244,17 @@ export default function Header() {
               <SessionControls />
             </nav>
 
-            <button
-              type="button"
-              onClick={toggleMenu}
-              aria-label={open ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={open}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:hidden"
-            >
-              {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
-            </button>
+            {hasMenu && (
+              <button
+                type="button"
+                onClick={toggleMenu}
+                aria-label={open ? "Fechar menu" : "Abrir menu"}
+                aria-expanded={open}
+                className="flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:hidden"
+              >
+                {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
+              </button>
+            )}
           </div>
 
           {menuMounted && (

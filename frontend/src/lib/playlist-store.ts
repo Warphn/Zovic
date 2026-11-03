@@ -1,5 +1,11 @@
 import * as React from "react"
-import { useSession } from "@/lib/auth/client"
+import { type Playlist, type PlaylistMusic, parsePlaylistId, useMyPlaylists, usePlaylist, usePlaylistMusics } from "@/lib/api/playlists"
+import { apiErrorMessage } from "@/lib/api/client"
+import type { SearchMusic } from "@/lib/api/search"
+import { formatDuration } from "@/lib/format-duration"
+
+// What the pages draw for a playlist (sleeve, tracklist, playback queue), built from the API.
+// INITIAL_PLAYLISTS/DEFAULT_TRACKS are sample data for the landing preview only.
 
 export interface Track {
   id: string
@@ -10,8 +16,6 @@ export interface Track {
   durationSec: number
   year: string
   quality?: "FLAC" | "HI-RES" | "VINYL-RIP"
-  /** Explicit content: hidden from minors. Missing means "look it up in EXPLICIT_TRACK_IDS". */
-  explicit?: boolean
 }
 
 export interface PlaylistData {
@@ -20,8 +24,14 @@ export interface PlaylistData {
   color: string
   isPrivate: boolean
   createdAt: string
+  /** In the playlist's order; empty until its musics load. */
   tracks: Track[]
+  /** Whether the viewer can edit and delete it (the API's isAdmin). */
+  canEdit?: boolean
 }
+
+/** Cover color of a playlist that has none. */
+export const DEFAULT_PLAYLIST_COLOR = "#565043"
 
 export const DEFAULT_TRACKS: Track[] = [
   {
@@ -153,36 +163,6 @@ export const INITIAL_PLAYLISTS: PlaylistData[] = [
   },
 ]
 
-export const STORAGE_KEY = "zovic_playlists_bento_v2"
-const PLAYLISTS_CHANGE_EVENT = "zovic_playlists_updated"
-
-export function isPlaylistDataArray(items: unknown): items is PlaylistData[] {
-  if (!Array.isArray(items)) return false
-  return items.every((item) => {
-    return Boolean(
-      item &&
-      typeof item === "object" &&
-      "name" in item &&
-      typeof item.name === "string" &&
-      "color" in item &&
-      typeof item.color === "string" &&
-      "tracks" in item &&
-      Array.isArray(item.tracks)
-    )
-  })
-}
-
-/** Every track across `playlists`, each once (the same track can sit in several playlists). */
-export function uniqueTracks(playlists: PlaylistData[]): Track[] {
-  const byId = new Map<string, Track>()
-  for (const playlist of playlists) {
-    for (const track of playlist.tracks) {
-      if (!byId.has(track.id)) byId.set(track.id, track)
-    }
-  }
-  return [...byId.values()]
-}
-
 export function getPlaylistInitials(name: string): string {
   const parts = name.trim().split(" ").filter(Boolean)
   if (parts.length === 0) return "Z"
@@ -197,98 +177,65 @@ export function getPlaylistInitials(name: string): string {
   return `${initialA ?? "Z"}${initialB ?? ""}`.toUpperCase()
 }
 
-// Demo tracks marked explicit. Stored playlists carry copies of the tracks made before the flag
-// existed, so the flag is looked up by id instead of trusting the stored copy.
-export const EXPLICIT_TRACK_IDS: ReadonlySet<string> = new Set(["t4", "t5"])
-
-export function isExplicit(track: Track): boolean {
-  return track.explicit ?? EXPLICIT_TRACK_IDS.has(track.id)
+/**
+ * A catalog music (from a playlist or the search) as a track the player can queue. The API has
+ * no year yet, and the search no album: those stay empty, and covers fall back to the title.
+ */
+export function musicToTrack(music: SearchMusic & { album?: PlaylistMusic["album"] }): Track {
+  return {
+    id: String(music.id),
+    title: music.name,
+    artist: music.artists.map((a) => a.name).join(", "),
+    album: music.album?.name ?? "",
+    duration: formatDuration(music.duration),
+    durationSec: music.duration,
+    year: "",
+  }
 }
 
-/** The playlists as a minor sees them: without explicit tracks. */
-export function hideExplicit(playlists: PlaylistData[]): PlaylistData[] {
-  return playlists.map((playlist) => ({ ...playlist, tracks: playlist.tracks.filter((t) => !isExplicit(t)) }))
+export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = []): PlaylistData {
+  return {
+    id: String(playlist.id),
+    name: playlist.name,
+    color: playlist.color ?? DEFAULT_PLAYLIST_COLOR,
+    isPrivate: playlist.isPrivate,
+    createdAt: playlist.createdAt,
+    tracks: musics.map(musicToTrack),
+    canEdit: playlist.isAdmin,
+  }
+}
+
+export interface PlaylistsView<T> {
+  data: T
+  isPending: boolean
+  error: string | null
+}
+
+/** The viewer's playlists, newest first. */
+export function useMyPlaylistsData(): PlaylistsView<PlaylistData[]> {
+  const query = useMyPlaylists()
+  const data = React.useMemo(() => (query.data ?? []).map((playlist) => toPlaylistData(playlist)), [query.data])
+  return { data, isPending: query.isPending, error: query.isError ? apiErrorMessage(query.error) : null }
 }
 
 /**
- * Saving what a minor edited (with the explicit tracks hidden) must not drop those tracks:
- * each playlist gets back the hidden tracks it had, after the visible ones.
+ * The playlist with this route id, with its tracks; null while loading, when not found, or for a
+ * non-numeric id. `tracksError` says why the tracks did not load when the playlist itself did.
  */
-export function restoreHidden(updated: PlaylistData[], stored: PlaylistData[]): PlaylistData[] {
-  const storedById = new Map(stored.map((p) => [p.id, p]))
-  return updated.map((playlist) => {
-    const hidden = (storedById.get(playlist.id)?.tracks ?? []).filter(isExplicit)
-    return hidden.length ? { ...playlist, tracks: [...playlist.tracks, ...hidden] } : playlist
-  })
-}
-
-// In-memory cache for useSyncExternalStore referential stability
-let cachedRawValue: string | null = null
-let cachedPlaylistsSnapshot: PlaylistData[] = INITIAL_PLAYLISTS
-
-function subscribe(callback: () => void) {
-  if (typeof window === "undefined") return () => {}
-  window.addEventListener("storage", callback)
-  window.addEventListener(PLAYLISTS_CHANGE_EVENT, callback)
-  return () => {
-    window.removeEventListener("storage", callback)
-    window.removeEventListener(PLAYLISTS_CHANGE_EVENT, callback)
+export function usePlaylistData(
+  idParam: string | null | undefined
+): PlaylistsView<PlaylistData | null> & { tracksError: string | null } {
+  const id = parsePlaylistId(idParam)
+  const playlist = usePlaylist(id)
+  const musics = usePlaylistMusics(id)
+  const data = React.useMemo(
+    () => (playlist.data ? toPlaylistData(playlist.data, musics.data) : null),
+    [playlist.data, musics.data]
+  )
+  return {
+    data,
+    isPending: id !== null && (playlist.isPending || (musics.isPending && !musics.isError)),
+    error: playlist.isError ? apiErrorMessage(playlist.error) : null,
+    tracksError: musics.isError ? apiErrorMessage(musics.error) : null,
   }
-}
-
-function getClientSnapshot(): PlaylistData[] {
-  if (typeof window === "undefined") {
-    return INITIAL_PLAYLISTS
-  }
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === cachedRawValue) {
-      return cachedPlaylistsSnapshot
-    }
-    cachedRawValue = raw
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw)
-      if (isPlaylistDataArray(parsed) && parsed.length > 0) {
-        cachedPlaylistsSnapshot = parsed
-        return cachedPlaylistsSnapshot
-      }
-    }
-  } catch {
-    // fallback to initial
-  }
-  cachedPlaylistsSnapshot = INITIAL_PLAYLISTS
-  return cachedPlaylistsSnapshot
-}
-
-function getServerSnapshot(): PlaylistData[] {
-  return INITIAL_PLAYLISTS
-}
-
-export function persistPlaylists(updated: PlaylistData[]) {
-  if (typeof window === "undefined") return
-  try {
-    const serialized = JSON.stringify(updated)
-    cachedRawValue = serialized
-    cachedPlaylistsSnapshot = updated
-    localStorage.setItem(STORAGE_KEY, serialized)
-    window.dispatchEvent(new Event(PLAYLISTS_CHANGE_EVENT))
-  } catch {
-    // ignore
-  }
-}
-
-// Explicit tracks are hidden unless the session says the account is an adult (visitors and a
-// session still loading included). The API will filter on its side; this is the simulated catalog.
-export function useStoredPlaylists() {
-  const stored = React.useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot)
-  const { data: session } = useSession()
-  const restricted = !session?.user.isAdult
-
-  return React.useMemo(() => {
-    if (!restricted) return { playlists: stored, persistPlaylists }
-    return {
-      playlists: hideExplicit(stored),
-      persistPlaylists: (updated: PlaylistData[]) => persistPlaylists(restoreHidden(updated, getClientSnapshot())),
-    }
-  }, [stored, restricted])
 }

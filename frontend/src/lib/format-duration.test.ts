@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { formatTotalDuration, sumDurationSec } from "./format-duration"
+import { formatDuration, formatTotalDuration, parseDuration, sumDurationSec } from "./format-duration"
 
 describe("formatTotalDuration", () => {
   it("shows minutes below an hour", () => {
@@ -22,5 +22,24 @@ describe("formatTotalDuration", () => {
 describe("sumDurationSec", () => {
   it("adds the length of every track", () => {
     expect(sumDurationSec([{ durationSec: 258 }, { durationSec: 212 }])).toBe(470)
+  })
+})
+
+describe("duration helpers", () => {
+  it("formats seconds as m:ss", () => {
+    expect(formatDuration(258)).toBe("4:18")
+    expect(formatDuration(61)).toBe("1:01")
+    expect(formatDuration(9)).toBe("0:09")
+  })
+
+  it("parses m:ss or plain seconds", () => {
+    expect(parseDuration("4:18")).toBe(258)
+    expect(parseDuration(" 212 ")).toBe(212)
+  })
+
+  it("rejects empty, zero, malformed and out-of-range seconds", () => {
+    for (const value of ["", "0", "0:00", "4:60", "abc", "-5", "1.5"]) {
+      expect(parseDuration(value)).toBeNull()
+    }
   })
 })

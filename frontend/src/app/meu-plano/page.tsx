@@ -176,7 +176,7 @@ function AddMemberForm({ account }: { account: Account }) {
       <div>
         <h3 className="text-sm font-semibold">Incluir uma pessoa</h3>
         <p className="text-xs text-muted-foreground">
-          Ela entra com a própria conta, pelo mesmo email. Menores de idade não veem conteúdo explícito.
+          Ela entra com a própria conta, pelo mesmo email.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_10rem]">

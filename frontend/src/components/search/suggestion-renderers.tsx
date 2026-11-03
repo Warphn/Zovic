@@ -26,7 +26,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <strong className="font-bold text-foreground">{text.slice(index, index + q.length)}</strong>
+      <strong className="font-medium text-foreground">{text.slice(index, index + q.length)}</strong>
       {text.slice(index + q.length)}
     </>
   )
@@ -37,23 +37,32 @@ function Row({ media, title, subtitle }: { media: React.ReactNode; title: React.
     <span className="flex items-center gap-3 min-w-0">
       {media}
       <span className="min-w-0">
-        <span className="block truncate text-sm text-foreground/90">{title}</span>
+        <span className="block truncate text-sm text-foreground/80">{title}</span>
         {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
       </span>
     </span>
   )
 }
 
+// A small sleeve, like the playlist page's: the cover color with the sleeve's printed frame
+// (a round one for artists, who have no sleeve)
 function Cover({ label, color, round }: { label: string; color: string; round?: boolean }) {
   return (
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center text-xs font-black border border-black/10",
+        "relative flex size-9 shrink-0 items-center justify-center border border-black/10 text-[11px] font-medium",
         round ? "rounded-full" : "rounded-md",
         getContrastTextColor(color)
       )}
       style={{ backgroundColor: color }}
     >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-[2px] border border-current opacity-25",
+          round ? "rounded-full" : "rounded-[4px]"
+        )}
+      />
       {label}
     </span>
   )
@@ -74,21 +83,21 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.title)} color="#171512" />}
       title={<Highlight text={suggestion.title} query={query} />}
-      subtitle={`Música • ${suggestion.artist}`}
+      subtitle={`Música · ${suggestion.artist}`}
     />
   ),
   artist: ({ suggestion, query }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Artista • ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`}
+      subtitle={`Artista · ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`}
     />
   ),
   playlist: ({ suggestion, query }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color={suggestion.color} />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Playlist • ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`}
+      subtitle={`Playlist · ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`}
     />
   ),
 }

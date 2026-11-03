@@ -1,14 +1,11 @@
 import { describe, expect, it } from "bun:test"
 import {
+  DEFAULT_PLAYLIST_COLOR,
   INITIAL_PLAYLISTS,
   DEFAULT_TRACKS,
   getPlaylistInitials,
-  hideExplicit,
-  isExplicit,
-  isPlaylistDataArray,
-  persistPlaylists,
-  type PlaylistData,
-  restoreHidden,
+  musicToTrack,
+  toPlaylistData,
 } from "./playlist-store"
 
 describe("playlist-store", () => {
@@ -25,54 +22,50 @@ describe("playlist-store", () => {
     expect(getPlaylistInitials("Solo")).toBe("SO")
   })
 
-  it("validates playlist data array correctly", () => {
-    expect(isPlaylistDataArray(INITIAL_PLAYLISTS)).toBe(true)
-    expect(isPlaylistDataArray([])).toBe(true)
-    expect(isPlaylistDataArray(null)).toBe(false)
-    expect(isPlaylistDataArray([{ name: "test" }])).toBe(false)
-    expect(
-      isPlaylistDataArray([
-        {
-          id: "1",
-          name: "Test",
-          color: "#000",
-          isPrivate: false,
-          createdAt: "today",
-          tracks: [],
-        },
-      ])
-    ).toBe(true)
+  it("turns an API playlist into what the pages draw, with the default color when it has none", () => {
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: false }
+    expect(toPlaylistData({ ...playlist, color: "#F2A541" })).toEqual({
+      id: "4",
+      name: "Churrasco",
+      color: "#F2A541",
+      isPrivate: false,
+      createdAt: "2026-01-02T12:00:00.000Z",
+      tracks: [],
+      canEdit: false,
+    })
+    expect(toPlaylistData({ ...playlist, color: null }).color).toBe(DEFAULT_PLAYLIST_COLOR)
   })
 
-  it("safely handles persistPlaylists in non-browser environments", () => {
-    expect(() => persistPlaylists(INITIAL_PLAYLISTS)).not.toThrow()
-  })
-})
+  it("turns a playlist's musics into tracks, in the playlist's order", () => {
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true }
+    const musics = [
+      { id: 9, name: "Pedra na Água", duration: 201, artists: [{ id: 3, name: "Tomás Lago" }], album: null, addedAt: "2026-01-03T00:00:00.000Z" },
+      {
+        id: 2,
+        name: "Asfalto Molhado",
+        duration: 247,
+        artists: [
+          { id: 1, name: "Maré Alta" },
+          { id: 5, name: "Nina Sol" },
+        ],
+        album: { id: 1, name: "Ondas de Concreto" },
+        addedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]
 
-const playlist = (id: string, trackIds: string[]): PlaylistData => ({
-  id,
-  name: id,
-  color: "#000000",
-  isPrivate: false,
-  createdAt: "Hoje",
-  tracks: trackIds.map((trackId) => DEFAULT_TRACKS.find((t) => t.id === trackId)!),
-})
+    const data = toPlaylistData(playlist, musics)
 
-describe("explicit content", () => {
-  it("flags tracks by id, so copies stored before the flag existed are covered too", () => {
-    const stored = { ...DEFAULT_TRACKS.find((t) => t.id === "t5")!, explicit: undefined }
-    expect(isExplicit(stored)).toBe(true)
-    expect(isExplicit(DEFAULT_TRACKS.find((t) => t.id === "t1")!)).toBe(false)
-  })
-
-  it("hides explicit tracks from a minor's view", () => {
-    const [visible] = hideExplicit([playlist("p", ["t1", "t5", "t2"])])
-    expect(visible?.tracks.map((t) => t.id)).toEqual(["t1", "t2"])
-  })
-
-  it("keeps the hidden tracks when a minor's edit is saved", () => {
-    const stored = [playlist("p", ["t1", "t5", "t2"])]
-    const reordered = [playlist("p", ["t2", "t1"])]
-    expect(restoreHidden(reordered, stored)[0]?.tracks.map((t) => t.id)).toEqual(["t2", "t1", "t5"])
+    expect(data.tracks.map((t) => t.id)).toEqual(["9", "2"])
+    expect(data.tracks[1]).toEqual({
+      id: "2",
+      title: "Asfalto Molhado",
+      artist: "Maré Alta, Nina Sol",
+      album: "Ondas de Concreto",
+      duration: "4:07",
+      durationSec: 247,
+      year: "",
+    })
+    // No album: the field stays empty and the covers fall back to the title
+    expect(musicToTrack({ ...musics[1], album: null }).album).toBe("")
   })
 })

@@ -19,7 +19,7 @@ const PERKS: Record<PlanType["id"], string[]> = {
   individual: ["1 perfil de acesso", "Todo o catálogo", "Histórico e recomendações só seus"],
   familia: [
     "Até 4 pessoas, cada uma com o próprio perfil",
-    "Menores de idade não veem conteúdo explícito",
+    "Menores de 18 anos entram com conta infantil",
     "Quem assina gerencia quem entra e sai",
   ],
 }

@@ -12,12 +12,9 @@ import {
   getContrastTextColor,
   getPlaylistAccentStyle,
 } from "@/components/color-picker"
-import {
-  DEFAULT_TRACKS,
-  type PlaylistData,
-  getPlaylistInitials,
-  useStoredPlaylists,
-} from "@/lib/playlist-store"
+import { apiErrorMessage } from "@/lib/api/client"
+import { useCreatePlaylist, useDeletePlaylist } from "@/lib/api/playlists"
+import { type PlaylistData, getPlaylistInitials, useMyPlaylistsData } from "@/lib/playlist-store"
 import { GRID_BREAKPOINTS, GRID_COLS, usePlaylistLayouts } from "@/lib/playlist-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +35,17 @@ import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { isPlayingFrom, usePlayback } from "@/lib/playback-store"
 
 type CatalogView = "grid" | "list"
+
+/** Playlist.MAX_NAME_LENGTH in the API. */
+const MAX_NAME_LENGTH = 150
+
+// Track count and length, while the API does not send a playlist's musics: nothing to show yet
+function trackSummary(playlist: PlaylistData, withDuration: boolean): string | null {
+  const count = playlist.tracks.length
+  if (count === 0) return null
+  const label = `${count} ${count === 1 ? "faixa" : "faixas"}`
+  return withDuration ? `${label} · ${formatTotalDuration(sumDurationSec(playlist.tracks))}` : label
+}
 const VIEW_STORAGE_KEY = "zovic_playlist_view"
 const VIEW_CHANGE_EVENT = "zovic_playlist_view_updated"
 
@@ -75,7 +83,9 @@ const VIEW_OPTIONS = [
 
 export default function PlaylistPage() {
   const router = useRouter()
-  const { playlists, persistPlaylists } = useStoredPlaylists()
+  const { data: playlists, isPending, error } = useMyPlaylistsData()
+  const createPlaylist = useCreatePlaylist()
+  const deletePlaylist = useDeletePlaylist()
 
   // Modal State for Creating a Playlist
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
@@ -86,22 +96,18 @@ export default function PlaylistPage() {
   const handleCreatePlaylist = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = newPlaylistName.trim()
-    if (!trimmed) return
+    if (!trimmed || createPlaylist.isPending) return
 
-    const newPl: PlaylistData = {
-      id: "pl-" + Date.now(),
-      name: trimmed,
-      color: newPlaylistColor,
-      isPrivate: false,
-      createdAt: "Hoje",
-      tracks: DEFAULT_TRACKS,
-    }
-
-    const updated = [newPl, ...playlists]
-    persistPlaylists(updated)
-    setIsCreateModalOpen(false)
-    setNewPlaylistName("")
-    router.push(`/playlist/${newPl.id}`)
+    createPlaylist.mutate(
+      { name: trimmed, color: newPlaylistColor },
+      {
+        onSuccess: (created) => {
+          setIsCreateModalOpen(false)
+          setNewPlaylistName("")
+          router.push(`/playlist/${created.id}`)
+        },
+      }
+    )
   }
 
   // Bento grid layout (drag to reorder, resize from the corner)
@@ -130,14 +136,13 @@ export default function PlaylistPage() {
     isSource: isPlayingFrom(playback, id),
     isPlaying: isPlayingFrom(playback, id) && Boolean(playback?.isPlaying),
   })
-  const shelfDuration = formatTotalDuration(playlists.reduce((acc, p) => acc + sumDurationSec(p.tracks), 0))
+  const shelfDurationSec = playlists.reduce((acc, p) => acc + sumDurationSec(p.tracks), 0)
 
   // Handle Playlist Delete
   const handleDeletePlaylist = (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const updated = playlists.filter((p) => p.id !== id)
-    persistPlaylists(updated)
+    deletePlaylist.mutate(Number(id))
   }
 
   return (
@@ -151,7 +156,10 @@ export default function PlaylistPage() {
             <div>
               <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl">Playlists</h1>
               <p className="mt-3 font-mono text-xs text-muted-foreground tabular-nums">
-                {playlists.length} {playlists.length === 1 ? "playlist" : "playlists"} · {shelfDuration}
+                {isPending
+                  ? "Carregando…"
+                  : `${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
+                {shelfDurationSec > 0 && ` · ${formatTotalDuration(shelfDurationSec)}`}
               </p>
             </div>
 
@@ -202,6 +210,7 @@ export default function PlaylistPage() {
                 onClick={() => {
                   setNewPlaylistName("")
                   setNewPlaylistColor(PRESET_COLORS[0]?.color ?? "#d33a2c")
+                  createPlaylist.reset()
                   setIsCreateModalOpen(true)
                 }}
                 className="h-9 gap-2 px-4 text-sm"
@@ -210,6 +219,17 @@ export default function PlaylistPage() {
               </Button>
             </div>
           </div>
+
+          {(error || deletePlaylist.isError) && (
+            <p role="alert" className="pb-6 text-sm text-destructive">
+              {error ?? `Não deu para excluir a playlist. ${apiErrorMessage(deletePlaylist.error)}`}
+            </p>
+          )}
+          {!isPending && !error && playlists.length === 0 && (
+            <p className="py-12 text-center font-mono text-xs text-muted-foreground">
+              Nenhuma playlist ainda. Crie a primeira.
+            </p>
+          )}
 
           <div ref={gridRef} className="flex-1">
             {/* List: the shelf inventory, one row per playlist (drag to reorder) */}
@@ -247,10 +267,11 @@ export default function PlaylistPage() {
                         <div className={cn("truncate text-sm font-medium", isSource && "text-primary")}>
                           {playlist.name}
                         </div>
-                        <div className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-                          {playlist.tracks.length} {playlist.tracks.length === 1 ? "faixa" : "faixas"} ·{" "}
-                          {formatTotalDuration(sumDurationSec(playlist.tracks))}
-                        </div>
+                        {trackSummary(playlist, true) && (
+                          <div className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+                            {trackSummary(playlist, true)}
+                          </div>
+                        )}
                       </div>
 
                       {/* Whole row opens /playlist/:id */}
@@ -271,15 +292,17 @@ export default function PlaylistPage() {
                         <span className="pointer-events-none w-14 text-right font-mono text-xs text-muted-foreground">
                           {playlist.isPrivate ? "Privada" : "Pública"}
                         </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeletePlaylist(playlist.id, e)}
-                          aria-label={`Excluir playlist ${playlist.name}`}
-                          title="Excluir playlist"
-                          className="flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring [@media(hover:none)]:opacity-100"
-                        >
-                          <CloseIcon size={16} />
-                        </button>
+                        {playlist.canEdit && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeletePlaylist(playlist.id, e)}
+                            aria-label={`Excluir playlist ${playlist.name}`}
+                            title="Excluir playlist"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring [@media(hover:none)]:opacity-100"
+                          >
+                            <CloseIcon size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -342,9 +365,7 @@ export default function PlaylistPage() {
                       {/* Bottom: visibility on the left, track count on the right */}
                       <div className="pointer-events-none relative z-10 flex items-end justify-between gap-3 font-mono text-xs opacity-75 tabular-nums">
                         <span>{playlist.isPrivate ? "Privada" : "Pública"}</span>
-                        <span>
-                          {playlist.tracks.length} {playlist.tracks.length === 1 ? "faixa" : "faixas"}
-                        </span>
+                        <span>{trackSummary(playlist, false)}</span>
                       </div>
 
                       {/* Whole card opens /playlist/:id, except right after a drag or resize */}
@@ -358,15 +379,17 @@ export default function PlaylistPage() {
                         className="absolute inset-0 z-20 rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-current"
                       />
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeletePlaylist(playlist.id, e)}
-                        aria-label={`Excluir playlist ${playlist.name}`}
-                        title="Excluir playlist"
-                        className="no-drag absolute top-7 right-7 z-30 flex size-8 cursor-pointer items-center justify-center rounded-md bg-black/15 opacity-0 transition-[background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-black/30 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-current [@media(hover:none)]:opacity-100"
-                      >
-                        <CloseIcon size={16} />
-                      </button>
+                      {playlist.canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeletePlaylist(playlist.id, e)}
+                          aria-label={`Excluir playlist ${playlist.name}`}
+                          title="Excluir playlist"
+                          className="no-drag absolute top-7 right-7 z-30 flex size-8 cursor-pointer items-center justify-center rounded-md bg-black/15 opacity-0 transition-[background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-black/30 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-current [@media(hover:none)]:opacity-100"
+                        >
+                          <CloseIcon size={16} />
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -393,18 +416,30 @@ export default function PlaylistPage() {
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 placeholder="Ex.: MPB de domingo"
+                maxLength={MAX_NAME_LENGTH}
                 required
               />
             </div>
 
             <ColorPicker color={newPlaylistColor} onChange={setNewPlaylistColor} />
 
+            {createPlaylist.isError && (
+              <p role="alert" className="text-sm text-destructive">
+                {apiErrorMessage(createPlaylist.error)}
+              </p>
+            )}
+
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" size="lg" onClick={() => setIsCreateModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" variant="default" size="lg" disabled={!newPlaylistName.trim()}>
-                Criar playlist
+              <Button
+                type="submit"
+                variant="default"
+                size="lg"
+                disabled={!newPlaylistName.trim() || createPlaylist.isPending}
+              >
+                {createPlaylist.isPending ? "Criando…" : "Criar playlist"}
               </Button>
             </DialogFooter>
           </form>

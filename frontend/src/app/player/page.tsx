@@ -7,8 +7,7 @@ import { getPlaylistAccentStyle } from "@/components/color-picker"
 import { ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { resolveQueue, selectTrack, togglePlayback, usePlayback } from "@/lib/playback-store"
-import { getPlaylistInitials, isExplicit, useStoredPlaylists, type Track } from "@/lib/playlist-store"
-import { ExplicitMark } from "@/components/explicit-mark"
+import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { LevelBars } from "@/components/playback-marks"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -35,8 +34,10 @@ function isActivatable(target: EventTarget | null): boolean {
 // suggestions. Every page shares that playback, so this page only reads and steers it.
 export default function PlayerPage() {
   const playback = usePlayback()
-  const { playlists } = useStoredPlaylists()
-  const { tracks, playlist } = resolveQueue(playback, playlists)
+  const { data: sourcePlaylist } = usePlaylistData(
+    playback?.source.kind === "playlist" ? playback.source.playlistId : null
+  )
+  const { tracks, playlist } = resolveQueue(playback, sourcePlaylist ? [sourcePlaylist] : [])
   const currentIndex = Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
   const isPlaying = Boolean(playback?.isPlaying)
 
@@ -294,14 +295,13 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
         {/* One layout for every card, at the current card's size; small cards are this at half size */}
         <div className="pointer-events-none relative flex h-full flex-col justify-between">
           <span className="select-none text-6xl leading-none font-medium tracking-[-0.03em]">
-            {getPlaylistInitials(track.album)}
+            {getPlaylistInitials(track.album || track.title)}
           </span>
 
           <div className="flex items-end justify-between gap-4">
             <div className="min-w-0">
               <p className="flex min-w-0 items-center gap-3 text-[28px] leading-tight font-medium tracking-[-0.02em]">
                 <span className="truncate">{track.title}</span>
-                {isExplicit(track) && <ExplicitMark className="size-5 text-[11px]" />}
                 {isPlaying && <LevelBars playing className="h-5 shrink-0" />}
               </p>
               <p className="truncate text-xl opacity-75">{track.artist}</p>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { DEFAULT_TRACKS, INITIAL_PLAYLISTS, uniqueTracks } from "./playlist-store"
-import { isPlayingFrom, pickRandomTracks, resolveQueue, type PlaybackState } from "./playback-store"
+import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from "./playlist-store"
+import { isPlayingFrom, nextPlayRecord, pickRandomTracks, type PlayRecord, resolveQueue, type PlaybackState } from "./playback-store"
 
 describe("pickRandomTracks", () => {
   it("never suggests the excluded track nor repeats one", () => {
@@ -52,10 +52,38 @@ describe("resolveQueue", () => {
   })
 })
 
-describe("uniqueTracks", () => {
-  it("lists each track once across playlists", () => {
-    const ids = uniqueTracks(INITIAL_PLAYLISTS).map((t) => t.id)
-    expect(new Set(ids).size).toBe(ids.length)
-    expect(ids.toSorted()).toEqual(DEFAULT_TRACKS.map((t) => t.id).toSorted())
+describe("nextPlayRecord", () => {
+  const idle: PlayRecord = { trackId: null, recorded: false }
+  // Runs a sequence of (track, playing) states and lists the music ids that were counted
+  const counted = (steps: [string | null, boolean][]) => {
+    let record = idle
+    const ids: number[] = []
+    for (const [trackId, isPlaying] of steps) {
+      const next = nextPlayRecord(record, trackId, isPlaying)
+      record = next.record
+      if (next.musicId !== null) ids.push(next.musicId)
+    }
+    return ids
+  }
+
+  it("counts a track once when it starts playing", () => {
+    expect(counted([["12", true]])).toEqual([12])
+  })
+
+  it("does not count pausing and resuming the same listen", () => {
+    expect(counted([["12", true], ["12", false], ["12", true]])).toEqual([12])
+  })
+
+  it("counts again after moving to another track and back", () => {
+    expect(counted([["12", true], ["30", false], ["12", true]])).toEqual([12, 12])
+  })
+
+  it("counts a track picked while paused only when it plays", () => {
+    expect(counted([["12", false], ["30", false]])).toEqual([])
+    expect(counted([["12", false], ["12", true]])).toEqual([12])
+  })
+
+  it("never counts sample tracks or nothing at all", () => {
+    expect(counted([["t1", true], [null, true]])).toEqual([])
   })
 })

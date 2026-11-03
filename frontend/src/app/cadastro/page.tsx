@@ -64,7 +64,7 @@ function SignUpForm() {
   return (
     <AuthShell
       title="Criar conta"
-      description="Sua data de nascimento define os conteúdos adequados à sua faixa etária."
+      description="Sua data de nascimento define os conteúdos adequados à sua faixa etária"
       footer={
         <>
           Já tem conta? <AuthLink href={signInHref}>Entrar</AuthLink>
@@ -110,7 +110,7 @@ function SignUpForm() {
           error={errors.birthdate}
         />
         <FormError message={formError} />
-        <Button type="submit" size="lg" disabled={isSubmitting} className="h-10 w-full text-sm font-semibold">
+        <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full text-sm">
           {isSubmitting ? "Criando conta…" : "Criar conta"}
         </Button>
       </form>
