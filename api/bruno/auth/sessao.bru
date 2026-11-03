@@ -1,0 +1,19 @@
+meta {
+  name: Sessão logada
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/auth/get-session
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com a sessão e o usuário", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().user.email).to.equal("ana.andrade@zovic.test");
+    expect(res.getBody().session.userId).to.equal(res.getBody().user.id);
+  });
+}

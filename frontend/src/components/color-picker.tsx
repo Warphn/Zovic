@@ -7,24 +7,22 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
 export interface PalettePreset {
-  name: string
   mood: string
   color: string
 }
 
 export const PRESET_COLORS: PalettePreset[] = [
-  { name: "Vermelho Zovic", mood: "Editorial / Risografia", color: "#d33a2c" },
-  { name: "Verde Petróleo", mood: "Vinil Vintage", color: "#1e7f82" },
-  { name: "Verde Esmeralda", mood: "Clássico Spotify", color: "#1db954" },
-  { name: "Azul Índigo", mood: "Jazz Noturno", color: "#4f46e5" },
-  { name: "Âmbar Solar", mood: "Bossa Nova Dourada", color: "#f59e0b" },
-  { name: "Fúcsia Retrô", mood: "Sintetizadores & Beats", color: "#d946ef" },
-  { name: "Cinza Grafite", mood: "Estúdio Minimalista", color: "#334155" },
-  { name: "Vinho Aveludado", mood: "Lounge & Soul", color: "#991b1b" },
-  { name: "Azul Oceano", mood: "Ambiente & Ecos", color: "#0284c7" },
-  { name: "Verde Lima", mood: "Eletrônico & Bass", color: "#84cc16" },
-  { name: "Tangerina Quente", mood: "Tropicalismo", color: "#ea580c" },
-  { name: "Roxo Crepúsculo", mood: "Lo-Fi Instrumental", color: "#7c3aed" },
+  { mood: "Editorial / Risografia", color: "#d33a2c" },
+  { mood: "Clássico Spotify", color: "#1db954" },
+  { mood: "Jazz Noturno", color: "#4f46e5" },
+  { mood: "Bossa Nova Dourada", color: "#f59e0b" },
+  { mood: "Sintetizadores & Beats", color: "#d946ef" },
+  { mood: "Estúdio Minimalista", color: "#334155" },
+  { mood: "Lounge & Soul", color: "#991b1b" },
+  { mood: "Ambiente & Ecos", color: "#0284c7" },
+  { mood: "Eletrônico & Bass", color: "#84cc16" },
+  { mood: "Tropicalismo", color: "#ea580c" },
+  { mood: "Lo-Fi Instrumental", color: "#7c3aed" },
 ]
 
 export function getContrastTextColor(hexColor: string): "text-white" | "text-black" {
@@ -36,13 +34,6 @@ export function getContrastTextColor(hexColor: string): "text-white" | "text-bla
   // Relative luminance formula
   const yiq = (r * 299 + g * 587 + b * 114) / 1000
   return yiq >= 150 ? "text-black" : "text-white"
-}
-
-export function getColorName(hexColor: string): string {
-  const match = PRESET_COLORS.find(
-    (p) => p.color.toLowerCase() === hexColor.toLowerCase()
-  )
-  return match ? match.name : ""
 }
 
 interface ColorPickerProps {
@@ -136,7 +127,7 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
             value={displayHex}
             onChange={handleHexChange}
             onBlur={handleBlur}
-            placeholder="#1e7f82"
+            placeholder="#d33a2c"
             maxLength={7}
             aria-label="Código hexadecimal da cor"
             className="font-mono text-xs tracking-widest uppercase pl-3 pr-9 bg-background/80"
@@ -159,12 +150,12 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
         </Button>
       </div>
 
-      {/* Preset Swatches Palette with PT-BR names */}
+      {/* Preset Swatches Palette */}
       <div className="pt-1">
         <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2">
           Cores Curadas
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+        <div className="flex flex-wrap gap-2">
           {PRESET_COLORS.map((preset) => {
             const isSelected = color.toLowerCase() === preset.color.toLowerCase()
             return (
@@ -175,27 +166,15 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
                   setDraftHex(null)
                   onChange(preset.color)
                 }}
-                title={`${preset.name} (${preset.color})`}
-                aria-label={`Selecionar cor ${preset.name} (${preset.color})`}
+                title={preset.color}
+                aria-label={`Selecionar cor ${preset.color}`}
+                aria-pressed={isSelected}
                 className={cn(
-                  "group relative flex flex-col items-center gap-1 p-2 rounded-lg border transition-all text-left cursor-pointer",
-                  isSelected
-                    ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                    : "border-border/70 bg-background/50 hover:bg-background hover:border-muted-foreground/30"
+                  "size-7 rounded-full border border-black/10 shadow-2xs transition-transform cursor-pointer hover:scale-110",
+                  isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                 )}
-              >
-                <div
-                  className="size-5 rounded-md shadow-2xs border border-black/10 group-hover:scale-110 transition-transform"
-                  style={{ backgroundColor: preset.color }}
-                  aria-hidden="true"
-                />
-                <span className="text-[10px] font-medium leading-tight text-foreground truncate w-full text-center">
-                  {preset.name.split(" ")[0]}
-                </span>
-                <span className="text-[9px] font-mono text-muted-foreground leading-none">
-                  {preset.color}
-                </span>
-              </button>
+                style={{ backgroundColor: preset.color }}
+              />
             )
           })}
         </div>

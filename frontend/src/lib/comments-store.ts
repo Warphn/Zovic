@@ -20,61 +20,36 @@ export interface CommentReportItem {
   createdAt: string
 }
 
+export interface UserProfile {
+  id: number
+  name: string
+  birthdate: string | null
+  isUnderage: boolean
+}
+
+export function calculateIsUnderage(birthdate: string | null | undefined, refYear = 2026): boolean {
+  if (!birthdate) return true
+  const date = new Date(birthdate)
+  if (Number.isNaN(date.getTime())) return true
+
+  const now = new Date(`${refYear}-10-20T12:00:00Z`)
+  let age = now.getFullYear() - date.getFullYear()
+  const m = now.getMonth() - date.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < date.getDate())) {
+    age--
+  }
+  return age < 18
+}
+
 export function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
-const INITIAL_COMMENTS: CommentItem[] = [
-  {
-    id: "c-1",
-    trackId: "t1", // Construção
-    userId: 2,
-    authorName: "Bruno Andrade",
-    comment: "Esse arranjo de orquestra subindo de tom dá um arrepio!",
-    timestamp: 68,
-    createdAt: "Há 2 horas",
-  },
-  {
-    id: "c-2",
-    trackId: "t1",
-    userId: 1,
-    authorName: "Ana Andrade",
-    comment: "Uma das letras mais brilhantes da MPB de todos os tempos.",
-    timestamp: null, // sem sincronização
-    createdAt: "Ontem",
-  },
-  {
-    id: "c-3",
-    trackId: "t1",
-    userId: 3,
-    authorName: "Carla Andrade",
-    comment: "A polifonia nessa estrofe aqui é impecável.",
-    timestamp: 142,
-    createdAt: "Há 3 dias",
-  },
-  {
-    id: "c-4",
-    trackId: "t2", // Águas de Março
-    userId: 1,
-    authorName: "Ana Andrade",
-    comment: "A química vocal dos dois nessa gravação é histórica.",
-    timestamp: 35,
-    createdAt: "Hoje",
-  },
-  {
-    id: "c-5",
-    trackId: "t3", // Clube da Esquina Nº 2
-    userId: 2,
-    authorName: "Bruno Andrade",
-    comment: "Essa harmonia de violão clássico mineiro é inconfundível.",
-    timestamp: null,
-    createdAt: "Há 5 dias",
-  },
-]
+const INITIAL_COMMENTS: CommentItem[] = []
 
-const COMMENTS_STORAGE_KEY = "zovic_comments_v1"
+const COMMENTS_STORAGE_KEY = "zovic_comments_v2"
 const REPORTS_STORAGE_KEY = "zovic_comment_reports_v1"
 const COMMENTS_EVENT = "zovic_comments_updated"
 

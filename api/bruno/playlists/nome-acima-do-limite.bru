@@ -1,17 +1,13 @@
 meta {
   name: Nome acima do limite
   type: http
-  seq: 5
+  seq: 6
 }
 
 post {
   url: {{baseUrl}}/api/playlists
   body: json
   auth: none
-}
-
-headers {
-  x-user-id: {{userId}}
 }
 
 body:json {

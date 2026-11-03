@@ -58,6 +58,28 @@ Rode `up -d` para deixar os serviços em segundo plano.
 
 Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
 
+## Produção (desktop)
+
+O servidor roda o profile `prod`: banco, migrations, API e o `cloudflared`, que publica a API pelo Cloudflare Tunnel sem abrir portas no roteador. O frontend não sobe ali; ele fica na Vercel.
+
+No servidor, a partir do clone com o `.env` de produção:
+
+| Comando | O que faz |
+| --- | --- |
+| `bun server` | menu com as opções abaixo |
+| `bun server up` | sobe (ou aplica mudanças), espera tudo ficar de pé e testa o endereço público |
+| `bun server down` | derruba tudo, inclusive o túnel; o banco continua no volume |
+| `bun server status` | estado dos containers e do endereço público |
+| `bun server logs [db\|flyway\|api\|cloudflared]` | acompanha os logs (Ctrl+C para sair) |
+| `bun server update` | `git pull` e sobe a versão nova |
+
+O `bun server up` se recusa a rodar sem o `.env` ou com o token do túnel, a senha do banco ou o segredo do login vazios. Por baixo, ele roda `docker compose --profile prod up -d --build --wait`.
+
+- O `.env` do servidor é diferente do de desenvolvimento: senhas e segredos fortes, `COOKIE_SECURE=true`, `TRUST_PROXY=1` e o `CLOUDFLARE_TUNNEL_TOKEN`. Ele só existe no servidor e nunca vai para o git.
+- A API e o banco só aceitam conexões da própria máquina (`127.0.0.1`). De fora, a API chega pelo túnel; o banco não chega de jeito nenhum.
+- O `cloudflared` fica numa rede só com a API: ele não alcança o banco.
+- `db`, `api` e `cloudflared` têm `restart: unless-stopped` e voltam sozinhos depois de um reinício, desde que o Docker Desktop abra no login. Depois de um `bun server down` (ou `bun stop`), eles só voltam com `bun server up`.
+
 ## Adicionando coisas
 
 ### Uma biblioteca nova
@@ -102,7 +124,7 @@ Acrescente uma entrada em `services:` no `docker-compose.yml`, sempre com uma **
     ports: ["127.0.0.1:6379:6379"]
 ```
 
-- Se só a API usa o serviço, coloque-o nos mesmos profiles dela: `profiles: [frontend, full]`.
+- Se só a API usa o serviço, coloque-o nos mesmos profiles dela: `profiles: [frontend, full, prod]`.
 - Se a aplicação precisa esperar o serviço subir, use `depends_on` na aplicação.
 - Dentro do compose, os serviços se encontram **pelo nome**: a API acessa `redis:6379`, não `localhost:6379`.
 

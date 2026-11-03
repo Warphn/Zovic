@@ -2,15 +2,12 @@ import * as React from "react"
 
 export interface Track {
   id: string
-  side: "A" | "B"
-  trackNum: string
   title: string
   artist: string
   album: string
   duration: string
   durationSec: number
   year: string
-  bpm?: number
   quality?: "FLAC" | "HI-RES" | "VINYL-RIP"
 }
 
@@ -26,80 +23,62 @@ export interface PlaylistData {
 export const DEFAULT_TRACKS: Track[] = [
   {
     id: "t1",
-    side: "A",
-    trackNum: "A1",
     title: "Construção",
     artist: "Chico Buarque",
     album: "Construção",
     duration: "4:18",
     durationSec: 258,
     year: "1971",
-    bpm: 118,
     quality: "FLAC",
   },
   {
     id: "t2",
-    side: "A",
-    trackNum: "A2",
     title: "Águas de Março",
     artist: "Elis Regina, Tom Jobim",
     album: "Elis & Tom",
     duration: "3:32",
     durationSec: 212,
     year: "1974",
-    bpm: 124,
     quality: "HI-RES",
   },
   {
     id: "t3",
-    side: "A",
-    trackNum: "A3",
     title: "Clube da Esquina Nº 2",
     artist: "Milton Nascimento, Lô Borges",
     album: "Clube da Esquina",
     duration: "3:38",
     durationSec: 218,
     year: "1972",
-    bpm: 104,
     quality: "VINYL-RIP",
   },
   {
     id: "t4",
-    side: "B",
-    trackNum: "B1",
     title: "Resonance",
     artist: "HOME",
     album: "Odyssey",
     duration: "3:32",
     durationSec: 212,
     year: "2014",
-    bpm: 130,
     quality: "HI-RES",
   },
   {
     id: "t5",
-    side: "B",
-    trackNum: "B2",
     title: "Midnight City",
     artist: "M83",
     album: "Hurry Up, We're Dreaming",
     duration: "4:03",
     durationSec: 243,
     year: "2011",
-    bpm: 105,
     quality: "FLAC",
   },
   {
     id: "t6",
-    side: "B",
-    trackNum: "B3",
     title: "Tudo o Que Você Podia Ser",
     artist: "Lô Borges",
     album: "Clube da Esquina",
     duration: "2:57",
     durationSec: 177,
     year: "1972",
-    bpm: 122,
     quality: "VINYL-RIP",
   },
 ]

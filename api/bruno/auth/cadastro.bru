@@ -1,0 +1,46 @@
+meta {
+  name: Cadastro
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-up/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "name": "Usuário Bruno",
+    "email": "{{uniqueEmail}}",
+    "password": "senha-do-bruno",
+    "birthdate": "2000-01-31"
+  }
+}
+
+script:pre-request {
+  bru.setVar("uniqueEmail", `bruno+${Date.now()}@zovic.test`);
+}
+
+tests {
+  test("responde 200 com o usuário, sem senha", function () {
+    expect(res.getStatus()).to.equal(200);
+    const { user } = res.getBody();
+    expect(user.name).to.equal("Usuário Bruno");
+    expect(user.email).to.equal(bru.getVar("uniqueEmail"));
+    expect(user.birthdate).to.equal("2000-01-31");
+    expect(user.id).to.match(/^\d+$/);
+    expect(user).to.not.have.property("password");
+  });
+
+  test("abre a sessão com o cookie zovic.session_token httpOnly", function () {
+    const cookie = [].concat(res.getHeader("set-cookie"))[0];
+    expect(cookie).to.match(/^zovic\.session_token=/);
+    expect(cookie).to.match(/HttpOnly/i);
+  });
+}

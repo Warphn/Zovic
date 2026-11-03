@@ -1,7 +1,7 @@
 meta {
-  name: Sem autenticação
+  name: Sem cookie de sessão
   type: http
-  seq: 3
+  seq: 1
 }
 
 post {
@@ -17,7 +17,7 @@ body:json {
 }
 
 tests {
-  test("responde 401", function () {
+  test("responde 401 sem o cookie zovic.session_token", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody().error).to.equal("UNAUTHENTICATED");
   });

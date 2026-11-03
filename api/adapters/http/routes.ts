@@ -1,8 +1,8 @@
 import { Router } from "express";
+import type { RequestHandler } from "express";
 import type { CommentController } from "./comment-controller.ts";
-import { authenticate } from "./middlewares/authenticate.ts";
-import { validateBody } from "./middlewares/validate-body.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
+import { validateBody } from "./middlewares/validate-body.ts";
 import { createCommentSchema } from "./schemas/create-comment-schema.ts";
 import { createPlaylistSchema } from "./schemas/create-playlist-schema.ts";
 import { reportCommentSchema } from "./schemas/report-comment-schema.ts";
@@ -12,7 +12,7 @@ export interface Controllers {
   comments: CommentController;
 }
 
-export function makeRouter(controllers: Controllers): Router {
+export function makeRouter(controllers: Controllers, authenticate: RequestHandler): Router {
   const router = Router();
 
   // Playlists

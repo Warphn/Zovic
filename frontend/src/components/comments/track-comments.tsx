@@ -3,8 +3,7 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatTime, useComments, type CommentItem } from "@/lib/comments-store"
-import type { UserProfile } from "@/lib/user-store"
+import { formatTime, useComments, type CommentItem, type UserProfile } from "@/lib/comments-store"
 import { cn } from "@/lib/utils"
 
 export interface TrackCommentsProps {

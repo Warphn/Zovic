@@ -35,6 +35,7 @@ A primeira migration, `V1__create_schema.sql`, é anterior a esse padrão e fica
 - **Nunca edite uma migration que já está no `main`.** O Flyway guarda um checksum de cada arquivo aplicado e recusa subir se ele mudar. Para corrigir algo, crie uma migration nova.
 - **Dados de teste não entram em migration.** Migrations rodam em todos os ambientes, inclusive produção. Dados fictícios ficam no [seed](#seed).
 - **Toda migration nova exige atualizar o Prisma** (próxima seção).
+- **O Better Auth não altera o banco.** Nunca rode `better-auth migrate`: as tabelas `user`, `session`, `account` e `verification` vêm das migrations. Ao ligar um recurso novo do Better Auth que precise de colunas ou tabelas (um plugin, por exemplo), gere o SQL de referência com `bunx @better-auth/cli generate` e escreva uma migration Flyway com as convenções do projeto.
 
 ### Criando uma migration
 
@@ -119,7 +120,7 @@ Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o 
 | --- | --- | --- |
 | Tipos de plano | `ALL` | Os tipos do produto, com preço e limite de usuários (`plan-types.ts`) |
 | Gêneros | `ALL` | Os gêneros do produto, com cor (`genres.ts`) |
-| Usuários | `LOCAL` | Usuários fictícios, alguns com soft delete |
+| Usuários | `LOCAL` | Usuários fictícios, alguns com soft delete, todos com login (`nome.sobrenome@zovic.test`, senha `zovic123`); a conta de credencial é criada como o Better Auth espera, com o hash da própria lib |
 | Planos | `LOCAL` | Planos assinados; todo usuário em ao menos um, todo plano com admin e dentro do limite do tipo |
 | Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações (feat) e um álbum em parceria (`catalog-data.ts`) |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
