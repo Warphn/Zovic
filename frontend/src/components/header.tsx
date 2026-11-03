@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authClient, useSession } from "@/lib/auth/client";
+import { useSubscription } from "@/lib/subscription/client";
+import { planType } from "@/lib/subscription/rules";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
 import { Badge } from "@/components/ui/badge";
 
@@ -61,6 +63,7 @@ const navLinkClasses =
 function SessionControls({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const { subscription } = useSubscription();
 
   if (isPending) return null;
   if (!session) {
@@ -108,8 +111,9 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
                 {/* What the account can access: platform role and age group, as the API reports them */}
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px]">
-                    {isAdmin ? "Admin" : "Assinante"}
+                  {isAdmin && <Badge className="text-[10px]">Admin</Badge>}
+                  <Badge variant="secondary" className="text-[10px]">
+                    {subscription ? `Plano ${planType(subscription.typeId).name}` : "Sem assinatura"}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">
                     {session.user.isAdult ? "Maior de idade" : "Menor de idade"}
@@ -129,6 +133,16 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                   Painel de admin
                 </Menu.Item>
               )}
+              <Menu.Item
+                onClick={() => {
+                  onNavigate?.();
+                  router.push(subscription ? "/meu-plano" : "/planos");
+                }}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
+              >
+                <ListIcon size={16} />
+                {subscription ? "Meu plano" : "Assinar um plano"}
+              </Menu.Item>
               <Menu.Item
                 onClick={signOut}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"

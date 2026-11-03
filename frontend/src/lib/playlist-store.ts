@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useSession } from "@/lib/auth/client"
 
 export interface Track {
   id: string
@@ -9,6 +10,8 @@ export interface Track {
   durationSec: number
   year: string
   quality?: "FLAC" | "HI-RES" | "VINYL-RIP"
+  /** Explicit content: hidden from minors. Missing means "look it up in EXPLICIT_TRACK_IDS". */
+  explicit?: boolean
 }
 
 export interface PlaylistData {
@@ -194,6 +197,31 @@ export function getPlaylistInitials(name: string): string {
   return `${initialA ?? "Z"}${initialB ?? ""}`.toUpperCase()
 }
 
+// Demo tracks marked explicit. Stored playlists carry copies of the tracks made before the flag
+// existed, so the flag is looked up by id instead of trusting the stored copy.
+export const EXPLICIT_TRACK_IDS: ReadonlySet<string> = new Set(["t4", "t5"])
+
+export function isExplicit(track: Track): boolean {
+  return track.explicit ?? EXPLICIT_TRACK_IDS.has(track.id)
+}
+
+/** The playlists as a minor sees them: without explicit tracks. */
+export function hideExplicit(playlists: PlaylistData[]): PlaylistData[] {
+  return playlists.map((playlist) => ({ ...playlist, tracks: playlist.tracks.filter((t) => !isExplicit(t)) }))
+}
+
+/**
+ * Saving what a minor edited (with the explicit tracks hidden) must not drop those tracks:
+ * each playlist gets back the hidden tracks it had, after the visible ones.
+ */
+export function restoreHidden(updated: PlaylistData[], stored: PlaylistData[]): PlaylistData[] {
+  const storedById = new Map(stored.map((p) => [p.id, p]))
+  return updated.map((playlist) => {
+    const hidden = (storedById.get(playlist.id)?.tracks ?? []).filter(isExplicit)
+    return hidden.length ? { ...playlist, tracks: [...playlist.tracks, ...hidden] } : playlist
+  })
+}
+
 // In-memory cache for useSyncExternalStore referential stability
 let cachedRawValue: string | null = null
 let cachedPlaylistsSnapshot: PlaylistData[] = INITIAL_PLAYLISTS
@@ -249,11 +277,18 @@ export function persistPlaylists(updated: PlaylistData[]) {
   }
 }
 
+// Explicit tracks are hidden unless the session says the account is an adult (visitors and a
+// session still loading included). The API will filter on its side; this is the simulated catalog.
 export function useStoredPlaylists() {
-  const playlists = React.useSyncExternalStore(
-    subscribe,
-    getClientSnapshot,
-    getServerSnapshot
-  )
-  return { playlists, persistPlaylists }
+  const stored = React.useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot)
+  const { data: session } = useSession()
+  const restricted = !session?.user.isAdult
+
+  return React.useMemo(() => {
+    if (!restricted) return { playlists: stored, persistPlaylists }
+    return {
+      playlists: hideExplicit(stored),
+      persistPlaylists: (updated: PlaylistData[]) => persistPlaylists(restoreHidden(updated, getClientSnapshot())),
+    }
+  }, [stored, restricted])
 }

@@ -1,6 +1,6 @@
-import { RequireSession } from "@/components/require-session"
+import { RequireSubscription } from "@/components/require-subscription"
 
-// Playlists are for signed-in users
+// Playlists are for subscribers
 export default function PlaylistLayout({ children }: { children: React.ReactNode }) {
-  return <RequireSession>{children}</RequireSession>
+  return <RequireSubscription>{children}</RequireSubscription>
 }

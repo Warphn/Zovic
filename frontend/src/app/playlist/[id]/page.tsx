@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/dialog"
 import {
   getPlaylistInitials,
+  isExplicit,
   useStoredPlaylists,
 } from "@/lib/playlist-store"
+import { ExplicitMark } from "@/components/explicit-mark"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -297,17 +299,20 @@ export default function PlaylistDetailPage() {
 
                       {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
                       <div className="pointer-events-none relative min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={playOrPauseRow}
-                          aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
-                          className={cn(
-                            "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
-                            isCurrent ? "text-primary" : "text-foreground"
-                          )}
-                        >
-                          {track.title}
-                        </button>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={playOrPauseRow}
+                            aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
+                            className={cn(
+                              "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
+                              isCurrent ? "text-primary" : "text-foreground"
+                            )}
+                          >
+                            {track.title}
+                          </button>
+                          {isExplicit(track) && <ExplicitMark className="text-muted-foreground" />}
+                        </div>
                         <div className="truncate text-xs text-muted-foreground">
                           {track.artist} · {track.album}, {track.year}
                         </div>

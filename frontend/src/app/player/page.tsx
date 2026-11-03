@@ -7,7 +7,8 @@ import { getPlaylistAccentStyle } from "@/components/color-picker"
 import { ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { resolveQueue, selectTrack, togglePlayback, usePlayback } from "@/lib/playback-store"
-import { getPlaylistInitials, useStoredPlaylists, type Track } from "@/lib/playlist-store"
+import { getPlaylistInitials, isExplicit, useStoredPlaylists, type Track } from "@/lib/playlist-store"
+import { ExplicitMark } from "@/components/explicit-mark"
 import { cn } from "@/lib/utils"
 import { LevelBars } from "@/components/playback-marks"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -300,6 +301,7 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
             <div className="min-w-0">
               <p className="flex min-w-0 items-center gap-3 text-[28px] leading-tight font-medium tracking-[-0.02em]">
                 <span className="truncate">{track.title}</span>
+                {isExplicit(track) && <ExplicitMark className="size-5 text-[11px]" />}
                 {isPlaying && <LevelBars playing className="h-5 shrink-0" />}
               </p>
               <p className="truncate text-xl opacity-75">{track.artist}</p>
