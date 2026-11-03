@@ -97,8 +97,16 @@ export default function AdminContentPage() {
                       <td className="px-2 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {music.genres.map((genre) => (
-                            <span key={genre.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                              <span aria-hidden="true" className="size-2 rounded-full" style={{ background: genre.color }} />
+                            // Label tinted with the genre color; the text stays in the ink token so it reads on any hue
+                            <span
+                              key={genre.id}
+                              className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                              style={{
+                                background: `color-mix(in oklab, ${genre.color} 14%, transparent)`,
+                                borderColor: `color-mix(in oklab, ${genre.color} 35%, transparent)`,
+                              }}
+                            >
+                              <span aria-hidden="true" className="size-1.5 rounded-full" style={{ background: genre.color }} />
                               {genre.name}
                             </span>
                           ))}
