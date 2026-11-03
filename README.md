@@ -118,11 +118,17 @@ Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do 
 
 > **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
 
-**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, só pelo banco:
+**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, use o script, que grava direto no banco do `DATABASE_URL` do `.env` (roda da raiz ou de `api/`):
 
-```sql
-UPDATE "user" SET role = 'admin' WHERE email = 'pessoa@exemplo.com';
+```bash
+bun run admin:promote pessoa@exemplo.com
 ```
+
+```bash
+bun run admin:promote pessoa@exemplo.com --revoke
+```
+
+O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
 
 A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
 
