@@ -7,7 +7,8 @@ import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { validateBody, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import { artistSchema, createMusicSchema, createUserSchema, updateMusicSchema } from "./schemas/admin-schemas.ts";
 import { createPlaylistSchema } from "./schemas/create-playlist-schema.ts";
-import { playlistIdParamsSchema } from "./schemas/playlist-id-params-schema.ts";
+import { playlistIdParamsSchema, playlistMusicParamsSchema } from "./schemas/playlist-id-params-schema.ts";
+import { addPlaylistMusicSchema, reorderPlaylistMusicsSchema } from "./schemas/playlist-musics-schemas.ts";
 import { searchQuerySchema } from "./schemas/search-query-schema.ts";
 import { updatePlaylistSchema } from "./schemas/update-playlist-schema.ts";
 
@@ -27,6 +28,22 @@ export function makeRouter({ playlists, search, catalog, admin }: Controllers, a
   router.get("/playlists/:id", authenticate, playlistId, playlists.get);
   router.patch("/playlists/:id", authenticate, playlistId, validateBody(updatePlaylistSchema), playlists.update);
   router.delete("/playlists/:id", authenticate, playlistId, playlists.remove);
+
+  router.get("/playlists/:id/musics", authenticate, playlistId, playlists.listMusics);
+  router.post("/playlists/:id/musics", authenticate, playlistId, validateBody(addPlaylistMusicSchema), playlists.addMusic);
+  router.put(
+    "/playlists/:id/musics/order",
+    authenticate,
+    playlistId,
+    validateBody(reorderPlaylistMusicsSchema),
+    playlists.reorderMusics,
+  );
+  router.delete(
+    "/playlists/:id/musics/:musicId",
+    authenticate,
+    validateParams(playlistMusicParamsSchema),
+    playlists.removeMusic,
+  );
 
   router.get("/search", authenticate, validateQuery(searchQuerySchema), search.search);
 

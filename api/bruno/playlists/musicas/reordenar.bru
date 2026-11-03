@@ -1,0 +1,24 @@
+meta {
+  name: Reordenar
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics/order
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicIds": [{{musicB}}, {{musicA}}]
+  }
+}
+
+tests {
+  test("responde 200 com a lista na ordem nova", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((m) => m.id)).to.deep.equal([bru.getVar("musicB"), bru.getVar("musicA")]);
+  });
+}

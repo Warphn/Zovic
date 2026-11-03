@@ -54,7 +54,11 @@ async function playlist(creatorId: number, name: string, options: { isPrivate?: 
 }
 
 async function addToPlaylist(playlistId: number, musicIds: number[]): Promise<void> {
-  await pool.query("INSERT INTO music_playlist (music_id, playlist_id) SELECT unnest($1::integer[]), $2", [musicIds, playlistId]);
+  await pool.query(
+    `INSERT INTO music_playlist (music_id, playlist_id, position)
+     SELECT music_id, $2, ord - 1 FROM unnest($1::integer[]) WITH ORDINALITY AS t(music_id, ord)`,
+    [musicIds, playlistId],
+  );
 }
 
 const search = (term: string, limit = 10) => query.search({ term, viewerId: viewer, limit });

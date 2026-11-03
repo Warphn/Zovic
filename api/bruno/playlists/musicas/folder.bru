@@ -1,0 +1,14 @@
+meta {
+  name: Músicas da playlist
+  seq: 6
+}
+
+docs {
+  GET, POST /api/playlists/:id/musics, PUT /api/playlists/:id/musics/order e
+  DELETE /api/playlists/:id/musics/:musicId, sobre a playlist que "Criar" guardou em `playlistId`
+  (a Ana é admin dela). Depende de "Sessão/Login" e de "Criar".
+
+  A primeira requisição pega duas músicas do catálogo (`GET /api/musics`, do seed) e guarda os ids
+  em `musicA` e `musicB`. As seguintes põem, reordenam e tiram essas músicas.
+  Quem não é admin recebe 403: esse caso está em "Acesso de outro usuário".
+}

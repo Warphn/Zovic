@@ -28,6 +28,8 @@ const HEADER = `// Zovic — schema Prisma, gerado por \`bun run db:sync\` a par
 //
 // Ficam só no SQL, porque o Prisma não os representa: os CHECKs (preço >= 0,
 // rating 1..5, streams >= 0, cor #RRGGBB, linha única de system_data…).
+// Também só no SQL: o UNIQUE (playlist_id, position) de music_playlist é DEFERRABLE
+// (conferido no COMMIT), para a rota de reordenar trocar as posições num UPDATE só.
 //
 // previewFeatures "partialIndexes": representa os índices únicos parciais
 // (WHERE deleted_at IS NULL) de genre.name e rating.

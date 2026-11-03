@@ -29,7 +29,10 @@ export const openApiDocument = {
     title: "Zovic API",
     version: "0.1.0",
     description:
-      "API do Zovic, streaming de músicas. A autenticação é feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Os erros das rotas `/api/auth/*` têm o formato `{ code, message }`; os das demais rotas, `{ error, message }`.",
+      "API do Zovic, streaming de músicas.\n\n" +
+      "**Autenticação.** É feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Fora `/api/auth/*` e `/health`, toda rota exige a sessão e responde 401 sem ela.\n\n" +
+      "**Testando por esta página.** Rode o `sign-in` em *Try it out*: o navegador guarda o cookie e as próximas chamadas daqui já vão autenticadas. O botão *Authorize* não é necessário (e não funciona com cookie: o navegador não deixa a página definir o cookie). Para isso a API precisa de `COOKIE_SECURE=false` quando roda em `http://`, e esta página deve ser aberta pelo mesmo endereço de `BETTER_AUTH_URL` (padrão `http://localhost:3333`). Com o seed LOCAL, todo usuário entra com `nome.sobrenome@zovic.test` e a senha `zovic123`.\n\n" +
+      "**Erros.** As rotas `/api/auth/*` respondem `{ code, message }`; as demais, `{ error, message }`, ou `{ error: \"VALIDATION_ERROR\", fields }` quando a validação aponta campos.",
   },
   servers: [{ url: "/", description: "Esta API" }],
   tags: [
@@ -63,20 +66,11 @@ export const openApiDocument = {
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/SignUpRequest" },
-              examples: {
-                completo: {
-                  summary: "Com data de nascimento",
-                  value: {
-                    name: "Ana Andrade",
-                    email: "ana@exemplo.com",
-                    password: "uma-senha-longa",
-                    birthdate: "1995-03-12",
-                  },
-                },
-                minimo: {
-                  summary: "Sem data de nascimento",
-                  value: { name: "Bruno Andrade", email: "bruno@exemplo.com", password: "outra-senha-1" },
-                },
+              example: {
+                name: "Ana Andrade",
+                email: "ana@exemplo.com",
+                password: "uma-senha-longa",
+                birthdate: "1995-03-12",
               },
             },
           },
@@ -89,7 +83,7 @@ export const openApiDocument = {
           },
           "400": {
             description:
-              "Corpo inválido: campo ausente, email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou JSON malformado",
+              "Corpo inválido: campo ausente (inclusive `birthdate`), email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou no futuro, ou JSON malformado",
             content: {
               "application/json": {
                 schema: authErrorResponse("VALIDATION_ERROR", "[body.email] Invalid email address"),
@@ -252,7 +246,7 @@ export const openApiDocument = {
             },
           },
           "400": {
-            description: "Corpo inválido: campos fora do schema, regra do domínio violada ou JSON malformado",
+            description: "Corpo inválido: nome ausente, vazio ou longo demais, cor fora do formato #RRGGBB, regra do domínio violada ou JSON malformado",
             content: {
               "application/json": {
                 schema: {
@@ -283,20 +277,8 @@ export const openApiDocument = {
               },
             },
           },
-          "401": {
-            description: "Sem sessão válida: cookie ausente, inválido ou expirado, ou usuário removido",
-            content: {
-              "application/json": {
-                schema: errorResponse("UNAUTHENTICATED", "Authentication required"),
-              },
-            },
-          },
-          "500": {
-            description: "Erro inesperado. O detalhe fica só no log do servidor",
-            content: {
-              "application/json": { schema: errorResponse("INTERNAL_ERROR", "Internal server error") },
-            },
-          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "500": { $ref: "#/components/responses/InternalError" },
         },
       },
     },
@@ -304,7 +286,7 @@ export const openApiDocument = {
       parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
       get: {
         tags: ["Playlists"],
-        summary: "Busca uma playlist",
+        summary: "Mostra uma playlist",
         description:
           "Qualquer usuário autenticado vê uma playlist pública; uma privada, só os membros. A privada de outra pessoa responde 404, como se não existisse.",
         operationId: "getPlaylist",
@@ -380,6 +362,149 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/playlists/{id}/musics": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      get: {
+        tags: ["Playlists"],
+        summary: "Lista as músicas de uma playlist",
+        description:
+          "As músicas ativas da playlist, na ordem dela (a mesma para todos que a veem). Quem vê a playlist vê as músicas: a privada de outra pessoa responde 404. Músicas apagadas ficam de fora, e artistas apagados saem da lista de artistas.",
+        operationId: "listPlaylistMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas da playlist, por posição (lista vazia se não houver nenhuma)",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      post: {
+        tags: ["Playlists"],
+        summary: "Põe uma música na playlist",
+        description:
+          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova.",
+        operationId: "addPlaylistMusic",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AddPlaylistMusicRequest" },
+              example: { musicId: 12 },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Música incluída; a lista inteira, por posição",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": {
+            description: "Id da playlist ou `musicId` inválido, ou JSON malformado",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a música não existe ou foi apagada",
+            content: {
+              "application/json": {
+                schema: errorResponse("NOT_FOUND", "Music not found"),
+              },
+            },
+          },
+          "409": {
+            description: "A música já está na playlist",
+            content: {
+              "application/json": {
+                schema: errorResponse("BUSINESS_RULE_ERROR", "Music is already in this playlist"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/musics/order": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      put: {
+        tags: ["Playlists"],
+        summary: "Reordena as músicas da playlist",
+        description:
+          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Responde com a lista na ordem nova.",
+        operationId: "reorderPlaylistMusics",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ReorderPlaylistMusicsRequest" },
+              example: { musicIds: [31, 12, 7] },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Ordem gravada; a lista inteira na ordem nova",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlaylistMusicList" } } },
+          },
+          "400": {
+            description: "Id da playlist inválido, `musicIds` ausente, com id inválido ou repetido, ou JSON malformado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FieldValidationError" },
+                example: { error: "VALIDATION_ERROR", fields: [{ field: "musicIds.1", message: '"musicIds[1]" contains a duplicate value' }] },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": {
+            description: "A lista não tem exatamente as músicas da playlist: recarregue e tente de novo",
+            content: {
+              "application/json": {
+                schema: errorResponse(
+                  "BUSINESS_RULE_ERROR",
+                  "The new order must have exactly the playlist's musics; reload it and try again",
+                ),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/musics/{musicId}": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }, { $ref: "#/components/parameters/MusicId" }],
+      delete: {
+        tags: ["Playlists"],
+        summary: "Tira uma música da playlist",
+        description: "Só admins da playlist. As outras músicas mantêm a ordem.",
+        operationId: "removePlaylistMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música tirada da playlist" },
+          "400": {
+            description: "Id da playlist ou da música não é um inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a música não está nela",
+            content: {
+              "application/json": { schema: errorResponse("NOT_FOUND", "Music is not in this playlist") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/search": {
       get: {
         tags: ["Busca"],
@@ -426,6 +551,13 @@ export const openApiDocument = {
   },
   components: {
     parameters: {
+      MusicId: {
+        name: "musicId",
+        in: "path",
+        required: true,
+        description: "Id da música: inteiro positivo, sem zero à esquerda.",
+        schema: { type: "integer", minimum: 1, maximum: 2_147_483_647, example: 12 },
+      },
       PlaylistId: {
         name: "id",
         in: "path",
@@ -475,7 +607,7 @@ export const openApiDocument = {
         },
       },
       NotPlaylistAdmin: {
-        description: "O usuário vê a playlist, mas não é admin dela",
+        description: "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas)",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
         },
@@ -672,6 +804,70 @@ export const openApiDocument = {
             type: "boolean",
             description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
             example: true,
+          },
+        },
+      },
+      PlaylistMusicList: {
+        type: "array",
+        items: { $ref: "#/components/schemas/PlaylistMusic" },
+      },
+      PlaylistMusic: {
+        type: "object",
+        required: ["id", "name", "duration", "artists", "album", "addedAt"],
+        properties: {
+          id: { type: "integer", example: 12 },
+          name: { type: "string", example: "Ressaca" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: {
+                id: { type: "integer", example: 1 },
+                name: { type: "string", example: "Maré Alta" },
+              },
+            },
+          },
+          album: {
+            description: "O álbum ativo de menor id que contém a música, ou null se ela não está em nenhum.",
+            oneOf: [
+              {
+                type: "object",
+                required: ["id", "name"],
+                properties: {
+                  id: { type: "integer", example: 3 },
+                  name: { type: "string", example: "Ondas de Concreto" },
+                },
+              },
+              { type: "null" },
+            ],
+          },
+          addedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Quando a música entrou na playlist.",
+            example: "2026-11-03T18:20:00.000Z",
+          },
+        },
+      },
+      AddPlaylistMusicRequest: {
+        type: "object",
+        required: ["musicId"],
+        properties: { musicId: { type: "integer", minimum: 1, example: 12 } },
+      },
+      ReorderPlaylistMusicsRequest: {
+        type: "object",
+        required: ["musicIds"],
+        properties: {
+          musicIds: {
+            type: "array",
+            uniqueItems: true,
+            maxItems: 10_000,
+            description: "Todas as músicas da playlist, na ordem nova.",
+            items: { type: "integer", minimum: 1 },
+            example: [31, 12, 7],
           },
         },
       },

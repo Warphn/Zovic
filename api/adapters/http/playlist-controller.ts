@@ -1,8 +1,12 @@
 import type { RequestHandler } from "express";
+import type { AddMusicToPlaylistUseCase } from "../../domain/use-cases/add-music-to-playlist.ts";
 import type { CreatePlaylistUseCase } from "../../domain/use-cases/create-playlist.ts";
 import type { DeletePlaylistUseCase } from "../../domain/use-cases/delete-playlist.ts";
 import type { GetPlaylistUseCase } from "../../domain/use-cases/get-playlist.ts";
 import type { ListMyPlaylistsUseCase } from "../../domain/use-cases/list-my-playlists.ts";
+import type { ListPlaylistMusicsUseCase } from "../../domain/use-cases/list-playlist-musics.ts";
+import type { RemoveMusicFromPlaylistUseCase } from "../../domain/use-cases/remove-music-from-playlist.ts";
+import type { ReorderPlaylistMusicsUseCase } from "../../domain/use-cases/reorder-playlist-musics.ts";
 import type { UpdatePlaylistUseCase } from "../../domain/use-cases/update-playlist.ts";
 
 export interface PlaylistUseCases {
@@ -11,6 +15,10 @@ export interface PlaylistUseCases {
   getPlaylist: GetPlaylistUseCase;
   updatePlaylist: UpdatePlaylistUseCase;
   deletePlaylist: DeletePlaylistUseCase;
+  listPlaylistMusics: ListPlaylistMusicsUseCase;
+  addMusicToPlaylist: AddMusicToPlaylistUseCase;
+  removeMusicFromPlaylist: RemoveMusicFromPlaylistUseCase;
+  reorderPlaylistMusics: ReorderPlaylistMusicsUseCase;
 }
 
 export interface PlaylistController {
@@ -19,9 +27,13 @@ export interface PlaylistController {
   get: RequestHandler;
   update: RequestHandler;
   remove: RequestHandler;
+  listMusics: RequestHandler;
+  addMusic: RequestHandler;
+  removeMusic: RequestHandler;
+  reorderMusics: RequestHandler;
 }
 
-// `:id` já passou pelo validateParams(playlistIdParamsSchema).
+// `:id` e `:musicId` já passaram pelo validateParams; o corpo, pelo validateBody.
 export function makePlaylistController(useCases: PlaylistUseCases): PlaylistController {
   return {
     create: async (req, res) => {
@@ -69,6 +81,45 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
       });
 
       res.sendStatus(204);
+    },
+
+    listMusics: async (req, res) => {
+      const musics = await useCases.listPlaylistMusics.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+      });
+
+      res.json(musics);
+    },
+
+    addMusic: async (req, res) => {
+      const musics = await useCases.addMusicToPlaylist.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        musicId: req.body.musicId,
+      });
+
+      res.status(201).json(musics);
+    },
+
+    removeMusic: async (req, res) => {
+      await useCases.removeMusicFromPlaylist.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        musicId: Number(req.params.musicId),
+      });
+
+      res.sendStatus(204);
+    },
+
+    reorderMusics: async (req, res) => {
+      const musics = await useCases.reorderPlaylistMusics.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        musicIds: req.body.musicIds,
+      });
+
+      res.json(musics);
     },
   };
 }
