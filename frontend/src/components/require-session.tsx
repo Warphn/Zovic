@@ -5,8 +5,9 @@ import { usePathname, useRouter } from "next/navigation"
 import { useSession } from "@/lib/auth/client"
 
 // Signed-in-only area: visitors go to /entrar and come back after login.
-// Client-side only while auth is a browser mock: with the real API this becomes a proxy.ts
-// cookie check plus validation on the server.
+// This only steers the UI. What protects the data is the API, which checks the session cookie
+// on every request. The check stays client-side because the cookie belongs to the API's host:
+// in production (api.<domain>) the Next server never sees it, so a proxy.ts could not read it.
 export function RequireSession({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()

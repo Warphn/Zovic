@@ -7,11 +7,11 @@ import { makeRouter } from "../adapters/http/routes.ts";
 import { CreatePlaylist } from "../domain/use-cases/create-playlist.ts";
 import { pool } from "./db/pool.ts";
 
-export function composeApp(auth: Auth, trustProxy: number | null) {
+export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: string[] = []) {
   const playlistRepository = new PostgresPlaylistRepository(pool);
   const createPlaylist = new CreatePlaylist(playlistRepository);
   const playlistController = makePlaylistController(createPlaylist);
   const router = makeRouter(playlistController, makeAuthenticate(auth));
 
-  return createApp({ auth, router, trustProxy });
+  return createApp({ auth, router, trustProxy, corsOrigins });
 }
