@@ -1,0 +1,24 @@
+meta {
+  name: Editar playlist pública sem ser admin
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Invasão"
+  }
+}
+
+tests {
+  test("responde 403", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().error).to.equal("FORBIDDEN");
+  });
+}

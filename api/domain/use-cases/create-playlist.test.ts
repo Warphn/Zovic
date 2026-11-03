@@ -1,22 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { Playlist } from "../entities/playlist.ts";
 import { ValidationError } from "../errors/domain-error.ts";
-import type { PlaylistRepository } from "../ports/playlist-repository.ts";
+import { InMemoryPlaylistRepository } from "../testing/in-memory-playlist-repository.ts";
 import { CreatePlaylist } from "./create-playlist.ts";
-
-class InMemoryPlaylistRepository implements PlaylistRepository {
-  readonly items: Playlist[] = [];
-  private lastId = 0;
-
-  async nextId(): Promise<number> {
-    this.lastId += 1;
-    return this.lastId;
-  }
-
-  async save(playlist: Playlist): Promise<void> {
-    this.items.push(playlist);
-  }
-}
 
 function setup() {
   const repository = new InMemoryPlaylistRepository();
@@ -29,7 +14,7 @@ describe("CreatePlaylist", () => {
 
     const output = await useCase.execute({ creatorId: 7, name: "Rock" });
 
-    expect(output).toMatchObject({ id: 1, name: "Rock", isPrivate: false, color: null });
+    expect(output).toMatchObject({ id: 1, name: "Rock", isPrivate: false, color: null, isAdmin: true });
     expect(repository.items).toHaveLength(1);
     expect(repository.items[0]?.members).toEqual([{ userId: 7, isAdmin: true }]);
   });

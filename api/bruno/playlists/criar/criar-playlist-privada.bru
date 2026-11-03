@@ -1,7 +1,7 @@
 meta {
   name: Criar playlist privada sem cor
   type: http
-  seq: 4
+  seq: 2
 }
 
 post {
@@ -16,6 +16,10 @@ body:json {
     "isPrivate": true,
     "owner": 99
   }
+}
+
+script:post-response {
+  bru.setVar("privatePlaylistId", res.getBody().id);
 }
 
 tests {
