@@ -125,6 +125,7 @@ Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o 
 | Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações (feat) e um álbum em parceria (`catalog-data.ts`) |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
 | Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos |
+| Admin padrão | `LOCAL` | `admin@zovic.test`, senha `admin`, papel `admin` e sem plano; criado ou atualizado pelo email. A senha só funciona porque o hash é gravado direto, sem a regra de 8 caracteres do cadastro |
 | Totais do sistema | `ALL` | Recalcula a `system_data` a partir do banco |
 
 O terminal mostra, ao fim de cada seeder, quanto ele criou.
