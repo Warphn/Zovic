@@ -118,18 +118,6 @@ Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do 
 
 > **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
 
-**Admin da plataforma.** Diferente do admin de um plano ou de uma playlist, o papel global fica em `user.role` (`user` ou `admin`) e libera as rotas `/api/admin/*` (sem sessão: 401; sem o papel: 403). O cadastro sempre cria `user`, e o papel vem em `get-session`. Para promover ou rebaixar alguém (em `api/`, com o `.env` apontando para o banco certo):
-
-```bash
-bun run admin:promote ana.andrade@zovic.test
-```
-
-```bash
-bun run admin:promote ana.andrade@zovic.test --revoke
-```
-
-O script não retira o último admin ativo. No seed LOCAL, `rafaela.dias@zovic.test` já é admin.
-
 Variáveis do `.env`:
 
 | Variável | Para que serve |

@@ -97,14 +97,6 @@ export function createAuth(pool: Pool, options: AuthOptions) {
           input: true,
           validator: { input: birthdateSchema },
         },
-        // Papel global na plataforma ("user" | "admin"). O cliente não escolhe: só muda
-        // pelo banco (script admin:promote). Vai na sessão para o middleware requirePlatformAdmin.
-        role: {
-          type: "string",
-          required: false,
-          input: false,
-          defaultValue: "user",
-        },
         // Soft delete: só o banco escreve. Fica visível na resposta para o
         // middleware authenticate recusar sessões de usuários removidos.
         deletedAt: {

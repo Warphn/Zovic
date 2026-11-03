@@ -1,5 +1,5 @@
 /**
- * Usuários fictícios (LOCAL). Os dois últimos têm soft delete; Rafaela Dias é admin da plataforma.
+ * Usuários fictícios (LOCAL). Os dois últimos têm soft delete.
  * Todos ganham credenciais: email `nome.sobrenome@zovic.test` (sem acentos) e senha `zovic123`.
  */
 import { hashPassword } from "better-auth/crypto";
@@ -22,7 +22,7 @@ export const USERS = [
   { name: "Nicolas Prado", birthdate: "2003-06-06" },
   { name: "Olívia Santos", birthdate: "2005-09-15" },
   { name: "Pedro Nogueira", birthdate: "2004-12-01" },
-  { name: "Rafaela Dias", birthdate: "1996-02-29", admin: true },
+  { name: "Rafaela Dias", birthdate: "1996-02-29" },
   { name: "Sofia Teixeira", birthdate: "2000-07-07" },
   { name: "Tiago Moura", birthdate: "1985-11-11", deleted: true },
   { name: "Vitória Campos", birthdate: "1997-01-21", deleted: true },
@@ -48,7 +48,6 @@ export const seedUsers: Seeder["run"] = async (tx) => {
       birthdate: new Date(user.birthdate),
       createdAt: day(i),
       deletedAt: "deleted" in user ? day(60 + i) : null,
-      role: "admin" in user ? "admin" : "user",
     })),
   });
 
@@ -66,6 +65,5 @@ export const seedUsers: Seeder["run"] = async (tx) => {
   });
 
   const deleted = USERS.filter((user) => "deleted" in user).length;
-  const admins = USERS.filter((user) => "admin" in user).length;
-  return `${USERS.length} usuários (${deleted} com soft delete, ${admins} admin da plataforma), todos com login (senha ${SEED_PASSWORD})`;
+  return `${USERS.length} usuários (${deleted} com soft delete), todos com login (senha ${SEED_PASSWORD})`;
 };

@@ -69,7 +69,6 @@ model User {
   emailVerified Boolean        @default(false) @map("email_verified")
   image         String?
   updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  role          UserRole       @default(user)
   accounts      Account[]
   comments      Comment[]
   savedMusics   MusicUser[]
@@ -349,11 +348,4 @@ enum UserEventType {
   music_skip
 
   @@map("user_event_type")
-}
-
-enum UserRole {
-  user
-  admin
-
-  @@map("user_role")
 }

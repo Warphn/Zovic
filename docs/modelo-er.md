@@ -69,7 +69,6 @@ erDiagram
         string email
         bool email_verified
         string image
-        enum role
         datetime deleted_at
         datetime created_at
         datetime updated_at
@@ -219,7 +218,7 @@ erDiagram
 | `plan_type` | `id`, `name`, `price`, `user_amount`, `deleted_at`, `created_at` | 1:N com `plan` (todo tipo tem ao menos um plano) |
 | `plan` | `id`, `name`, `type_id`, `deleted_at`, `created_at` | `type_id` → `plan_type.id` |
 | `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário, e todo usuário assina ao menos um plano |
-| `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `role`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
+| `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
 | `user_event` | `id`, `user_id`, `event_type` (ENUM), `created_at` | `user_id` → `user.id` |
 | `system_data` | `users`, `songs`, `playlists`, `created_at` | Tabela de linha única com contagens agregadas do sistema (sem `id` e sem FK) |
 
@@ -263,18 +262,6 @@ Tabelas exigidas pelo [Better Auth](https://www.better-auth.com), adicionadas pe
 | `session` | `id`, `user_id`, `token`, `expires_at`, `ip_address`, `user_agent`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); `token` é único e é o valor (assinado) do cookie de sessão |
 | `account` | `id`, `user_id`, `account_id`, `provider_id`, `password`, `access_token`, `refresh_token`, `id_token`, `access_token_expires_at`, `refresh_token_expires_at`, `scope`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); uma linha por forma de login. Email e senha usam `provider_id = 'credential'` e `account_id` igual ao id do usuário, com o hash em `password`; (`provider_id`, `account_id`) é único. Login social entra como outra linha, sem mudar o schema |
 | `verification` | `id`, `identifier`, `value`, `expires_at`, `created_at`, `updated_at` | Sem FK. Guarda os tokens de confirmação de email e de recuperação de senha, que ainda não são usados |
-
-### Papéis
-
-Há três tipos de admin, e um não implica o outro:
-
-| Onde | Coluna | Vale para |
-|---|---|---|
-| `user` | `role` (enum `user_role`: `user` ou `admin`, padrão `user`) | A plataforma inteira: libera as rotas `/api/admin`. Adicionada pela migration `V261103_120000__Adiciona_papel_global_do_usuario.sql` |
-| `plan_user` | `is_admin` | Um plano (assinatura) |
-| `playlist_user` | `is_admin` | Uma playlist |
-
-O cliente não escolhe `role` no cadastro. O papel muda só pelo banco, com `bun run admin:promote <email>` (ou `--revoke`), que não retira o último admin ativo.
 
 ## Convenções
 

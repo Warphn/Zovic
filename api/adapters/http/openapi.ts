@@ -368,13 +368,6 @@ export const openApiDocument = {
           emailVerified: { type: "boolean", example: false },
           image: { type: ["string", "null"] },
           birthdate: { type: ["string", "null"], format: "date", example: "1995-03-12" },
-          role: {
-            type: "string",
-            enum: ["user", "admin"],
-            description:
-              "Papel global na plataforma; 'admin' libera /api/admin. Não é o admin de um plano ou playlist. O cadastro ignora este campo.",
-            example: "user",
-          },
           deletedAt: {
             type: ["string", "null"],
             format: "date-time",

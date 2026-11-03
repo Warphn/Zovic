@@ -43,7 +43,7 @@ interface Body {
   error?: string;
   id?: number;
   name?: string;
-  user: { id: string; email: string; birthdate: string | null; role: string };
+  user: { id: string; email: string; birthdate: string | null };
 }
 
 async function bodyOf(res: Response): Promise<Body> {
@@ -78,10 +78,6 @@ async function playlistsWith(app: TestApp, cookie: string | null, headers: Recor
     `${app.url}/api/playlists`,
     json({ name: "Auth flow" }, { ...(cookie ? { Cookie: cookie } : {}), ...headers }),
   );
-}
-
-async function adminRoute(app: TestApp, cookie: string | null) {
-  return fetch(`${app.url}/api/admin/qualquer-coisa`, { headers: cookie ? { Cookie: cookie } : {} });
 }
 
 async function signUp(app: TestApp, email: string, extra: Record<string, unknown> = {}) {
@@ -188,20 +184,6 @@ describe("autenticação com Better Auth", () => {
       const { res } = await signUp(app, uniqueEmail("campos"), { deletedAt: new Date().toISOString(), id: "1" });
 
       expect(res.status).toBe(400);
-    });
-
-    it("cria como usuário comum e não deixa o cliente escolher o papel", async () => {
-      const { res } = await signUp(app, uniqueEmail("papel"));
-      expect(res.status).toBe(200);
-      expect((await bodyOf(res)).user.role).toBe("user");
-
-      // O Better Auth ignora o campo (input: false): o cadastro passa, mas como usuário comum.
-      const email = uniqueEmail("quer-ser-admin");
-      const tentativa = await signUp(app, email, { role: "admin" });
-      expect(tentativa.res.status).toBe(200);
-      expect((await bodyOf(tentativa.res)).user.role).toBe("user");
-      const { rows } = await pool.query<{ role: string }>(`SELECT role FROM "user" WHERE email = $1`, [email]);
-      expect(rows[0]?.role).toBe("user");
     });
   });
 
@@ -341,44 +323,6 @@ describe("autenticação com Better Auth", () => {
       } finally {
         await pool.query(`DELETE FROM "user" WHERE id = $1`, [rows[0]!.id]);
       }
-    });
-  });
-
-  describe("admin da plataforma", () => {
-    it("sem sessão /api/admin responde 401", async () => {
-      expect((await adminRoute(app, null)).status).toBe(401);
-    });
-
-    it("usuário comum recebe 403, mesmo sendo admin de uma playlist", async () => {
-      const { cookie } = await signUp(app, uniqueEmail("comum"));
-      expect((await playlistsWith(app, cookie!.header)).status).toBe(201);
-
-      const res = await adminRoute(app, cookie!.header);
-
-      expect(res.status).toBe(403);
-      expect(await res.json()).toEqual({ error: "FORBIDDEN", message: expect.any(String) });
-    });
-
-    it("o papel promovido no banco vale na sessão já aberta, e a revogação também", async () => {
-      const email = uniqueEmail("promovido");
-      const { cookie } = await signUp(app, email);
-
-      await pool.query(`UPDATE "user" SET role = 'admin' WHERE email = $1`, [email]);
-      // Passa pelos dois middlewares; a rota não existe, então cai no 404 do Express.
-      expect((await adminRoute(app, cookie!.header)).status).toBe(404);
-      const session = await fetch(`${app.url}/api/auth/get-session`, { headers: { Cookie: cookie!.header } });
-      expect((await bodyOf(session)).user.role).toBe("admin");
-
-      await pool.query(`UPDATE "user" SET role = 'user' WHERE email = $1`, [email]);
-      expect((await adminRoute(app, cookie!.header)).status).toBe(403);
-    });
-
-    it("admin com soft delete perde o acesso", async () => {
-      const email = uniqueEmail("admin-removido");
-      const { cookie } = await signUp(app, email);
-      await pool.query(`UPDATE "user" SET role = 'admin', deleted_at = now() WHERE email = $1`, [email]);
-
-      expect((await adminRoute(app, cookie!.header)).status).toBe(401);
     });
   });
 
