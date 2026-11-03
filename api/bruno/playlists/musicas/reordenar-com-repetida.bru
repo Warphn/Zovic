@@ -1,0 +1,24 @@
+meta {
+  name: Reordenar com música repetida
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics/order
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicIds": [{{musicB}}, {{musicB}}]
+  }
+}
+
+tests {
+  test("responde 400 apontando o item repetido", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().fields.map((f) => f.field)).to.deep.equal(["musicIds.1"]);
+  });
+}

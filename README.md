@@ -130,7 +130,17 @@ bun run admin:promote pessoa@exemplo.com --revoke
 
 O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
 
-A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
+O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
+
+A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin, há um **admin padrão `admin@zovic.test` com senha `admin`** (só no seed LOCAL: a senha é curta demais para o cadastro e nunca vai para produção) e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
+
+**Painel de admin.** Para quem tem `role = 'admin'`, o menu da conta (botão laranja no header) mostra **Painel de admin**, em `/admin`, com três abas:
+
+- **Visão geral**: usuários ativos, admins, contas removidas, reproduções e catálogo; acessos por conteúdo (as 10 músicas mais tocadas) e por categoria (reproduções por gênero).
+- **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
+- **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
+
+As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
 
 **Assinaturas (frontend, simulado).** O catálogo (playlists, busca e player) é só para quem tem assinatura: sem uma, a conta vai para `/planos`. Admins da plataforma passam sem assinatura. Só maiores de 18 anos assinam. O plano Família aceita até 4 pessoas, contando quem assinou; em `/meu-plano`, o titular inclui e remove pessoas pelo email da conta delas, e quem não é titular pode sair do plano. Para menores de idade, as faixas com conteúdo explícito (marcadas com "E") somem de todas as telas. **Ainda não há rotas na API:** as assinaturas ficam no `localStorage` do navegador (`frontend/src/lib/subscription/`), com as mesmas regras que a API vai aplicar. Para demonstrar: entre como `ana.andrade@zovic.test`, assine o Família e inclua `heitor.costa@zovic.test` (menor de idade); depois entre como Heitor no mesmo navegador.
 
@@ -171,7 +181,16 @@ Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401)
 | `GET /api/playlists/:id` | Mostra uma playlist pública a qualquer usuário e uma privada só aos membros. A privada de outra pessoa responde 404, como se não existisse. |
 | `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só admins da playlist (os outros recebem 403). |
 | `DELETE /api/playlists/:id` | Apaga com soft delete. Só admins da playlist. |
+| `GET /api/playlists/:id/musics` | As músicas da playlist, na ordem dela, com artistas, álbum e data de entrada. Quem vê a playlist vê as músicas. |
+| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim da playlist. Só admins da playlist; a mesma música não entra duas vezes (409). |
+| `PUT /api/playlists/:id/musics/order` | Reordena: `{ musicIds }` com todas as músicas da playlist, na ordem nova. Só admins da playlist. |
+| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só admins da playlist. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists no catálogo inteiro, até `limit` itens por grupo (de 1 a 50, padrão 5). |
+
+**Ordem das músicas na playlist.**
+- **A ordem é da playlist:** todos que a veem enxergam a mesma. Ela fica em `music_playlist.position`.
+- **Reordenar pede a lista inteira**, que precisa ter exatamente as músicas da playlist. Se faltar ou sobrar música (outro admin mexeu depois que a lista foi carregada), a API responde **409** e não muda nada; o cliente deve recarregar a lista.
+- **As rotas que mudam as músicas** (pôr, reordenar) respondem com a lista inteira atualizada.
 
 **Como a busca funciona.**
 - **Acentos e maiúsculas:** a busca não diferencia nenhum dos dois, então `agua` acha `Águas`. A comparação usa a extensão `unaccent` do Postgres.

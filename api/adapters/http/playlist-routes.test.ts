@@ -133,7 +133,8 @@ describe("rotas de playlist", () => {
     for (const id of ["abc", "0", "-1", "1.5", "01", "99999999999"]) {
       const res = await call("GET", `/playlists/${id}`, ana);
       expect(res.status).toBe(400);
-      expect((await json<{ fields: { field: string }[] }>(res)).fields[0]?.field).toBe("id");
+      // Um erro só por id: "abc" não pode vir também como "is too large".
+      expect((await json<{ fields: { field: string }[] }>(res)).fields.map((f) => f.field)).toEqual(["id"]);
     }
   });
 

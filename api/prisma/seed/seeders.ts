@@ -8,6 +8,7 @@
  *
  * Para mudar onde um seeder roda, troque o `env` dele aqui.
  */
+import { seedAdmin } from "./admin.ts";
 import { seedCatalog } from "./catalog.ts";
 import { seedGenres } from "./genres.ts";
 import { seedInteractions } from "./interactions.ts";
@@ -26,6 +27,7 @@ export const seeders: Seeder[] = [
   { name: "Catálogo", env: "LOCAL", run: seedCatalog },
   { name: "Playlists", env: "LOCAL", run: seedPlaylists },
   { name: "Interações", env: "LOCAL", run: seedInteractions },
+  { name: "Admin padrão", env: "LOCAL", run: seedAdmin },
   // Sempre por último: recalcula os totais a partir do que está no banco.
   { name: "Totais do sistema", env: "ALL", run: seedSystemData },
 ];

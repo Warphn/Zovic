@@ -159,6 +159,8 @@ erDiagram
     music_playlist {
         int music_id FK
         int playlist_id FK
+        int position
+        datetime added_at
     }
     musics {
         int id PK
@@ -238,7 +240,7 @@ erDiagram
 |---|---|---|
 | `playlists` | `id`, `name`, `is_private`, `color`, `deleted_at`, `created_at` | — |
 | `playlist_user` | `playlist_id`, `user_id`, `is_admin` | Associativa `playlists` ↔ `user`; toda playlist tem ao menos um membro |
-| `music_playlist` | `music_id`, `playlist_id` | Associativa `musics` ↔ `playlists` |
+| `music_playlist` | `music_id`, `playlist_id`, `position`, `added_at` | Associativa `musics` ↔ `playlists`. `position` é a ordem da música na playlist (única por playlist, pode ter buracos); `added_at`, quando ela entrou |
 
 ### Catálogo musical
 
