@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import {
   buildLayouts,
+  fillAfterResize,
   isGapless,
   orderFromLayout,
   packLayout,
@@ -8,6 +9,11 @@ import {
   randomSlotSizes,
   reconcileOrder,
 } from "./playlist-layout"
+
+const small = (n: number) => Array.from({ length: n }, () => ({ w: 1, h: 1 }))
+// Slots whose size differs between two size lists
+const changedSlots = (before: { w: number; h: number }[], after: { w: number; h: number }[]) =>
+  after.flatMap((s, i) => (s.w === before[i]?.w && s.h === before[i]?.h ? [] : [i]))
 
 describe("playlist-layout", () => {
   it("packs cards without leaving holes a later card could fill", () => {
@@ -86,5 +92,50 @@ describe("playlist-layout", () => {
     const sizes = randomSlotSizes(5, () => 0.99)
     expect(sizes).toHaveLength(5)
     expect(sizes.every((size) => size.w === 2 && size.h === 2)).toBe(true)
+  })
+
+  describe("fillAfterResize", () => {
+    it("changes nothing else when the resize already fills every row", () => {
+      // 7 small + a 2x1 in slot 6 fills two rows of 4
+      const sizes = small(7)
+      const result = fillAfterResize(sizes, 6, { w: 2, h: 1 }, 4)
+      expect(result).not.toBeNull()
+      expect(changedSlots(sizes, result!)).toEqual([6])
+    })
+
+    it("keeps the size the user chose and changes as few other cards as possible", () => {
+      // 8 small fill two rows of 4; widening slot 0 leaves 9 cells, so one more card must grow
+      const sizes = small(8)
+      const result = fillAfterResize(sizes, 0, { w: 2, h: 1 }, 4)
+      expect(result).not.toBeNull()
+      expect(result![0]).toEqual({ w: 2, h: 1 })
+      expect(isGapless(result!, 4)).toBe(true)
+      expect(changedSlots(sizes, result!)).toHaveLength(2)
+    })
+
+    it("prefers the smallest change in area, then the cards nearest the resized one", () => {
+      // 2x1 + 6 small fill two rows of 4; shrinking slot 0 leaves a gap that one nearby card closes
+      const sizes = [{ w: 2, h: 1 }, ...small(6)]
+      const result = fillAfterResize(sizes, 0, { w: 1, h: 1 }, 4)
+      expect(result).not.toBeNull()
+      expect(isGapless(result!, 4)).toBe(true)
+      expect(changedSlots(sizes, result!)).toEqual([0, 1])
+      expect(result![1]).toEqual({ w: 2, h: 1 })
+    })
+
+    it("works at the column count in use", () => {
+      const sizes = small(6)
+      for (const cols of [2, 3]) {
+        const result = fillAfterResize(sizes, 2, { w: 2, h: 2 }, cols)
+        expect(result).not.toBeNull()
+        expect(isGapless(result!, cols)).toBe(true)
+        expect(result![2]).toEqual({ w: 2, h: 2 })
+      }
+    })
+
+    it("returns null when no fill exists", () => {
+      // A single card can never fill a row of 4
+      expect(fillAfterResize(small(1), 0, { w: 2, h: 1 }, 4)).toBeNull()
+    })
   })
 })
