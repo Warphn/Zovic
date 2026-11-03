@@ -1,6 +1,6 @@
-import { RequireSession } from "@/components/require-session"
+import { RequireSubscription } from "@/components/require-subscription"
 
-// Search covers the catalog, which is for signed-in users
+// Search covers the catalog, which is for subscribers
 export default function SearchLayout({ children }: { children: React.ReactNode }) {
-  return <RequireSession>{children}</RequireSession>
+  return <RequireSubscription>{children}</RequireSubscription>
 }

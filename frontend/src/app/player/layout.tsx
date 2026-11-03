@@ -1,6 +1,6 @@
-import { RequireSession } from "@/components/require-session"
+import { RequireSubscription } from "@/components/require-subscription"
 
-// The player plays the signed-in user's catalog
+// The player plays the catalog, which is for subscribers
 export default function PlayerLayout({ children }: { children: React.ReactNode }) {
-  return <RequireSession>{children}</RequireSession>
+  return <RequireSubscription>{children}</RequireSubscription>
 }

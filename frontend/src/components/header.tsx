@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authClient, useSession } from "@/lib/auth/client";
+import { useSubscription } from "@/lib/subscription/client";
+import { planType } from "@/lib/subscription/rules";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
 
 const NAV_LINKS = [
@@ -64,6 +66,7 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = useSession();
+  const { subscription } = useSubscription();
 
   if (isPending) return null;
   if (!session) {
@@ -110,11 +113,15 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
               <div className="px-2.5 py-2">
                 <div className="truncate text-sm font-medium">{session.user.name}</div>
                 <div className="truncate text-xs text-muted-foreground">{session.user.email}</div>
-                {/* One label for what the account is, as the API reports it: admin, kids' account
-                    (under 18, from the birthdate) or subscriber */}
+                {/* One label for what the account is: admin, or the plan (with "conta infantil" for
+                    minors, from the API's birthdate check), or no subscription yet */}
                 <div className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                   {isAdmin && adminDot}
-                  {isAdmin ? "Admin" : session.user.isAdult ? "Assinante" : "Conta infantil"}
+                  {isAdmin
+                    ? "Admin"
+                    : !subscription
+                      ? "Sem assinatura"
+                      : `Plano ${planType(subscription.typeId).name}${session.user.isAdult ? "" : " · conta infantil"}`}
                 </div>
               </div>
               <div className="my-1 h-px bg-border" />
@@ -130,6 +137,16 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                   Painel de admin
                 </Menu.Item>
               )}
+              <Menu.Item
+                onClick={() => {
+                  onNavigate?.();
+                  router.push(subscription ? "/meu-plano" : "/planos");
+                }}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
+              >
+                <ListIcon size={16} className="text-muted-foreground" />
+                {subscription ? "Meu plano" : "Assinar um plano"}
+              </Menu.Item>
               <Menu.Item
                 onClick={signOut}
                 className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
