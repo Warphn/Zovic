@@ -1,0 +1,17 @@
+meta {
+  name: Apagar playlist
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/api/playlists/{{deletePlaylistId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Buscar playlist inexistente
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/2147483647
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().error).to.equal("NOT_FOUND");
+  });
+}
