@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { authClient, useSession } from "@/lib/auth/client";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, LogOutIcon, MenuIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
 import { Badge } from "@/components/ui/badge";
 
@@ -116,6 +116,18 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 </div>
               </div>
               <div className="my-1 h-px bg-border" />
+              {isAdmin && (
+                <Menu.Item
+                  onClick={() => {
+                    onNavigate?.();
+                    router.push("/admin");
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-[var(--color-red)] outline-none data-[highlighted]:bg-[color-mix(in_oklab,var(--color-red),transparent_88%)]"
+                >
+                  <ShieldIcon size={16} />
+                  Painel de admin
+                </Menu.Item>
+              )}
               <Menu.Item
                 onClick={signOut}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"

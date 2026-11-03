@@ -31,11 +31,11 @@ const TIME_ZONE = "America/Sao_Paulo";
 const MINUTE = 60;
 const DAY = 24 * 60 * MINUTE;
 // Limites das colunas user.name e user.email.
-const NAME_MAX_LENGTH = 150;
-const EMAIL_MAX_LENGTH = 254;
+export const NAME_MAX_LENGTH = 150;
+export const EMAIL_MAX_LENGTH = 254;
 
 // AAAA-MM-DD, uma data que existe no calendário e que não está no futuro.
-const birthdateSchema = Joi.string()
+export const birthdateSchema = Joi.string()
   .pattern(/^\d{4}-\d{2}-\d{2}$/)
   .custom((value: string, helpers) => {
     const date = new Date(`${value}T00:00:00Z`);

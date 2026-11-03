@@ -3,6 +3,7 @@
  * comentários e eventos. Geradas com semente fixa: sempre as mesmas.
  *
  * Só usuários ativos interagem; os com soft delete têm apenas eventos antigos.
+ * Os eventos de música tocada ou pulada apontam para a música (base das estatísticas do admin).
  * No fim, `musics.rating` recebe a média real das avaliações ativas.
  */
 import { UserEventType } from "../../generated/prisma/enums.ts";
@@ -73,7 +74,7 @@ export const seedInteractions: Seeder["run"] = async (tx) => {
 
   // Eventos: cadastro e, nos usuários ativos, sessões com músicas tocadas ou puladas.
   const events = users.flatMap((user, u) => {
-    const list: { userId: number; eventType: UserEventType; createdAt: Date }[] = [
+    const list: { userId: number; eventType: UserEventType; createdAt: Date; musicId?: number }[] = [
       { userId: user.id, eventType: UserEventType.sign_up, createdAt: user.createdAt },
     ];
     const sessions = user.deletedAt ? 1 : rnd.int(3, 6);
@@ -83,7 +84,7 @@ export const seedInteractions: Seeder["run"] = async (tx) => {
       const plays = rnd.int(2, 8);
       for (let p = 0; p < plays; p++) {
         const eventType = rnd.chance(0.25) ? UserEventType.music_skip : UserEventType.music_play;
-        list.push({ userId: user.id, eventType, createdAt: day(start, 9 + p) });
+        list.push({ userId: user.id, eventType, createdAt: day(start, 9 + p), musicId: rnd.pick(musics).id });
       }
       list.push({ userId: user.id, eventType: UserEventType.logout, createdAt: day(start, 9 + plays) });
     }
