@@ -169,7 +169,16 @@ Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401)
 | `GET /api/playlists/:id` | Mostra uma playlist pública a qualquer usuário e uma privada só aos membros. A privada de outra pessoa responde 404, como se não existisse. |
 | `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só admins da playlist (os outros recebem 403). |
 | `DELETE /api/playlists/:id` | Apaga com soft delete. Só admins da playlist. |
+| `GET /api/playlists/:id/musics` | As músicas da playlist, na ordem dela, com artistas, álbum e data de entrada. Quem vê a playlist vê as músicas. |
+| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim da playlist. Só admins da playlist; a mesma música não entra duas vezes (409). |
+| `PUT /api/playlists/:id/musics/order` | Reordena: `{ musicIds }` com todas as músicas da playlist, na ordem nova. Só admins da playlist. |
+| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só admins da playlist. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists no catálogo inteiro, até `limit` itens por grupo (de 1 a 50, padrão 5). |
+
+**Ordem das músicas na playlist.**
+- **A ordem é da playlist:** todos que a veem enxergam a mesma. Ela fica em `music_playlist.position`.
+- **Reordenar pede a lista inteira**, que precisa ter exatamente as músicas da playlist. Se faltar ou sobrar música (outro admin mexeu depois que a lista foi carregada), a API responde **409** e não muda nada; o cliente deve recarregar a lista.
+- **As rotas que mudam as músicas** (pôr, reordenar) respondem com a lista inteira atualizada.
 
 **Como a busca funciona.**
 - **Acentos e maiúsculas:** a busca não diferencia nenhum dos dois, então `agua` acha `Águas`. A comparação usa a extensão `unaccent` do Postgres.

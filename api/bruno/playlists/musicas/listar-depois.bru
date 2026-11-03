@@ -1,0 +1,18 @@
+meta {
+  name: Listar depois de tirar
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 só com a música que ficou", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((m) => m.id)).to.deep.equal([bru.getVar("musicA")]);
+  });
+}

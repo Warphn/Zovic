@@ -1,0 +1,17 @@
+meta {
+  name: Tirar música que não está na playlist
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics/{{musicB}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
