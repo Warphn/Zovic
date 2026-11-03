@@ -1,7 +1,8 @@
 import type { SearchSuggestion } from "./suggestions"
 
-// Where each suggestion leads. Tracks and artists have no pages of their own yet: tracks open
-// the playlist they are in and artists open the results page. When those pages exist, only
+// Where each suggestion leads. Tracks and artists have no pages of their own yet: artists open
+// the results page, and tracks are played in place by the search bar and the results page
+// (their href, the playlist they are in, is only a fallback). When those pages exist, only
 // this file changes.
 
 export const SEARCH_PATH = "/busca"

@@ -19,7 +19,7 @@ interface AuthShellProps {
 // Page frame shared by /entrar and /cadastro
 export function AuthShell({ title, description, footer, children }: AuthShellProps) {
   return (
-    <div className="relative min-h-screen text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
+    <div className="relative flex-1 text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
       <SilkBackground />
       <Header />
       <main className="flex-1 pt-16 flex items-center justify-center px-6 py-16">

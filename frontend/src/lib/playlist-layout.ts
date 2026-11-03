@@ -80,6 +80,81 @@ export function randomGaplessSizes(
   return isGapless(widened, cols) ? widened : Array.from({ length: count }, () => SMALL)
 }
 
+// Every size a card can take (1 or 2 cells each way)
+const ALL_SIZES: SlotSize[] = [
+  { w: 1, h: 1 },
+  { w: 2, h: 1 },
+  { w: 1, h: 2 },
+  { w: 2, h: 2 },
+]
+const MAX_FILL_CHANGES = 3
+// Packs tried per number of changes; candidates nearest the resized card go first, so the
+// budget only cuts the far, least wanted ones on very long shelves
+const FILL_SEARCH_BUDGET = 20000
+
+const sameSize = (a: SlotSize, b: SlotSize) => a.w === b.w && a.h === b.h
+const capWidth = (size: SlotSize, cols: number): SlotSize => ({ w: Math.min(size.w, cols), h: size.h })
+
+// Sizes after `slot` is resized to `size`, changing as few other slots as needed so that every
+// row at `cols` columns is full. The resized slot keeps the size the user chose. Ties go to the
+// smallest change in area, then to the slots nearest the resized one. Null when no fill within
+// MAX_FILL_CHANGES exists (e.g. too few cards to fill a row).
+export function fillAfterResize(
+  sizes: SlotSize[],
+  slot: number,
+  size: SlotSize,
+  cols: number
+): SlotSize[] | null {
+  const base = sizes.map((s) => capWidth(s, cols))
+  base[slot] = capWidth(size, cols)
+  if (isGapless(base, cols)) return base
+
+  const area = (s: SlotSize) => s.w * s.h
+  const candidates = base
+    .map((_, i) => i)
+    .filter((i) => i !== slot)
+    .toSorted((a, b) => Math.abs(a - slot) - Math.abs(b - slot) || a - b)
+  const alternatives = (i: number) =>
+    ALL_SIZES.map((s) => capWidth(s, cols)).filter(
+      (s, k, all) => !sameSize(s, base[i] ?? s) && all.findIndex((o) => sameSize(o, s)) === k
+    )
+
+  for (let changes = 1; changes <= Math.min(MAX_FILL_CHANGES, candidates.length); changes++) {
+    // Best fill found so far for this number of changes (at most one entry)
+    const found: { sizes: SlotSize[]; areaDelta: number; distance: number }[] = []
+    let budget = FILL_SEARCH_BUDGET
+    const trial = [...base]
+
+    const search = (from: number, left: number, areaDelta: number, distance: number) => {
+      if (budget <= 0) return
+      if (left === 0) {
+        budget--
+        if (!isGapless(trial, cols)) return
+        const best = found[0]
+        if (!best || areaDelta < best.areaDelta || (areaDelta === best.areaDelta && distance < best.distance)) {
+          found[0] = { sizes: [...trial], areaDelta, distance }
+        }
+        return
+      }
+      for (let c = from; c <= candidates.length - left; c++) {
+        const i = candidates[c]
+        const current = i === undefined ? undefined : base[i]
+        if (i === undefined || !current) continue
+        for (const alt of alternatives(i)) {
+          trial[i] = alt
+          search(c + 1, left - 1, areaDelta + Math.abs(area(alt) - area(current)), distance + Math.abs(i - slot))
+        }
+        trial[i] = current
+      }
+    }
+
+    search(0, changes, 0, 0)
+    const best = found[0]
+    if (best) return best.sizes
+  }
+  return null
+}
+
 // First-fit packing: each card takes the first free slot scanning rows top to bottom,
 // so cards never leave holes a later card could fill.
 export function packLayout(items: { i: string; w: number; h: number }[], cols: number): LayoutItem[] {
@@ -183,12 +258,19 @@ export function usePlaylistLayouts(ids: string[]) {
   }
   const moveCards = (layout: Layout) => reorder(orderFromLayout(layout))
 
-  // Resizing a card changes the size of the slot it sits in.
-  const resizeSlot = (item: LayoutItem | null) => {
+  // Resizing a card changes the size of the slot it sits in, and as few other slots as it takes
+  // to keep every row full at `cols` columns. When no such fill exists, the resize alone applies.
+  const resizeSlot = (item: LayoutItem | null, cols: number) => {
     const slot = item ? arrangement.order.indexOf(item.i) : -1
     if (!item || slot < 0) return
     const sizes = sizesFor(arrangement.order.length)
-    sizes[slot] = { w: item.w, h: item.h }
+    const size = { w: item.w, h: item.h }
+    const filled = fillAfterResize(sizes, slot, size, cols)
+    if (filled) {
+      persist({ order: arrangement.order, sizes: filled })
+      return
+    }
+    sizes[slot] = size
     persist({ order: arrangement.order, sizes })
   }
 

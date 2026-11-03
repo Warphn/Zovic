@@ -6,7 +6,8 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { CloseIcon, SearchIcon } from "@/components/icons"
-import { useStoredPlaylists } from "@/lib/playlist-store"
+import { playOrToggleTrack } from "@/lib/playback-store"
+import { uniqueTracks, useStoredPlaylists } from "@/lib/playlist-store"
 import { searchHref, suggestionHref, suggestionText } from "@/lib/search/routes"
 import { getSuggestions, type SearchSuggestion } from "@/lib/search/suggestions"
 import { cn } from "@/lib/utils"
@@ -16,7 +17,7 @@ const LISTBOX_ID = "header-search-suggestions"
 const optionId = (index: number) => `${LISTBOX_ID}-${index}`
 
 // Header search box (ARIA combobox): suggestions appear while typing; arrows move through
-// them, Enter opens the highlighted one (or the results page), Escape closes.
+// them, Enter opens the highlighted one (or the results page; a track plays instead), Escape closes.
 export function SearchBar({ className }: { className?: string }) {
   const router = useRouter()
   const { playlists } = useStoredPlaylists()
@@ -36,7 +37,16 @@ export function SearchBar({ className }: { className?: string }) {
     router.push(href)
   }
 
-  const pick = (suggestion: SearchSuggestion) => go(suggestionHref(suggestion), suggestionText(suggestion))
+  // A track plays (or pauses) right where the person is; everything else opens its page
+  const pick = (suggestion: SearchSuggestion) => {
+    if (suggestion.kind === "track") {
+      playOrToggleTrack(suggestion.id, uniqueTracks(playlists))
+      setOpen(false)
+      setActiveIndex(-1)
+      return
+    }
+    go(suggestionHref(suggestion), suggestionText(suggestion))
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {

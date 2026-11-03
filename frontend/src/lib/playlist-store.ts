@@ -169,6 +169,17 @@ export function isPlaylistDataArray(items: unknown): items is PlaylistData[] {
   })
 }
 
+/** Every track across `playlists`, each once (the same track can sit in several playlists). */
+export function uniqueTracks(playlists: PlaylistData[]): Track[] {
+  const byId = new Map<string, Track>()
+  for (const playlist of playlists) {
+    for (const track of playlist.tracks) {
+      if (!byId.has(track.id)) byId.set(track.id, track)
+    }
+  }
+  return [...byId.values()]
+}
+
 export function getPlaylistInitials(name: string): string {
   const parts = name.trim().split(" ").filter(Boolean)
   if (parts.length === 0) return "Z"
