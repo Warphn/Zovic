@@ -21,7 +21,7 @@ export function Section({
   className?: string
 }) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-surface/70 p-5 sm:p-6", className)}>
+    <section className={cn("rounded-2xl bg-surface/70 p-5 sm:p-6", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold tracking-tight">{title}</h2>
@@ -36,7 +36,7 @@ export function Section({
 
 export function StatTile({ label, value, hint }: { label: string; value: number; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface/70 p-4">
+    <div className="rounded-2xl bg-surface/70 p-4">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 text-3xl font-black tabular-nums tracking-tight">{value.toLocaleString("pt-BR")}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}

@@ -14,7 +14,7 @@ export function AdminNav() {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Seções do painel" className="flex gap-1 overflow-x-auto border-b border-border">
+    <nav aria-label="Seções do painel" className="flex gap-1 border-b border-border">
       {TABS.map((tab) => {
         const active = pathname === tab.href
         return (
