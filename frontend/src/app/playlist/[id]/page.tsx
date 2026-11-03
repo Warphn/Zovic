@@ -4,7 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
-import { ColorPicker, getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
+import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
+import { RecordSleeve } from "@/components/record-sleeve"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -15,14 +16,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  getPlaylistInitials,
-  useStoredPlaylists,
-} from "@/lib/playlist-store"
+import { apiErrorMessage } from "@/lib/api/client"
+import { parsePlaylistId, useReorderPlaylistMusics, useUpdatePlaylist } from "@/lib/api/playlists"
+import { getPlaylistInitials, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
-import { LevelBars, Record } from "@/components/playback-marks"
+import { LevelBars } from "@/components/playback-marks"
 import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
@@ -32,52 +32,18 @@ import {
   SearchIcon,
 } from "@/components/icons"
 
-// The playlist cover as a record sleeve in the playlist color, with the record half out of it.
-// While this playlist plays, the record slides a little further out and turns
-function RecordSleeve({ color, initials, playing }: { color: string; initials: string; playing: boolean }) {
-  const contrastText = getContrastTextColor(color)
-
-  return (
-    <div className="relative h-48 w-64 shrink-0 md:h-52 md:w-72">
-      {/* Record */}
-      <div
-        className={cn(
-          "absolute top-2 left-0 size-44 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:size-48",
-          playing ? "translate-x-20" : "translate-x-14"
-        )}
-      >
-        <Record
-          color={color}
-          playing={playing}
-          className="size-full shadow-[0_8px_20px_-10px_rgba(23,21,18,0.6)]"
-        />
-      </div>
-
-      {/* Sleeve */}
-      <div
-        className={cn(
-          "relative z-10 flex size-48 items-center justify-center rounded-md md:size-52",
-          "shadow-[0_1px_2px_rgba(23,21,18,0.12),0_16px_32px_-16px_rgba(23,21,18,0.45)]",
-          contrastText
-        )}
-        style={{ backgroundColor: color }}
-      >
-        {/* Printed frame, like the rule around a sleeve's artwork */}
-        <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
-        <span className="select-none text-6xl font-medium tracking-[-0.03em]">{initials}</span>
-      </div>
-    </div>
-  )
-}
-
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
   const playlistId = params?.id
 
-  // All playlists in memory / localStorage with hydration safety
-  const { playlists, persistPlaylists } = useStoredPlaylists()
+  // The playlist and its musics, in the playlist's order, from the API
+  const { data: currentPlaylist, isPending, error, tracksError } = usePlaylistData(playlistId)
+  const updatePlaylist = useUpdatePlaylist()
+  const reorderTracks = useReorderPlaylistMusics()
 
   const [isColorModalOpen, setIsColorModalOpen] = React.useState(false)
+  // The color being picked: previewed on the page, saved once when the dialog closes
+  const [draftColor, setDraftColor] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
@@ -89,24 +55,39 @@ export default function PlaylistDetailPage() {
     t3: true,
   })
 
-  const currentPlaylist = playlists.find((p) => p.id === playlistId) ?? null
-
-  const handleUpdateColor = (newColor: string) => {
-    if (!currentPlaylist) return
-    const updated = playlists.map((p) =>
-      p.id === currentPlaylist.id ? { ...p, color: newColor } : p
-    )
-    persistPlaylists(updated)
+  const openColorModal = () => {
+    updatePlaylist.reset()
+    setIsColorModalOpen(true)
   }
 
-  // Reorder tracks (drag in the tracklist); playback follows the track id, so the playing
+  // Closing the dialog saves the picked color, if it changed; on failure the old color comes back
+  const closeColorModal = () => {
+    setIsColorModalOpen(false)
+    const id = parsePlaylistId(playlistId)
+    if (id !== null && draftColor !== null && draftColor !== currentPlaylist?.color) {
+      updatePlaylist.mutate({ id, input: { color: draftColor } }, { onSettled: () => setDraftColor(null) })
+    } else {
+      setDraftColor(null)
+    }
+  }
+
+  // Reorder tracks (drag in the tracklist): saved for everyone who sees the playlist. The list
+  // moves at once and goes back if the API refuses; playback follows the track id, so the playing
   // track stays the same one
   const handleReorderTracks = (ids: string[]) => {
-    if (!currentPlaylist) return
-    const reordered = ids
-      .map((id) => currentPlaylist.tracks.find((t) => t.id === id))
-      .filter((t): t is NonNullable<typeof t> => Boolean(t))
-    persistPlaylists(playlists.map((p) => (p.id === currentPlaylist.id ? { ...p, tracks: reordered } : p)))
+    const id = parsePlaylistId(playlistId)
+    if (id !== null) reorderTracks.mutate({ id, musicIds: ids.map(Number) })
+  }
+
+  if (isPending) {
+    return (
+      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
+        <Header />
+        <main className="flex-1 pt-24 px-6 flex items-center justify-center">
+          <p className="font-mono text-xs text-muted-foreground">Carregando playlist…</p>
+        </main>
+      </div>
+    )
   }
 
   if (!currentPlaylist) {
@@ -118,7 +99,9 @@ export default function PlaylistDetailPage() {
           <div className="mb-6 size-20 rounded-md border border-dashed border-border" aria-hidden="true" />
           <h1 className="text-2xl font-medium mb-2">Playlist não encontrada</h1>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            Ela pode ter sido removida ou o link está incorreto
+            {error && !error.startsWith("Registro não encontrado")
+              ? error
+              : "Ela pode ter sido removida, ser privada ou o link está incorreto"}
           </p>
           <Link href="/playlist" className={cn(buttonVariants({ size: "lg" }), "gap-2")}>
             <ArrowLeftIcon size={16} /> Voltar ao catálogo
@@ -129,6 +112,7 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = currentPlaylist.tracks
+  const color = draftColor ?? currentPlaylist.color
   // The current track of this playlist is marked even while paused, so the list shows where
   // playback stands
   const currentTrackIndex = isThisPlaylist
@@ -139,7 +123,7 @@ export default function PlaylistDetailPage() {
     const track = tracks[index]
     if (track) playPlaylist(currentPlaylist.id, track.id, playing)
   }
-  const playlistAccent = getPlaylistAccentStyle(currentPlaylist.color)
+  const playlistAccent = getPlaylistAccentStyle(color)
   const totalDuration = formatTotalDuration(sumDurationSec(tracks))
   const isSearching = searchQuery.trim() !== ""
 
@@ -172,24 +156,32 @@ export default function PlaylistDetailPage() {
               <span>Catálogo</span>
             </Link>
 
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setIsColorModalOpen(true)}
-              className="gap-2"
-            >
-              <span
-                className="size-3 rounded-full ring-1 ring-ink/15"
-                style={{ backgroundColor: currentPlaylist.color }}
-              />
-              Alterar cor
-            </Button>
+            {/* Only a playlist admin can edit it; the API refuses anyone else */}
+            {currentPlaylist.canEdit && (
+              <div className="flex items-center gap-3">
+                {updatePlaylist.isError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    Não deu para salvar a cor. {apiErrorMessage(updatePlaylist.error)}
+                  </p>
+                )}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={openColorModal}
+                  disabled={updatePlaylist.isPending}
+                  className="gap-2"
+                >
+                  <span className="size-3 rounded-full ring-1 ring-ink/15" style={{ backgroundColor: color }} />
+                  Alterar cor
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Sleeve and title, aligned on their bottom edge like an album page */}
           <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
             <RecordSleeve
-              color={currentPlaylist.color}
+              color={color}
               initials={getPlaylistInitials(currentPlaylist.name)}
               playing={isPlaying}
             />
@@ -201,9 +193,11 @@ export default function PlaylistDetailPage() {
               <h1 className="mb-4 break-words text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl md:text-6xl">
                 {currentPlaylist.name}
               </h1>
-              <p className="font-mono text-xs text-muted-foreground tabular-nums">
-                {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {totalDuration}
-              </p>
+              {tracks.length > 0 && (
+                <p className="font-mono text-xs text-muted-foreground tabular-nums">
+                  {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {totalDuration}
+                </p>
+              )}
             </div>
           </section>
 
@@ -227,8 +221,22 @@ export default function PlaylistDetailPage() {
               </div>
             </div>
 
-            {/* Drag to reorder; off while searching, since only part of the list shows */}
-            {filteredTracks.length === 0 ? (
+            {reorderTracks.isError && (
+              <p role="alert" className="py-2 text-xs text-destructive">
+                Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
+              </p>
+            )}
+
+            {/* Drag to reorder (playlist admins only); off while searching, since only part of the list shows */}
+            {tracksError ? (
+              <p role="alert" className="py-12 text-center text-xs text-destructive">
+                Não deu para carregar as faixas. {tracksError}
+              </p>
+            ) : tracks.length === 0 ? (
+              <p className="py-12 text-center font-mono text-xs text-muted-foreground">
+                Nenhuma faixa nesta playlist ainda
+              </p>
+            ) : filteredTracks.length === 0 ? (
               <p className="py-12 text-center font-mono text-xs text-muted-foreground">
                 Nenhuma faixa com “{searchQuery.trim()}”
               </p>
@@ -237,7 +245,7 @@ export default function PlaylistDetailPage() {
                 ids={filteredTracks.map((t) => t.id)}
                 rowHeight={56}
                 gap={2}
-                disabled={isSearching}
+                disabled={isSearching || !currentPlaylist.canEdit}
                 onReorder={handleReorderTracks}
               >
                 {filteredTracks.map((track) => {
@@ -257,7 +265,7 @@ export default function PlaylistDetailPage() {
                       className={cn(
                         // Pointer: a click plays the track; grabbing only while a drag is held
                         "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
-                        !isSearching && "active:cursor-grabbing",
+                        !isSearching && currentPlaylist.canEdit && "active:cursor-grabbing",
                         isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
@@ -309,7 +317,7 @@ export default function PlaylistDetailPage() {
                           {track.title}
                         </button>
                         <div className="truncate text-xs text-muted-foreground">
-                          {track.artist} · {track.album}, {track.year}
+                          {[track.artist, [track.album, track.year].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
                         </div>
                       </div>
 
@@ -344,7 +352,7 @@ export default function PlaylistDetailPage() {
         </div>
       </main>
 
-      <Dialog open={isColorModalOpen} onOpenChange={setIsColorModalOpen}>
+      <Dialog open={isColorModalOpen} onOpenChange={(open) => (open ? openColorModal() : closeColorModal())}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Cor da playlist</DialogTitle>
@@ -354,13 +362,10 @@ export default function PlaylistDetailPage() {
           </DialogHeader>
 
           <div className="space-y-4 pt-1">
-            <ColorPicker
-              color={currentPlaylist.color}
-              onChange={handleUpdateColor}
-            />
+            <ColorPicker color={color} onChange={setDraftColor} />
 
             <DialogFooter className="pt-2">
-              <Button type="button" size="lg" onClick={() => setIsColorModalOpen(false)}>
+              <Button type="button" size="lg" onClick={closeColorModal}>
                 Concluir
               </Button>
             </DialogFooter>

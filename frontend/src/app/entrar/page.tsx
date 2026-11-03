@@ -56,7 +56,7 @@ function SignInForm() {
   return (
     <AuthShell
       title="Entrar"
-      description="Acesse suas playlists e continue ouvindo de onde parou."
+      description="Acesse suas playlists e continue ouvindo de onde parou"
       footer={
         <>
           Não tem conta? <AuthLink href={signUpHref}>Criar conta</AuthLink>
@@ -83,7 +83,7 @@ function SignInForm() {
           error={errors.password}
         />
         <FormError message={formError} />
-        <Button type="submit" size="lg" disabled={isSubmitting} className="h-10 w-full text-sm font-semibold">
+        <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full text-sm">
           {isSubmitting ? "Entrando…" : "Entrar"}
         </Button>
       </form>

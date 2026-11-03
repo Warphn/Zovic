@@ -6,10 +6,10 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { CloseIcon, SearchIcon } from "@/components/icons"
-import { playOrToggleTrack } from "@/lib/playback-store"
-import { uniqueTracks, useStoredPlaylists } from "@/lib/playlist-store"
+import { playOrToggleTrack, useCatalogTracks } from "@/lib/playback-store"
 import { searchHref, suggestionHref, suggestionText } from "@/lib/search/routes"
-import { getSuggestions, type SearchSuggestion } from "@/lib/search/suggestions"
+import { type SearchSuggestion, toSuggestions } from "@/lib/search/suggestions"
+import { useCatalogSearch } from "@/lib/api/search"
 import { cn } from "@/lib/utils"
 import { SuggestionView } from "./suggestion-renderers"
 
@@ -20,13 +20,19 @@ const optionId = (index: number) => `${LISTBOX_ID}-${index}`
 // them, Enter opens the highlighted one (or the results page; a track plays instead), Escape closes.
 export function SearchBar({ className }: { className?: string }) {
   const router = useRouter()
-  const { playlists } = useStoredPlaylists()
+  const catalogTracks = useCatalogTracks()
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [query, setQuery] = React.useState("")
   const [open, setOpen] = React.useState(false)
   const [activeIndex, setActiveIndex] = React.useState(-1)
 
-  const suggestions = React.useMemo(() => getSuggestions(query, playlists), [query, playlists])
+  // The API ranks and caps each group (5 by default); the list shows the last answer while
+  // the next one is on its way, so it does not flicker on every key
+  const { results, resultsQuery } = useCatalogSearch(query)
+  const suggestions = React.useMemo(
+    () => (results && query.trim() ? toSuggestions(results, resultsQuery) : []),
+    [results, resultsQuery, query]
+  )
   const showList = open && suggestions.length > 0
 
   const go = (href: string, text: string) => {
@@ -40,7 +46,7 @@ export function SearchBar({ className }: { className?: string }) {
   // A track plays (or pauses) right where the person is; everything else opens its page
   const pick = (suggestion: SearchSuggestion) => {
     if (suggestion.kind === "track") {
-      playOrToggleTrack(suggestion.id, uniqueTracks(playlists))
+      playOrToggleTrack(suggestion.id, [suggestion.track, ...catalogTracks])
       setOpen(false)
       setActiveIndex(-1)
       return
@@ -96,7 +102,7 @@ export function SearchBar({ className }: { className?: string }) {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={handleKeyDown}
-        className="h-10 w-full rounded-full border border-border bg-surface/90 pl-10 pr-10 text-sm text-foreground shadow-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 [&::-webkit-search-cancel-button]:hidden"
+        className="h-10 w-full rounded-full border border-border bg-surface/90 pl-10 pr-10 text-sm text-foreground shadow-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/40 focus:bg-surface focus:ring-2 focus:ring-foreground/10 [&::-webkit-search-cancel-button]:hidden"
       />
       {query && (
         <button
@@ -120,7 +126,7 @@ export function SearchBar({ className }: { className?: string }) {
           id={LISTBOX_ID}
           role="listbox"
           aria-label="Sugestões"
-          className="absolute left-0 right-0 top-full mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-xl"
+          className="absolute left-0 right-0 top-full mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-popover"
         >
           {suggestions.map((suggestion, index) => (
             <div
@@ -136,11 +142,12 @@ export function SearchBar({ className }: { className?: string }) {
               }}
               onMouseEnter={() => setActiveIndex(index)}
               className={cn(
-                "cursor-pointer rounded-xl px-2.5 py-1.5",
+                // 16px panel minus its 6px padding: 10px rows
+                "cursor-pointer rounded-[10px] px-2.5 py-1.5",
                 index === activeIndex ? "bg-muted/40" : "hover:bg-muted/25"
               )}
             >
-              <SuggestionView suggestion={suggestion} query={query} />
+              <SuggestionView suggestion={suggestion} query={resultsQuery} />
             </div>
           ))}
         </div>

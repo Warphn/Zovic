@@ -10,8 +10,9 @@ import {
   selectTrack,
   togglePlayback,
   usePlayback,
+  useRecordPlays,
 } from "@/lib/playback-store"
-import { getPlaylistInitials, useStoredPlaylists, type Track } from "@/lib/playlist-store"
+import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 
 // Tracks played on their own use the default accent (--color-red in globals.css)
@@ -48,13 +49,18 @@ interface PlaybackBarProps {
 export function AppPlaybackBar() {
   const pathname = usePathname()
   const playback = usePlayback()
-  const { playlists } = useStoredPlaylists()
+  // Mounted on every page (root layout), so every listen is counted once
+  useRecordPlays()
+  // The playlist being played, or (with nothing playing) the one on this page; both come from
+  // the same cache the playlist page fills
+  const pagePlaylistId = /^\/playlist\/([^/]+)$/.exec(pathname)?.[1]
+  const sourceId = playback?.source.kind === "playlist" ? playback.source.playlistId : playback ? null : pagePlaylistId
+  const { data: sourcePlaylist } = usePlaylistData(sourceId)
   if (HIDDEN_ON.has(pathname)) return null
 
-  const pagePlaylistId = /^\/playlist\/([^/]+)$/.exec(pathname)?.[1]
-  const pagePlaylist = playback ? null : (playlists.find((p) => p.id === pagePlaylistId) ?? null)
+  const pagePlaylist = playback ? null : sourcePlaylist
   const { tracks, playlist } = playback
-    ? resolveQueue(playback, playlists)
+    ? resolveQueue(playback, sourcePlaylist ? [sourcePlaylist] : [])
     : { tracks: pagePlaylist?.tracks ?? [], playlist: pagePlaylist }
   const currentIndex = Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
   const track = tracks[currentIndex]
@@ -70,7 +76,7 @@ export function AppPlaybackBar() {
   return (
     <PlaybackBar
       track={track}
-      coverLabel={getPlaylistInitials(playlist?.name ?? track?.album ?? "")}
+      coverLabel={getPlaylistInitials(playlist?.name ?? (track?.album || track?.title || ""))}
       color={playlist?.color ?? DEFAULT_COLOR}
       isPlaying={Boolean(playback?.isPlaying)}
       onTogglePlay={() => (playback ? togglePlayback() : goTo(currentIndex))}
