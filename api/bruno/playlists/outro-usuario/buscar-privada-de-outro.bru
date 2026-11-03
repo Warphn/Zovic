@@ -1,0 +1,18 @@
+meta {
+  name: Buscar playlist privada de outro usuário
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{privatePlaylistId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404, como se não existisse", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().error).to.equal("NOT_FOUND");
+  });
+}

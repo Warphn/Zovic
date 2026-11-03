@@ -1,0 +1,23 @@
+meta {
+  name: Limite inválido
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=rock&limit=51
+  body: none
+  auth: none
+}
+
+params:query {
+  q: rock
+  limit: 51
+}
+
+tests {
+  test("responde 400 apontando o campo limit", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().fields.map((f) => f.field)).to.deep.equal(["limit"]);
+  });
+}

@@ -1,0 +1,35 @@
+meta {
+  name: Editar playlist
+  type: http
+  seq: 1
+}
+
+patch {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "  MPB de domingo  ",
+    "color": null
+  }
+}
+
+vars:pre-request {
+  playlistId: 2
+}
+
+tests {
+  test("responde 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("muda só os campos enviados", function () {
+    const body = res.getBody();
+    expect(body.name).to.equal("MPB de domingo");
+    expect(body.color).to.equal(null);
+    expect(body.isPrivate).to.equal(false);
+  });
+}

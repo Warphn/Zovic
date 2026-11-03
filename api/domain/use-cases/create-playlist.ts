@@ -1,5 +1,6 @@
 import { Playlist } from "../entities/playlist.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
+import { type PlaylistOutput, toPlaylistOutput } from "./playlist-output.ts";
 
 export interface CreatePlaylistInput {
   creatorId: number;
@@ -8,13 +9,7 @@ export interface CreatePlaylistInput {
   color?: string | null;
 }
 
-export interface CreatePlaylistOutput {
-  id: number;
-  name: string;
-  isPrivate: boolean;
-  color: string | null;
-  createdAt: string;
-}
+export type CreatePlaylistOutput = PlaylistOutput;
 
 export interface CreatePlaylistUseCase {
   execute(input: CreatePlaylistInput): Promise<CreatePlaylistOutput>;
@@ -29,12 +24,6 @@ export class CreatePlaylist implements CreatePlaylistUseCase {
 
     await this.playlists.save(playlist);
 
-    return {
-      id: playlist.id,
-      name: playlist.name,
-      isPrivate: playlist.isPrivate,
-      color: playlist.color,
-      createdAt: playlist.createdAt.toISOString(),
-    };
+    return toPlaylistOutput(playlist, input.creatorId);
   }
 }
