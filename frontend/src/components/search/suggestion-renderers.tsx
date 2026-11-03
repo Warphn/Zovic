@@ -13,7 +13,12 @@ import { cn } from "@/lib/utils"
 type RendererProps<K extends SuggestionKind> = {
   suggestion: Extract<SearchSuggestion, { kind: K }>
   query: string
+  /** Start the subtitle with the kind ("Música · …"); off where a group heading already says it. */
+  showKind: boolean
 }
+
+// "Música · Maré Alta", or just "Maré Alta" under a heading that already names the kind
+const subtitleOf = (kind: string, text: string, showKind: boolean) => (showKind ? `${kind} · ${text}` : text)
 
 export type SuggestionRenderers = { [K in SuggestionKind]: React.ComponentType<RendererProps<K>> }
 
@@ -79,34 +84,43 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
       title={<Highlight text={suggestion.text} query={query} />}
     />
   ),
-  track: ({ suggestion, query }) => (
+  track: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.title)} color="#171512" />}
       title={<Highlight text={suggestion.title} query={query} />}
-      subtitle={`Música · ${suggestion.artist}`}
+      subtitle={subtitleOf("Música", suggestion.artist, showKind)}
     />
   ),
-  artist: ({ suggestion, query }) => (
+  artist: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Artista · ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`}
+      subtitle={subtitleOf("Artista", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`, showKind)}
     />
   ),
-  playlist: ({ suggestion, query }) => (
+  playlist: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color={suggestion.color} />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Playlist · ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`}
+      subtitle={subtitleOf("Playlist", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`, showKind)}
     />
   ),
 }
 
-export function SuggestionView({ suggestion, query }: { suggestion: SearchSuggestion; query: string }) {
+export function SuggestionView({
+  suggestion,
+  query,
+  showKind = true,
+}: {
+  suggestion: SearchSuggestion
+  query: string
+  showKind?: boolean
+}) {
   // The registry is keyed by kind, so this lookup always matches the suggestion's type
   const Renderer = SUGGESTION_RENDERERS[suggestion.kind] as React.ComponentType<{
     suggestion: SearchSuggestion
     query: string
+    showKind: boolean
   }>
-  return <Renderer suggestion={suggestion} query={query} />
+  return <Renderer suggestion={suggestion} query={query} showKind={showKind} />
 }

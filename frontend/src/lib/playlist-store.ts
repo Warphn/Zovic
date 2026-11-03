@@ -1,5 +1,5 @@
 import * as React from "react"
-import { type Playlist, type PlaylistMusic, parsePlaylistId, useMyPlaylists, usePlaylist, usePlaylistMusics } from "@/lib/api/playlists"
+import { type Playlist, type PlaylistInput, type PlaylistMusic, parsePlaylistId, useMyPlaylists, usePlaylist, usePlaylistMusics } from "@/lib/api/playlists"
 import { apiErrorMessage } from "@/lib/api/client"
 import type { SearchMusic } from "@/lib/api/search"
 import { formatDuration } from "@/lib/format-duration"
@@ -191,6 +191,29 @@ export function musicToTrack(music: SearchMusic & { album?: PlaylistMusic["album
     durationSec: music.duration,
     year: "",
   }
+}
+
+/** Playlist.MAX_NAME_LENGTH in the API. */
+export const MAX_PLAYLIST_NAME_LENGTH = 150
+
+export interface PlaylistDraft {
+  name: string
+  isPrivate: boolean
+  color: string
+}
+
+/**
+ * The PATCH body for going from `current` to `draft`: only the fields that changed, the name
+ * trimmed. Null when nothing changed or the name is blank (the API refuses an empty name).
+ */
+export function playlistChanges(current: PlaylistDraft, draft: PlaylistDraft): PlaylistInput | null {
+  const name = draft.name.trim()
+  if (!name) return null
+  const changes: PlaylistInput = {}
+  if (name !== current.name) changes.name = name
+  if (draft.isPrivate !== current.isPrivate) changes.isPrivate = draft.isPrivate
+  if (draft.color.toLowerCase() !== current.color.toLowerCase()) changes.color = draft.color
+  return Object.keys(changes).length > 0 ? changes : null
 }
 
 export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = []): PlaylistData {

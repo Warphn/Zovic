@@ -1,7 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { CircleAlert, LogOut, ShieldCheck, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react"
+import {
+  CircleAlert,
+  ListMinus,
+  ListPlus,
+  LogOut,
+  Pencil,
+  ShieldCheck,
+  SkipBack,
+  SkipForward,
+  Volume1,
+  Volume2,
+  VolumeX,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { IconProps, VolumeIconProps } from "./types"
 import { ArrowLeftIcon as AnimatedArrowLeft } from "./lucide-animated/arrow-left"
@@ -99,6 +111,9 @@ export const LogOutIcon = staticLucide(LogOut)
 export const ShieldIcon = staticLucide(ShieldCheck)
 export const SkipBackIcon = staticLucide(SkipBack)
 export const SkipForwardIcon = staticLucide(SkipForward)
+export const PencilIcon = staticLucide(Pencil)
+export const ListPlusIcon = staticLucide(ListPlus)
+export const ListMinusIcon = staticLucide(ListMinus)
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const Icon = level === "muted" ? VolumeX : level === "low" ? Volume1 : Volume2

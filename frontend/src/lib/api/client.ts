@@ -19,6 +19,18 @@ const MESSAGES: Record<string, string> = {
   "Admins cannot remove their own account": "Você não pode remover a sua própria conta.",
   "The last platform admin cannot be removed": "Não dá para remover o último admin da plataforma.",
   "Music must have at least one artist": "A música precisa de pelo menos um artista.",
+  // Playlists (api/domain/use-cases): only the playlist's admins can change it
+  "Only playlist admins can edit it": "Só quem administra a playlist pode editá-la.",
+  "Only playlist admins can delete it": "Só quem administra a playlist pode apagá-la.",
+  "Only playlist admins can add musics": "Só quem administra a playlist pode adicionar músicas.",
+  "Only playlist admins can remove musics": "Só quem administra a playlist pode tirar músicas.",
+  "Only playlist admins can reorder musics": "Só quem administra a playlist pode mudar a ordem.",
+  "Music is already in this playlist": "Essa música já está na playlist.",
+  "Music is not in this playlist": "Essa música já tinha saído da playlist.",
+  "Music not found": "Essa música não está mais no catálogo.",
+  "Playlist not found": "A playlist não existe mais ou é privada.",
+  "The new order must have exactly the playlist's musics; reload it and try again":
+    "A playlist mudou enquanto você ordenava. Recarregue e tente de novo.",
 }
 
 /** Message to show for any error thrown by a request (or by anything else). */

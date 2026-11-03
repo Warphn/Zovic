@@ -14,7 +14,13 @@ import {
 } from "@/components/color-picker"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useCreatePlaylist, useDeletePlaylist } from "@/lib/api/playlists"
-import { type PlaylistData, getPlaylistInitials, useMyPlaylistsData } from "@/lib/playlist-store"
+import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
+import {
+  MAX_PLAYLIST_NAME_LENGTH,
+  type PlaylistData,
+  getPlaylistInitials,
+  useMyPlaylistsData,
+} from "@/lib/playlist-store"
 import { GRID_BREAKPOINTS, GRID_COLS, usePlaylistLayouts } from "@/lib/playlist-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,8 +42,6 @@ import { isPlayingFrom, usePlayback } from "@/lib/playback-store"
 
 type CatalogView = "grid" | "list"
 
-/** Playlist.MAX_NAME_LENGTH in the API. */
-const MAX_NAME_LENGTH = 150
 
 // Track count and length, while the API does not send a playlist's musics: nothing to show yet
 function trackSummary(playlist: PlaylistData, withDuration: boolean): string | null {
@@ -91,6 +95,7 @@ export default function PlaylistPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
   const [newPlaylistName, setNewPlaylistName] = React.useState("")
   const [newPlaylistColor, setNewPlaylistColor] = React.useState(PRESET_COLORS[0]?.color ?? "#d33a2c")
+  const [newPlaylistPrivate, setNewPlaylistPrivate] = React.useState(false)
 
   // Handle Form Submit (Create Playlist)
   const handleCreatePlaylist = (e: React.FormEvent) => {
@@ -99,7 +104,7 @@ export default function PlaylistPage() {
     if (!trimmed || createPlaylist.isPending) return
 
     createPlaylist.mutate(
-      { name: trimmed, color: newPlaylistColor },
+      { name: trimmed, color: newPlaylistColor, isPrivate: newPlaylistPrivate },
       {
         onSuccess: (created) => {
           setIsCreateModalOpen(false)
@@ -150,7 +155,7 @@ export default function PlaylistPage() {
       <Header />
 
       <main className="flex-1 pt-16 flex flex-col">
-        <div className="max-w-7xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
           {/* Page header: title and shelf totals, then the actions */}
           <div className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -210,6 +215,7 @@ export default function PlaylistPage() {
                 onClick={() => {
                   setNewPlaylistName("")
                   setNewPlaylistColor(PRESET_COLORS[0]?.color ?? "#d33a2c")
+                  setNewPlaylistPrivate(false)
                   createPlaylist.reset()
                   setIsCreateModalOpen(true)
                 }}
@@ -403,7 +409,7 @@ export default function PlaylistPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Nova playlist</DialogTitle>
-            <DialogDescription>Dê um nome e escolha a cor do encarte</DialogDescription>
+            <DialogDescription>Dê um nome, escolha a cor do encarte e quem pode ver</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreatePlaylist} className="space-y-5 pt-1">
@@ -416,12 +422,14 @@ export default function PlaylistPage() {
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 placeholder="Ex.: MPB de domingo"
-                maxLength={MAX_NAME_LENGTH}
+                maxLength={MAX_PLAYLIST_NAME_LENGTH}
                 required
               />
             </div>
 
             <ColorPicker color={newPlaylistColor} onChange={setNewPlaylistColor} />
+
+            <PlaylistPrivacyField isPrivate={newPlaylistPrivate} onChange={setNewPlaylistPrivate} />
 
             {createPlaylist.isError && (
               <p role="alert" className="text-sm text-destructive">
