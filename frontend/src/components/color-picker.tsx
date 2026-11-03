@@ -36,6 +36,19 @@ export function getContrastTextColor(hexColor: string): "text-white" | "text-bla
   return yiq >= 150 ? "text-black" : "text-white"
 }
 
+// The playlist color becomes a page's accent: primary, focus ring and text selection
+// (selection:bg-primary/20) all follow it. Light colors get a darker variant so
+// accent text and icons stay readable on the paper background.
+export function getPlaylistAccentStyle(color: string): React.CSSProperties {
+  const isLightColor = getContrastTextColor(color) === "text-black"
+  return {
+    "--primary": isLightColor ? `color-mix(in oklab, ${color} 70%, black)` : color,
+    // Dark colors already carry light text; light ones are darkened above, so light text fits both
+    "--primary-foreground": "var(--color-paper-bright)",
+    "--ring": color,
+  } as React.CSSProperties
+}
+
 interface ColorPickerProps {
   color: string
   onChange: (newColor: string) => void
@@ -77,8 +90,8 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      <Label htmlFor="playlist-color" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
-        Cor da Playlist
+      <Label htmlFor="playlist-color" className="block text-sm font-medium">
+        Cor
       </Label>
 
       {/* Main Color preview and manual Hex controller */}

@@ -36,6 +36,7 @@ A primeira migration, `V1__create_schema.sql`, é anterior a esse padrão e fica
 - **Dados de teste não entram em migration.** Migrations rodam em todos os ambientes, inclusive produção. Dados fictícios ficam no [seed](#seed).
 - **Toda migration nova exige atualizar o Prisma** (próxima seção).
 - **O Better Auth não altera o banco.** Nunca rode `better-auth migrate`: as tabelas `user`, `session`, `account` e `verification` vêm das migrations. Ao ligar um recurso novo do Better Auth que precise de colunas ou tabelas (um plugin, por exemplo), gere o SQL de referência com `bunx @better-auth/cli generate` e escreva uma migration Flyway com as convenções do projeto.
+- **Extensões do Postgres também entram por migration**, com `CREATE EXTENSION IF NOT EXISTS`, nunca à mão no banco. Hoje há uma: `unaccent`, usada pela busca (`GET /api/search`) para não diferenciar acentos. Ela vem na migration `V261103_151718__Ativa_unaccent_para_busca.sql`. O Prisma não representa extensões, então o `db:sync` não muda nada no `schema.prisma`.
 
 ### Criando uma migration
 
@@ -125,6 +126,7 @@ Os seeders `ALL` e `PROD` comparam pelo nome: inserem o que falta e atualizam o 
 | Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações (feat) e um álbum em parceria (`catalog-data.ts`) |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
 | Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos |
+| Admin padrão | `LOCAL` | `admin@zovic.test`, senha `admin`, papel `admin` e sem plano; criado ou atualizado pelo email. A senha só funciona porque o hash é gravado direto, sem a regra de 8 caracteres do cadastro |
 | Totais do sistema | `ALL` | Recalcula a `system_data` a partir do banco |
 
 O terminal mostra, ao fim de cada seeder, quanto ele criou.

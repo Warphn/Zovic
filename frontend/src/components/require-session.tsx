@@ -20,6 +20,6 @@ export function RequireSession({ children }: { children: React.ReactNode }) {
     }
   }, [isPending, session, pathname, router])
 
-  if (!session) return <div className="min-h-screen bg-background" />
+  if (!session) return <div className="flex-1 bg-background" />
   return children
 }

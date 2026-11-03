@@ -6,11 +6,11 @@ export default function Footer() {
     <footer id="contato" data-header-theme="dark" className="scroll-mt-16 bg-ink text-paper">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12 md:flex-row md:items-end md:justify-between md:px-8">
         <div>
-          <Link href="/" className="text-2xl font-black tracking-tight">
+          <Link href="/" className="text-xl font-medium tracking-[-0.02em]">
             Zovic
           </Link>
           <p className="mt-2 max-w-xs text-sm text-paper/60">
-            Streaming de músicas com playlists que têm a sua cara.
+            Streaming de música com busca, fila e playlists que têm a sua cara
           </p>
         </div>
 
@@ -18,6 +18,9 @@ export default function Footer() {
           <Link href="/playlist" className="transition-colors hover:text-paper">
             Playlists
           </Link>
+          <SectionLink section="recursos" className="transition-colors hover:text-paper">
+            Recursos
+          </SectionLink>
           <SectionLink section="como-funciona" className="transition-colors hover:text-paper">
             Como funciona
           </SectionLink>

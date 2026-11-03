@@ -61,6 +61,12 @@ export const GridIcon = svg(
 )
 export const ListIcon = svg(<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />)
 export const MenuIcon = svg(<path d="M3 6h18M3 12h18M3 18h18" />)
+export const QueueIcon = svg(
+  <>
+    <path d="M6 5v14M2 7v10" />
+    <rect width="12" height="18" x="10" y="3" rx="2" />
+  </>
+)
 export const PlusIcon = glyph("+")
 export const AlertIcon = svg(
   <>

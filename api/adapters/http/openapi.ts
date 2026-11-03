@@ -30,7 +30,10 @@ export const openApiDocument = {
     title: "Zovic API",
     version: "0.1.0",
     description:
-      "API do Zovic, streaming de músicas. A autenticação é feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Os erros das rotas `/api/auth/*` têm o formato `{ code, message }`; os das demais rotas, `{ error, message }`.",
+      "API do Zovic, streaming de músicas.\n\n" +
+      "**Autenticação.** É feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Fora `/api/auth/*` e `/health`, toda rota exige a sessão e responde 401 sem ela.\n\n" +
+      "**Testando por esta página.** Rode o `sign-in` em *Try it out*: o navegador guarda o cookie e as próximas chamadas daqui já vão autenticadas. O botão *Authorize* não é necessário (e não funciona com cookie: o navegador não deixa a página definir o cookie). Para isso a API precisa de `COOKIE_SECURE=false` quando roda em `http://`, e esta página deve ser aberta pelo mesmo endereço de `BETTER_AUTH_URL` (padrão `http://localhost:3333`). Com o seed LOCAL, todo usuário entra com `nome.sobrenome@zovic.test` e a senha `zovic123`.\n\n" +
+      "**Erros.** As rotas `/api/auth/*` respondem `{ code, message }`; as demais, `{ error, message }`, ou `{ error: \"VALIDATION_ERROR\", fields }` quando a validação aponta campos.",
   },
   servers: [{ url: "/", description: "Esta API" }],
   tags: [
@@ -65,20 +68,11 @@ export const openApiDocument = {
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/SignUpRequest" },
-              examples: {
-                completo: {
-                  summary: "Com data de nascimento",
-                  value: {
-                    name: "Ana Andrade",
-                    email: "ana@exemplo.com",
-                    password: "uma-senha-longa",
-                    birthdate: "1995-03-12",
-                  },
-                },
-                minimo: {
-                  summary: "Sem data de nascimento",
-                  value: { name: "Bruno Andrade", email: "bruno@exemplo.com", password: "outra-senha-1" },
-                },
+              example: {
+                name: "Ana Andrade",
+                email: "ana@exemplo.com",
+                password: "uma-senha-longa",
+                birthdate: "1995-03-12",
               },
             },
           },
@@ -91,7 +85,7 @@ export const openApiDocument = {
           },
           "400": {
             description:
-              "Corpo inválido: campo ausente, email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou JSON malformado",
+              "Corpo inválido: campo ausente (inclusive `birthdate`), email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou no futuro, ou JSON malformado",
             content: {
               "application/json": {
                 schema: authErrorResponse("VALIDATION_ERROR", "[body.email] Invalid email address"),
@@ -257,7 +251,7 @@ export const openApiDocument = {
             },
           },
           "400": {
-            description: "Corpo inválido: campos fora do schema, regra do domínio violada ou JSON malformado",
+            description: "Corpo inválido: nome ausente, vazio ou longo demais, cor fora do formato #RRGGBB, regra do domínio violada ou JSON malformado",
             content: {
               "application/json": {
                 schema: {
@@ -269,20 +263,8 @@ export const openApiDocument = {
               },
             },
           },
-          "401": {
-            description: "Sem sessão válida: cookie ausente, inválido ou expirado, ou usuário removido",
-            content: {
-              "application/json": {
-                schema: errorResponse("UNAUTHENTICATED", "Authentication required"),
-              },
-            },
-          },
-          "500": {
-            description: "Erro inesperado. O detalhe fica só no log do servidor",
-            content: {
-              "application/json": { schema: errorResponse("INTERNAL_ERROR", "Internal server error") },
-            },
-          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "500": { $ref: "#/components/responses/InternalError" },
         },
       },
     },
@@ -290,7 +272,7 @@ export const openApiDocument = {
       parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
       get: {
         tags: ["Playlists"],
-        summary: "Busca uma playlist",
+        summary: "Mostra uma playlist",
         description:
           "Qualquer usuário autenticado vê uma playlist pública; uma privada, só os membros. A privada de outra pessoa responde 404, como se não existisse.",
         operationId: "getPlaylist",

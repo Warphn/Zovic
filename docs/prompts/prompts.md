@@ -73,3 +73,13 @@ Durante a sessão, a equipe também pediu vários ajustes pequenos de visual (al
 | 4 | Me ajude com os conflitos ao mergear a `main` na minha branch.                                                                                                                                                                                                                                                                                                                                                                                 | Conflitos em [`routes.ts`](../../api/adapters/http/routes.ts) e [`composition-root.ts`](../../api/infra/composition-root.ts) resolvidos mantendo os dois lados; a migration de reproduções foi renomeada para depois da migration da `main`, para o Flyway não recusar uma versão fora de ordem |
 
 O primeiro desenho do papel de admin foi revertido porque a `main` já tinha uma versão parecida; o trabalho seguiu sobre a versão da `main`. A equipe testou o cadastro e o painel no navegador, pediu os ajustes de visual da linha 6 depois de ver as telas e decidiu manter o registro de reproduções na API mesmo com o player do frontend ainda simulado.
+
+### 03/11/2026: rotas de playlist e busca
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Separe as requisições de playlist no Bruno por escopo, para facilitar a visualização. | Subpastas em [`api/bruno/playlists/`](../../api/bruno/playlists/) |
+| 2 | Como implementar no back a busca do header, no estilo do Spotify, que mostra playlists, músicas e artistas que correspondem ao termo? Isso é uma rota de listagem? E ela só acha o que o usuário já ouviu? | Explicação do desenho da rota, sem código: consulta que cruza recursos, no catálogo inteiro, e não listagem |
+| 3 | Verifique o estado do repositório e atualize as documentações. | Seção "Rotas da API" no [`README.md`](../../README.md), [`docs/models.md`](../models.md), [`docs/banco-de-dados.md`](../banco-de-dados.md) e este registro |
+
+A equipe revisou o desenho da busca antes da implementação e fez os merges dos dois PRs.

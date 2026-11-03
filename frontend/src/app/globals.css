@@ -104,6 +104,25 @@
 
 @theme {
   --animate-marquee: marquee 40s linear infinite;
+  /* Record on a playlist page: turns slowly only while that playlist plays */
+  --animate-record: record 6s linear infinite;
+  /* Level bars of the playing track: a slow rise and fall, never a bounce */
+  --animate-level: level 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+
+  @keyframes record {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes level {
+    from {
+      transform: scaleY(0.35);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
 
   @keyframes marquee {
     from {
