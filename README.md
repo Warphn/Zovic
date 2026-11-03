@@ -158,6 +158,32 @@ Variáveis do `.env`:
 | `COOKIE_SECURE` | Se a variável faltar, a API (fora do docker compose) emite o cookie com `Secure` (e o nome ganha o prefixo `__Secure-`), e o navegador (ou o curl) não o guarda em `http://`. Em desenvolvimento use `COOKIE_SECURE=false`; o docker compose já assume `false` quando ela falta. Em produção, com HTTPS, deixe ligado. |
 | `TRUST_PROXY` | Opcional. Número de proxies confiáveis (inteiro >= 1) para quando a API roda atrás de um proxy reverso com TLS: sem isso o rate limit vê o IP do proxy, não o do cliente. Deixe vazio se a API for exposta direto. |
 
+### Rotas da API
+
+Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401). Os detalhes de cada uma (corpo, respostas e exemplos) estão no Swagger UI, em http://localhost:3333/docs, e na coleção do Bruno (`api/bruno/`), com uma pasta por assunto.
+
+| Método e rota | O que faz |
+| --- | --- |
+| `GET /api/playlists` | Lista as playlists de que o usuário é membro, da mais nova para a mais antiga. |
+| `POST /api/playlists` | Cria uma playlist; quem cria vira o primeiro membro, como admin. |
+| `GET /api/playlists/:id` | Mostra uma playlist pública a qualquer usuário e uma privada só aos membros. A privada de outra pessoa responde 404, como se não existisse. |
+| `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só admins da playlist (os outros recebem 403). |
+| `DELETE /api/playlists/:id` | Apaga com soft delete. Só admins da playlist. |
+| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists no catálogo inteiro, até `limit` itens por grupo (de 1 a 50, padrão 5). |
+
+**Como a busca funciona.**
+- **Acentos e maiúsculas:** a busca não diferencia nenhum dos dois, então `agua` acha `Águas`. A comparação usa a extensão `unaccent` do Postgres.
+- **Ordem em cada grupo:**
+  1. os nomes que começam com o termo;
+  2. depois, os que têm uma palavra começando com ele;
+  3. por último, os que só o contêm.
+  Empates ficam em ordem alfabética. É a mesma regra das sugestões do frontend.
+- **Músicas** também são encontradas pelo nome dos artistas.
+- **Playlists:** aparecem as públicas de qualquer pessoa e as privadas de que o usuário é membro.
+- **Nada apagado aparece.**
+- **`%` e `_`** contam como texto, não como curinga.
+- **Sem índice, por enquanto:** com o catálogo atual, ler a tabela inteira é instantâneo. O caminho previsto para quando ele crescer está no comentário da migration `V261103_151718__Ativa_unaccent_para_busca.sql`.
+
 ### Lint
 
 Os dois projetos usam [Oxlint](https://oxc.rs), configurado no `.oxlintrc.json` de cada pasta. Ele roda sozinho no pre-commit, só nos arquivos do commit, e bloqueia o commit se houver erro.
@@ -171,7 +197,7 @@ bun run lint:fix   # corrige o que for automático
 
 ```bash
 bun run test               # em api/ ou frontend/: testes rápidos, sem banco
-bun run test:integration   # em api/: repositórios no Postgres (precisa do banco no ar)
+bun run test:integration   # em api/: repositórios e rotas HTTP no Postgres (precisa do banco no ar)
 bun run typecheck          # em api/
 ```
 
