@@ -3,9 +3,10 @@
 import * as React from "react"
 import Link from "next/link"
 import Header from "@/components/header"
-import SilkBackground from "@/components/silk-background"
+import { RecordSleeve, Sleeve } from "@/components/record-sleeve"
 import { Input, type InputProps } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getPlaylistInitials, INITIAL_PLAYLISTS } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { AlertIcon } from "@/components/icons"
 
@@ -16,18 +17,47 @@ interface AuthShellProps {
   children: React.ReactNode
 }
 
-// Page frame shared by /entrar and /cadastro
+// The front sleeve is the landing preview's sample playlist, in its color; the two behind it are
+// in the page's own ink and sand, like sleeves in the shade of the crate, so one color leads
+const FRONT = INITIAL_PLAYLISTS[0]
+const BEHIND = [
+  { color: "#171512", initials: "TP" },
+  { color: "#b9ad91", initials: "CB" },
+]
+
+// Sleeves leaning one behind the other, like at the back of a record crate, the front one with
+// its record half out. Static: nothing plays before the visitor is in. The sleeves behind sit up
+// and to the left, so the stack is shifted down and right to center what is seen
+function Shelf() {
+  const [back, middle] = BEHIND
+  if (!FRONT || !back || !middle) return null
+  return (
+    <div aria-hidden="true" className="hidden items-center justify-center md:flex">
+      <div className="relative translate-x-10 translate-y-10 scale-125 lg:translate-x-12 lg:translate-y-12 lg:scale-150">
+        <Sleeve color={back.color} initials={back.initials} className="absolute top-0 left-0 size-48 -translate-x-16 -translate-y-16 md:size-52" />
+        <Sleeve color={middle.color} initials={middle.initials} className="absolute top-0 left-0 size-48 -translate-x-8 -translate-y-8 md:size-52" />
+        <div className="relative">
+          <RecordSleeve color={FRONT.color} initials={getPlaylistInitials(FRONT.name)} playing={false} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Page frame shared by /entrar and /cadastro: the form on the left, the shelf on the right
 export function AuthShell({ title, description, footer, children }: AuthShellProps) {
   return (
-    <div className="relative flex-1 text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
-      <SilkBackground />
+    <div className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
       <Header />
-      <main className="flex-1 pt-16 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-sm">
-          <h1 className="text-4xl font-black tracking-tight">{title}</h1>
-          <p className="mt-2 mb-8 text-sm font-light text-muted-foreground">{description}</p>
-          <div className="rounded-2xl border border-border bg-surface p-6 shadow-xs">{children}</div>
-          <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>
+      <main className="flex-1 pt-16">
+        <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-16 px-6 py-16 md:grid-cols-[minmax(0,24rem)_1fr] md:px-8">
+          <div className="w-full max-w-sm">
+            <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em]">{title}</h1>
+            <p className="mt-3 mb-8 text-sm text-muted-foreground">{description}</p>
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-xs">{children}</div>
+            <p className="mt-6 text-sm text-muted-foreground">{footer}</p>
+          </div>
+          <Shelf />
         </div>
       </main>
     </div>
@@ -40,15 +70,14 @@ interface FormFieldProps extends InputProps {
   error?: string
 }
 
-// Floating label: it sits in the middle of the input and slides up while the input is focused
-// or has a value (CSS only, via peer + :placeholder-shown; the input always gets a placeholder,
-// shown only while focused). Date inputs always render their own mask, so their label stays up.
-const LABEL_FLOATED =
-  "top-2 translate-y-0 text-[10px] font-semibold uppercase tracking-wider"
-const LABEL_FLOAT_ON_STATE = [
-  "peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-semibold peer-focus:uppercase peer-focus:tracking-wider",
-  "peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-[10px] peer-not-placeholder-shown:font-semibold peer-not-placeholder-shown:uppercase peer-not-placeholder-shown:tracking-wider",
-].join(" ")
+// Floating label: it rests in the middle of the input and moves up, smaller, while the input is
+// focused or has a value (CSS only, via peer + :placeholder-shown; the input always gets a
+// placeholder, shown only while focused). Date inputs always render their own mask, so their
+// label stays up. The label is set at its small size and scaled up to rest, so the move is
+// transform only (translate + scale), never top or font-size.
+const LABEL_AT_REST = "translate-y-2 scale-[1.2727]"
+const LABEL_FLOAT_ON_STATE =
+  "peer-focus:translate-y-0 peer-focus:scale-100 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:scale-100"
 
 // Labelled input whose error is announced with it (aria-invalid + aria-describedby)
 export function FormField({ id, label, error, placeholder, type, ...inputProps }: FormFieldProps) {
@@ -65,7 +94,7 @@ export function FormField({ id, label, error, placeholder, type, ...inputProps }
           aria-describedby={error ? errorId : undefined}
           className={cn(
             "peer h-12 px-3 pt-5 pb-1 placeholder:text-transparent focus:placeholder:text-muted-foreground",
-            error && "pr-10 bg-destructive/5"
+            error && "pr-10"
           )}
           {...inputProps}
         />
@@ -80,16 +109,17 @@ export function FormField({ id, label, error, placeholder, type, ...inputProps }
         <Label
           htmlFor={id}
           className={cn(
-            "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-normal text-muted-foreground transition-all duration-200 ease-out peer-focus:text-primary",
-            alwaysFloated ? LABEL_FLOATED : LABEL_FLOAT_ON_STATE,
-            error && "text-destructive peer-focus:text-destructive"
+            // 11px at the top (8px down), 14px at rest in the middle of the 48px field
+            "pointer-events-none absolute top-2 left-3 origin-left text-[11px] leading-4 font-normal text-muted-foreground transition-[translate,scale,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] peer-focus:text-foreground",
+            !alwaysFloated && LABEL_AT_REST,
+            !alwaysFloated && LABEL_FLOAT_ON_STATE
           )}
         >
           {label}
         </Label>
       </div>
       {error && (
-        <p id={errorId} className="pl-3 text-xs font-medium text-destructive">
+        <p id={errorId} className="pl-3 text-xs text-destructive">
           {error}
         </p>
       )}
@@ -108,7 +138,7 @@ export function FormError({ message }: { message: string | null }) {
 
 export function AuthLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="font-semibold text-foreground underline-offset-4 hover:underline">
+    <Link href={href} className="font-medium text-foreground underline underline-offset-4 decoration-foreground/30 transition-colors hover:decoration-foreground">
       {children}
     </Link>
   )

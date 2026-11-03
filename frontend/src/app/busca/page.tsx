@@ -6,14 +6,13 @@ import { useSearchParams } from "next/navigation"
 import Header from "@/components/header"
 import { SuggestionView } from "@/components/search/suggestion-renderers"
 import { PauseIcon, PlayIcon } from "@/components/icons"
-import { playOrToggleTrack, usePlayback } from "@/lib/playback-store"
-import { uniqueTracks, useStoredPlaylists } from "@/lib/playlist-store"
+import { playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { suggestionHref } from "@/lib/search/routes"
-import { getSuggestions } from "@/lib/search/suggestions"
+import { toSuggestions } from "@/lib/search/suggestions"
+import { SEARCH_MAX_LIMIT, useCatalogSearch } from "@/lib/api/search"
 
-// Placeholder results page: lists every match with the same renderers as the header search.
-// The full results page (and track/artist pages) will replace this.
-const RESULT_LIMITS = { queries: 0, tracks: 50, artists: 50, playlists: 50 }
+// Placeholder results page: lists every match from the catalog with the same renderers as the
+// header search. The full results page (and track/artist pages) will replace this.
 
 const RESULT_CLASSES =
   "block rounded-xl px-3 py-2 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -51,8 +50,14 @@ function TrackResult({
 
 function SearchResults() {
   const query = useSearchParams().get("q") ?? ""
-  const { playlists } = useStoredPlaylists()
-  const results = React.useMemo(() => getSuggestions(query, playlists, RESULT_LIMITS), [query, playlists])
+  const catalogTracks = useCatalogTracks()
+  const search = useCatalogSearch(query, SEARCH_MAX_LIMIT)
+  // No text completions here: the page already shows everything that matched
+  const results = React.useMemo(
+    () => (search.results ? toSuggestions(search.results, search.resultsQuery, 0) : []),
+    [search.results, search.resultsQuery]
+  )
+  const answered = Boolean(query.trim()) && search.resultsQuery === query.trim()
   const playback = usePlayback()
 
   return (
@@ -60,9 +65,17 @@ function SearchResults() {
       <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
         {query ? <>Resultados para “{query}”</> : "Busca"}
       </h1>
-      {results.length === 0 ? (
+      {search.error ? (
+        <p role="alert" className="mt-6 text-sm text-destructive">
+          {search.error}
+        </p>
+      ) : !query.trim() ? (
+        <p className="mt-6 text-sm text-muted-foreground">Digite algo na busca acima.</p>
+      ) : !answered ? (
+        <p className="mt-6 text-sm text-muted-foreground">Buscando…</p>
+      ) : results.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">
-          {query ? "Nada encontrado. Tente outro nome de música, artista ou playlist." : "Digite algo na busca acima."}
+          Nada encontrado. Tente outro nome de música, artista ou playlist.
         </p>
       ) : (
         <ul className="mt-8 space-y-1">
@@ -72,14 +85,14 @@ function SearchResults() {
                 // A track plays (or pauses) right here, without leaving the results
                 <TrackResult
                   isPlaying={Boolean(playback?.isPlaying) && playback?.currentTrackId === result.id}
-                  onClick={() => playOrToggleTrack(result.id, uniqueTracks(playlists))}
+                  onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                   title={result.title}
                 >
-                  <SuggestionView suggestion={result} query={query} />
+                  <SuggestionView suggestion={result} query={search.resultsQuery} />
                 </TrackResult>
               ) : (
                 <Link href={suggestionHref(result)} className={RESULT_CLASSES}>
-                  <SuggestionView suggestion={result} query={query} />
+                  <SuggestionView suggestion={result} query={search.resultsQuery} />
                 </Link>
               )}
             </li>

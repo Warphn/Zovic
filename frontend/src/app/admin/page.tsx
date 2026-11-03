@@ -1,15 +1,15 @@
 "use client"
 
 import { Loading, Notice, RankedBars, Section, StatTile } from "@/components/admin/panel"
-import { adminApi } from "@/lib/admin/api"
-import { useResource } from "@/lib/admin/use-resource"
+import { useAdminStats } from "@/lib/api/admin"
+import { apiErrorMessage } from "@/lib/api/client"
 
 // Usage stats: accounts, accesses per content and per category (genre)
 export default function AdminOverviewPage() {
-  const { data: stats, error, loading } = useResource(() => adminApi.stats(), [])
+  const { data: stats, error, isError } = useAdminStats()
 
-  if (error) return <Notice>{error}</Notice>
-  if (loading || !stats) return <Loading />
+  if (isError) return <Notice>{apiErrorMessage(error)}</Notice>
+  if (!stats) return <Loading />
 
   return (
     <div className="space-y-6">
