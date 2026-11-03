@@ -1,0 +1,26 @@
+meta {
+  name: Playlist privada de outro usuário
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=tristes
+  body: none
+  auth: none
+}
+
+params:query {
+  q: tristes
+}
+
+docs {
+  "Só as tristes" é privada e só a Rafaela Dias é membro: não aparece para mais ninguém.
+}
+
+tests {
+  test("responde 200 sem a playlist", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().playlists.map((p) => p.name)).to.not.include("Só as tristes");
+  });
+}

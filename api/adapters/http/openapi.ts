@@ -35,6 +35,7 @@ export const openApiDocument = {
   tags: [
     { name: "Autenticação", description: "Cadastro, login, logout e sessão (Better Auth)" },
     { name: "Playlists", description: "Criação e gestão de playlists" },
+    { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Infra", description: "Estado da API" },
   ],
   paths: {
@@ -379,6 +380,49 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/search": {
+      get: {
+        tags: ["Busca"],
+        summary: "Busca músicas, artistas e playlists",
+        description:
+          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece.",
+        operationId: "search",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          {
+            name: "q",
+            in: "query",
+            required: true,
+            description: "Termo buscado, de 1 a 100 caracteres depois de tirar os espaços das pontas.",
+            schema: { type: "string", minLength: 1, maxLength: 100, example: "agua" },
+          },
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            description: "Máximo de itens em cada grupo.",
+            schema: { type: "integer", minimum: 1, maximum: 50, default: 5, example: 4 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Resultados agrupados por tipo (grupos vazios quando nada casa)",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/SearchResults" } } },
+          },
+          "400": {
+            description: "`q` ausente, vazio ou longo demais, ou `limit` fora de 1 a 50",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FieldValidationError" },
+                example: { error: "VALIDATION_ERROR", fields: [{ field: "q", message: '"q" is required' }] },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -629,6 +673,56 @@ export const openApiDocument = {
             description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
             example: true,
           },
+        },
+      },
+      SearchResults: {
+        type: "object",
+        required: ["musics", "artists", "playlists"],
+        properties: {
+          musics: { type: "array", items: { $ref: "#/components/schemas/MusicHit" } },
+          artists: { type: "array", items: { $ref: "#/components/schemas/ArtistHit" } },
+          playlists: { type: "array", items: { $ref: "#/components/schemas/PlaylistHit" } },
+        },
+      },
+      MusicHit: {
+        type: "object",
+        required: ["id", "name", "duration", "artists"],
+        properties: {
+          id: { type: "integer", example: 12 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 212 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: {
+                id: { type: "integer", example: 3 },
+                name: { type: "string", example: "Elis Regina" },
+              },
+            },
+          },
+        },
+      },
+      ArtistHit: {
+        type: "object",
+        required: ["id", "name", "musicCount"],
+        properties: {
+          id: { type: "integer", example: 3 },
+          name: { type: "string", example: "Elis Regina" },
+          musicCount: { type: "integer", description: "Músicas ativas do artista.", example: 7 },
+        },
+      },
+      PlaylistHit: {
+        type: "object",
+        required: ["id", "name", "isPrivate", "color", "musicCount"],
+        properties: {
+          id: { type: "integer", example: 42 },
+          name: { type: "string", example: "Água fresca" },
+          isPrivate: { type: "boolean", example: false },
+          color: { type: ["string", "null"], example: "#1DB954" },
+          musicCount: { type: "integer", description: "Músicas ativas da playlist.", example: 10 },
         },
       },
       FieldValidationError: {

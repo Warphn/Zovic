@@ -1,0 +1,22 @@
+meta {
+  name: Termo vazio
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=
+  body: none
+  auth: none
+}
+
+params:query {
+  q: 
+}
+
+tests {
+  test("responde 400 apontando o campo q", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().fields.map((f) => f.field)).to.deep.equal(["q"]);
+  });
+}
