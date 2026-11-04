@@ -171,3 +171,39 @@ Para começar do zero, com o banco vazio e todas as migrations reaplicadas:
 ```bash
 docker compose down -v && docker compose up
 ```
+
+## Banco de produção
+
+O banco de produção roda no servidor da equipe e não fica aberto na internet: o caminho até ele passa pelo Cloudflare Access, que só deixa entrar os e-mails da equipe. Ele só responde enquanto o servidor estiver no ar.
+
+Você precisa de duas coisas, que quem administra o servidor envia: o seu **usuário e senha do Postgres**, e o seu **e-mail** cadastrado no Access.
+
+1. Instale o `cloudflared` ([downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)). No Windows: `winget install --id Cloudflare.cloudflared`. No macOS: `brew install cloudflared`.
+2. Abra o caminho até o banco e deixe o terminal aberto enquanto usar:
+
+   ```bash
+   cloudflared access tcp --hostname db.zovic.com.br --url localhost:15432
+   ```
+
+   Na primeira conexão, o navegador abre a página do Access: informe o seu e-mail e o código que chegar nele.
+3. Conecte o DBeaver, o DataGrip ou o `psql` em `localhost:15432`:
+
+   | Campo | Valor |
+   | --- | --- |
+   | Host | `localhost` |
+   | Porta | `15432` |
+   | Banco | `zovic` |
+   | Usuário | o seu |
+   | Senha | a sua |
+
+   ```bash
+   psql -h localhost -p 15432 -U <seu-usuario> -d zovic
+   ```
+
+O que o seu usuário pode fazer:
+
+- Ler e alterar dados (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) em todas as tabelas, menos `session`, `account` e `verification`, que guardam tokens de sessão e hashes de senha.
+- Não pode mudar o schema (`CREATE`, `ALTER`, `DROP`): isso é papel das migrations do Flyway.
+- Até 3 conexões ao mesmo tempo, consultas de até 60 s e transações paradas por até 5 min.
+
+É o banco de verdade, com os dados dos usuários: um `UPDATE` ou `DELETE` sem `WHERE` não tem volta. Teste a consulta com `SELECT` antes e, para mudanças em várias linhas, use uma transação (`BEGIN` … `COMMIT`, ou `ROLLBACK` para desistir).

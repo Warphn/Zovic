@@ -76,9 +76,32 @@ No servidor, a partir do clone com o `.env` de produção:
 O `bun server up` se recusa a rodar sem o `.env` ou com o token do túnel, a senha do banco ou o segredo do login vazios. Por baixo, ele roda `docker compose --profile prod up -d --build --wait`.
 
 - O `.env` do servidor é diferente do de desenvolvimento: senhas e segredos fortes, `COOKIE_SECURE=true`, `TRUST_PROXY=1` e o `CLOUDFLARE_TUNNEL_TOKEN`. Ele só existe no servidor e nunca vai para o git.
-- A API e o banco só aceitam conexões da própria máquina (`127.0.0.1`). De fora, a API chega pelo túnel; o banco não chega de jeito nenhum.
-- O `cloudflared` fica numa rede só com a API: ele não alcança o banco.
+- A API e o banco só aceitam conexões da própria máquina (`127.0.0.1`). De fora, a API chega pelo túnel em `api.zovic.com.br`; o banco chega pelo túnel em `db.zovic.com.br`, só para a equipe, atrás do Cloudflare Access (veja abaixo).
+- O `cloudflared` fica numa rede com a API e o banco. O que ele publica é o que está cadastrado como rota do túnel na Cloudflare.
+- Cada container tem um teto de recursos, para um pico não disputar a máquina inteira: `db` 2 CPUs e 2 GiB, `api` 2 CPUs e 1 GiB, `cloudflared` 0,5 CPU e 256 MiB, além de um limite de processos.
 - `db`, `api` e `cloudflared` têm `restart: unless-stopped` e voltam sozinhos depois de um reinício, desde que o Docker Desktop abra no login. Depois de um `bun server down` (ou `bun stop`), eles só voltam com `bun server up`.
+
+### Acesso da equipe ao banco de produção
+
+Cada integrante tem um usuário próprio no Postgres. O grupo `equipe` lê e altera dados de todas as tabelas, mas não muda o schema (quem muda é o Flyway), não lê as tabelas com segredos do Better Auth (`session`, `account`, `verification`) e só lê o `flyway_schema_history`. Cada usuário tem no máximo 3 conexões e consultas de até 60 s. Como conectar está em [Banco de dados](banco-de-dados.md#banco-de-produção).
+
+No servidor, a partir do clone com o `.env` de produção e com o servidor no ar:
+
+| Comando | O que faz |
+| --- | --- |
+| `bun db:member add <nome>` | cria o usuário e mostra a senha uma única vez |
+| `bun db:member reset <nome>` | gera uma senha nova |
+| `bun db:member remove <nome>` | encerra as conexões e apaga o usuário |
+| `bun db:member list` | lista os usuários da equipe |
+
+Envie a senha a cada pessoa por um canal privado. Ela não é guardada em lugar nenhum.
+
+Na Cloudflare, uma vez:
+
+1. **Zero Trust → Access → Applications → Add an application → Self-hosted**, com o domínio `db.zovic.com.br`. Política **Allow** com a regra **Emails**, listando o e-mail de cada integrante; login por **One-time PIN**. Crie a aplicação **antes** da rota, para o banco nunca ficar exposto sem ela.
+2. No túnel `zovic-desktop`: **Routes → Add route → Published application**, subdomínio `db`, domínio `zovic.com.br`, Service URL `tcp://db:5432`.
+
+Para tirar alguém: `bun db:member remove <nome>` e o e-mail da pessoa sai da política do Access.
 
 ## Adicionando coisas
 
