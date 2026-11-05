@@ -4,19 +4,16 @@ import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Header from "@/components/header"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { Notice } from "@/components/ui/notice"
-import { subscriptionClient, subscriptionMessage, useSubscription } from "@/lib/subscription/client"
-import { type Account, isAdultOn, type Member, planType, todayInSaoPaulo } from "@/lib/subscription/rules"
+import { apiErrorMessage } from "@/lib/api/client"
+import { type Subscription, useCancelSubscription, useSubscription } from "@/lib/api/subscriptions"
+import { stopPlayback } from "@/lib/playback-store"
+import { planType } from "@/lib/subscription/rules"
 
 const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 const since = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "America/Sao_Paulo" })
-
-type Pending = { kind: "remove"; member: Member } | { kind: "leave" } | { kind: "cancel" }
 
 export default function MyPlanPage() {
   return (
@@ -32,236 +29,116 @@ export default function MyPlanPage() {
 }
 
 function MyPlan() {
-  const router = useRouter()
-  const { account, subscription } = useSubscription()
-  const [pending, setPending] = React.useState<Pending | null>(null)
+  const { subscription, isPending, isError } = useSubscription()
+  const [isConfirming, setIsConfirming] = React.useState(false)
 
-  if (!account) return null
-  if (!subscription) {
-    return (
-      <>
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Meu plano</h1>
+  if (isPending) return null
+
+  return (
+    <>
+      <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Meu plano</h1>
+
+      {isError && (
+        <div className="mt-3">
+          <Notice>Não foi possível verificar a sua assinatura. Recarregue a página para tentar de novo.</Notice>
+        </div>
+      )}
+
+      {!isError && !subscription && (
         <p className="mt-3 text-sm text-muted-foreground">
           Você ainda não tem uma assinatura.{" "}
           <Link href="/planos" className="font-semibold text-foreground underline underline-offset-2">
             Ver planos
           </Link>
         </p>
-      </>
-    )
-  }
+      )}
 
-  const type = planType(subscription.typeId)
-  const today = todayInSaoPaulo()
-  const me = subscription.members.find((m) => m.email === account.email.toLowerCase())
-  const isOwner = Boolean(me?.isOwner)
-  const isFamily = type.id === "familia"
-  const full = subscription.members.length >= type.maxMembers
-
-  const confirm = async () => {
-    if (!pending) return
-    if (pending.kind === "remove") await subscriptionClient.removeMember(account, pending.member.email)
-    if (pending.kind === "leave") await subscriptionClient.leave(account)
-    if (pending.kind === "cancel") await subscriptionClient.cancel(account)
-    if (pending.kind !== "remove") router.push("/planos")
-  }
-
-  return (
-    <>
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Meu plano</h1>
-
-      <section className="mt-6 rounded-2xl bg-surface/70 p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-bold tracking-tight">Plano {type.name}</h2>
-          <p className="text-sm">
-            <span className="font-semibold tabular-nums">{price.format(type.price)}</span>
-            <span className="text-muted-foreground"> /mês</span>
-          </p>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Desde {since.format(new Date(subscription.createdAt))}</p>
-      </section>
-
-      <section className="mt-4 rounded-2xl bg-surface/70 p-6" aria-labelledby="members-title">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="members-title" className="text-base font-bold tracking-tight">
-            {isFamily ? "Pessoas no plano" : "Perfil"}
-          </h2>
-          {isFamily && (
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {subscription.members.length} de {type.maxMembers}
-            </span>
-          )}
-        </div>
-        <ul className="mt-3 divide-y divide-border/70">
-          {subscription.members.map((member) => {
-            const adult = isAdultOn(member.birthdate, today)
-            const isMe = member.email === me?.email
-            return (
-              <li key={member.email} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">
-                    {member.name}
-                    {isMe && <span className="text-muted-foreground"> (você)</span>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">{member.email}</div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {member.isOwner && <Badge className="text-[10px]">Titular</Badge>}
-                  {!adult && (
-                    <Badge variant="outline" className="text-[10px]">
-                      Menor de idade
-                    </Badge>
-                  )}
-                  {isOwner && !member.isOwner && (
-                    <Button variant="ghost" className="text-destructive" onClick={() => setPending({ kind: "remove", member })}>
-                      Remover
-                    </Button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-        {isFamily && isOwner && !full && <AddMemberForm account={account} />}
-        {isFamily && isOwner && full && (
-          <p className="mt-3 text-xs text-muted-foreground">O plano está completo. Remova alguém para incluir outra pessoa.</p>
-        )}
-      </section>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        {isOwner ? (
-          <Button variant="ghost" className="text-destructive" size="lg" onClick={() => setPending({ kind: "cancel" })}>
-            Cancelar assinatura
-          </Button>
-        ) : (
-          <Button variant="ghost" className="text-destructive" size="lg" onClick={() => setPending({ kind: "leave" })}>
-            Sair do plano
-          </Button>
-        )}
-        <Link href="/planos" className="inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium hover:bg-muted">
-          Ver planos
-        </Link>
-      </div>
-
-      <ConfirmPending pending={pending} onClose={() => setPending(null)} onConfirm={confirm} />
+      {subscription && (
+        <>
+          <PlanSummary subscription={subscription} />
+          <div className="mt-6 flex flex-wrap gap-2">
+            {subscription.isManager && (
+              <Button variant="ghost" className="text-destructive" size="lg" onClick={() => setIsConfirming(true)}>
+                Cancelar assinatura
+              </Button>
+            )}
+            <Link href="/planos" className="inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium hover:bg-muted">
+              Ver planos
+            </Link>
+          </div>
+          <ConfirmCancel subscription={subscription} isOpen={isConfirming} onClose={() => setIsConfirming(false)} />
+        </>
+      )}
     </>
   )
 }
 
-function AddMemberForm({ account }: { account: Account }) {
-  const empty = { name: "", email: "", birthdate: "" }
-  const [form, setForm] = React.useState(empty)
-  const [error, setError] = React.useState<string | null>(null)
-  const [saving, setSaving] = React.useState(false)
-
-  const set = (field: keyof typeof empty) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((current) => ({ ...current, [field]: e.target.value }))
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
-    try {
-      await subscriptionClient.addMember(account, form)
-      setForm(empty)
-    } catch (err) {
-      setError(subscriptionMessage(err))
-    } finally {
-      setSaving(false)
-    }
-  }
-
+function PlanSummary({ subscription }: { subscription: Subscription }) {
+  const type = planType(subscription.kind)
   return (
-    <form onSubmit={submit} className="mt-4 space-y-3 border-t border-border/70 pt-4">
-      <div>
-        <h3 className="text-sm font-semibold">Incluir uma pessoa</h3>
-        <p className="text-xs text-muted-foreground">
-          Ela entra com a própria conta, pelo mesmo email.
+    <section className="mt-6 rounded-2xl bg-surface/70 p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xl font-bold tracking-tight">Plano {type.name}</h2>
+        <p className="text-sm">
+          <span className="font-semibold tabular-nums">{price.format(type.price)}</span>
+          <span className="text-muted-foreground"> /mês</span>
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_10rem]">
-        <Field label="Nome" id="member-name">
-          <Input id="member-name" required maxLength={150} value={form.name} onChange={set("name")} />
-        </Field>
-        <Field label="Email" id="member-email">
-          <Input id="member-email" type="email" required value={form.email} onChange={set("email")} />
-        </Field>
-        <Field label="Data de nascimento" id="member-birthdate">
-          <Input id="member-birthdate" type="date" required value={form.birthdate} onChange={set("birthdate")} />
-        </Field>
-      </div>
-      {error && <Notice>{error}</Notice>}
-      <Button type="submit" size="lg" disabled={saving}>
-        {saving ? "Incluindo…" : "Incluir no plano"}
-      </Button>
-    </form>
+      <p className="mt-1 text-xs text-muted-foreground">Desde {since.format(new Date(subscription.startedAt))}</p>
+      {!subscription.isManager && (
+        <p className="mt-3 text-sm text-muted-foreground">Você é membro deste plano. Só quem o gerencia pode cancelar a assinatura.</p>
+      )}
+    </section>
   )
 }
 
-const CONFIRM_TEXT: Record<Pending["kind"], { title: string; description: string; action: string }> = {
-  remove: {
-    title: "Remover do plano?",
-    description: "A pessoa perde o acesso ao catálogo até entrar em outro plano.",
-    action: "Remover",
-  },
-  leave: {
-    title: "Sair do plano?",
-    description: "Você perde o acesso ao catálogo até assinar ou entrar em outro plano.",
-    action: "Sair do plano",
-  },
-  cancel: {
-    title: "Cancelar a assinatura?",
-    description: "O acesso ao catálogo termina agora. Você pode assinar de novo quando quiser.",
-    action: "Cancelar assinatura",
-  },
-}
-
-function ConfirmPending({
-  pending,
+function ConfirmCancel({
+  subscription,
+  isOpen,
   onClose,
-  onConfirm,
 }: {
-  pending: Pending | null
+  subscription: Subscription
+  isOpen: boolean
   onClose: () => void
-  onConfirm: () => Promise<void>
 }) {
-  const [error, setError] = React.useState<string | null>(null)
-  const [saving, setSaving] = React.useState(false)
-  const text = pending ? CONFIRM_TEXT[pending.kind] : null
+  const router = useRouter()
+  const cancel = useCancelSubscription()
 
   const close = () => {
-    setError(null)
+    cancel.reset()
     onClose()
   }
 
+  // mutateAsync, not mutate's onSuccess: reloading the subscription unmounts this dialog, and
+  // React Query skips the callbacks of an unmounted component
   const confirm = async () => {
-    setSaving(true)
     try {
-      await onConfirm()
-      close()
-    } catch (err) {
-      setError(subscriptionMessage(err))
-    } finally {
-      setSaving(false)
+      await cancel.mutateAsync()
+    } catch {
+      return // the dialog shows cancel.error
     }
+    stopPlayback()
+    router.push("/planos")
   }
 
   return (
-    <Dialog open={pending !== null} onOpenChange={(open) => !open && close()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {pending?.kind === "remove" ? `Remover ${pending.member.name} do plano?` : text?.title}
-          </DialogTitle>
-          <DialogDescription>{text?.description}</DialogDescription>
+          <DialogTitle>Cancelar a assinatura?</DialogTitle>
+          <DialogDescription>
+            {subscription.kind === "family"
+              ? "O acesso ao catálogo termina agora para todas as pessoas do plano. As contas continuam."
+              : "O acesso ao catálogo termina agora. Você pode assinar de novo quando quiser."}
+          </DialogDescription>
         </DialogHeader>
-        {error && <Notice>{error}</Notice>}
+        {cancel.isError && <Notice>{apiErrorMessage(cancel.error)}</Notice>}
         <DialogFooter>
           <Button variant="ghost" size="lg" onClick={close}>
             Voltar
           </Button>
-          <Button variant="destructive" size="lg" onClick={confirm} disabled={saving}>
-            {text?.action}
+          <Button variant="destructive" size="lg" onClick={confirm} disabled={cancel.isPending}>
+            Cancelar assinatura
           </Button>
         </DialogFooter>
       </DialogContent>

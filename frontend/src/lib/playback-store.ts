@@ -202,6 +202,11 @@ export function selectTrack(trackId: string, playing?: boolean) {
   setState({ ...current, currentTrackId: trackId, isPlaying: playing ?? current.isPlaying })
 }
 
+/** Clears the queue: without a subscription there is nothing left to play. */
+export function stopPlayback() {
+  setState(null)
+}
+
 export function togglePlayback() {
   const current = getSnapshot()
   if (current) setState({ ...current, isPlaying: !current.isPlaying })

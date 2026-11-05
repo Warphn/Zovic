@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authClient, useSession } from "@/lib/auth/client";
-import { useSubscription } from "@/lib/subscription/client";
+import { useSubscription } from "@/lib/api/subscriptions";
 import { planType } from "@/lib/subscription/rules";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
@@ -121,7 +121,7 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                     ? "Admin"
                     : !subscription
                       ? "Sem assinatura"
-                      : `Plano ${planType(subscription.typeId).name}${session.user.isAdult ? "" : " · conta infantil"}`}
+                      : `Plano ${planType(subscription.kind).name}${session.user.isAdult ? "" : " · conta infantil"}`}
                 </div>
               </div>
               <div className="my-1 h-px bg-border" />
@@ -182,7 +182,10 @@ export default function Header() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const { data: session } = useSession();
-  const showSearch = !isLanding && Boolean(session);
+  const { subscription } = useSubscription();
+  // The search reads the catalog, which is only open to subscribers and platform admins
+  const canSearch = Boolean(subscription) || session?.user.role === "admin";
+  const showSearch = !isLanding && canSearch;
   // Signed out on an auth page the menu would be empty (no links, no search, no "Entrar")
   const hasMenu = isLanding || Boolean(session) || !AUTH_PATHS.has(pathname);
 
