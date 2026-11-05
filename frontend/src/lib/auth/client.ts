@@ -46,8 +46,12 @@ export const authClient = {
   },
 
   signUp: {
-    email: ({ name, email, password, birthdate }: SignUpInput) =>
-      run(() => betterAuth.signUp.email({ name: name.trim(), email: email.trim(), password, birthdate })),
+    // invitationToken: the link of a family plan invitation; the API adds the new account to the plan
+    email: ({ name, email, password, birthdate }: SignUpInput, invitationToken?: string) => {
+      // Not a user field, so the client's typed body does not list it; a variable skips that check
+      const body = { name: name.trim(), email: email.trim(), password, birthdate, invitationToken }
+      return run(() => betterAuth.signUp.email(body))
+    },
   },
 
   // On failure the session stays as it was, so the header keeps showing the account

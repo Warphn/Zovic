@@ -45,6 +45,10 @@ export function toAuthError(failure: ApiFailure): AuthError {
       return { message: "Email inválido.", field: "email" }
     case "INVALID_NAME":
       return { message: "Nome inválido.", field: "name" }
+    case "MINOR_NEEDS_INVITATION":
+      return { message: "Menores só entram por convite de um plano familiar.", field: "birthdate" }
+    case "INVALID_INVITATION":
+      return { message: "Este convite é inválido, expirou ou foi enviado para outro email." }
     case "VALIDATION_ERROR":
       // One code for every invalid field; the message names the field
       if (failure.message?.includes("birthdate")) return { message: "Data de nascimento inválida.", field: "birthdate" }
