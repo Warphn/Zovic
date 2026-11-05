@@ -60,7 +60,7 @@ Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-da
 
 ## Produção (desktop)
 
-O servidor roda o profile `prod`: banco, migrations, API e o `cloudflared`, que publica a API pelo Cloudflare Tunnel sem abrir portas no roteador. O frontend não sobe ali; ele fica na Vercel.
+O servidor roda o profile `prod`: banco, migrations, API, frontend e o `cloudflared`, que publica o site em `zovic.com.br` e a API em `api.zovic.com.br` pelo Cloudflare Tunnel, sem abrir portas no roteador. Front e API sobem juntos, da mesma versão do código.
 
 No servidor, a partir do clone com o `.env` de produção:
 
@@ -70,16 +70,24 @@ No servidor, a partir do clone com o `.env` de produção:
 | `bun server up` | sobe (ou aplica mudanças), espera tudo ficar de pé e testa o endereço público |
 | `bun server down` | derruba tudo, inclusive o túnel; o banco continua no volume |
 | `bun server status` | estado dos containers e do endereço público |
-| `bun server logs [db\|flyway\|api\|cloudflared]` | acompanha os logs (Ctrl+C para sair) |
+| `bun server logs [db\|flyway\|api\|web\|cloudflared]` | acompanha os logs (Ctrl+C para sair) |
 | `bun server update` | `git pull` e sobe a versão nova |
 
-O `bun server up` se recusa a rodar sem o `.env` ou com o token do túnel, a senha do banco ou o segredo do login vazios. Por baixo, ele roda `docker compose --profile prod up -d --build --wait`.
+O `bun server up` se recusa a rodar sem o `.env` ou com o token do túnel, a senha do banco, o segredo do login ou a URL da API do frontend vazios. Por baixo, ele roda `docker compose --profile prod up -d --build --wait`.
 
-- O `.env` do servidor é diferente do de desenvolvimento: senhas e segredos fortes, `COOKIE_SECURE=true`, `TRUST_PROXY=1` e o `CLOUDFLARE_TUNNEL_TOKEN`. Ele só existe no servidor e nunca vai para o git.
-- A API e o banco só aceitam conexões da própria máquina (`127.0.0.1`). De fora, a API chega pelo túnel em `api.zovic.com.br`; o banco chega pelo túnel em `db.zovic.com.br`, só para a equipe, atrás do Cloudflare Access (veja abaixo).
-- O `cloudflared` fica numa rede com a API e o banco. O que ele publica é o que está cadastrado como rota do túnel na Cloudflare.
-- Cada container tem um teto de recursos, para um pico não disputar a máquina inteira: `db` 2 CPUs e 2 GiB, `api` 2 CPUs e 1 GiB, `cloudflared` 0,5 CPU e 256 MiB, além de um limite de processos.
-- `db`, `api` e `cloudflared` têm `restart: unless-stopped` e voltam sozinhos depois de um reinício, desde que o Docker Desktop abra no login. Depois de um `bun server down` (ou `bun stop`), eles só voltam com `bun server up`.
+- O `.env` do servidor é diferente do de desenvolvimento: senhas e segredos fortes, `COOKIE_SECURE=true`, `TRUST_PROXY=1`, `CORS_ORIGIN=https://zovic.com.br`, `NEXT_PUBLIC_API_URL=https://api.zovic.com.br` e o `CLOUDFLARE_TUNNEL_TOKEN`. Ele só existe no servidor e nunca vai para o git.
+- O Next embute o `NEXT_PUBLIC_API_URL` no build da imagem `web`. Se o valor mudar, rode `bun server up` de novo, que refaz a imagem.
+- A API, o banco e o frontend só aceitam conexões da própria máquina (`127.0.0.1`). De fora, o site chega pelo túnel em `zovic.com.br`, a API em `api.zovic.com.br` e o banco em `db.zovic.com.br`, este só para a equipe, atrás do Cloudflare Access (veja abaixo).
+- O `cloudflared` fica numa rede com a API e o banco (`tunnel`) e em outra só com o frontend (`site`): o `web` não alcança a API nem o banco, porque quem chama a API é o navegador. O que o túnel publica é o que está cadastrado como rota na Cloudflare.
+- Cada container tem um teto de recursos, para um pico não disputar a máquina inteira: `db` 2 CPUs e 2 GiB, `api` 2 CPUs e 1 GiB, `web` 1 CPU e 512 MiB, `cloudflared` 0,5 CPU e 256 MiB, além de um limite de processos.
+- `db`, `api`, `web` e `cloudflared` têm `restart: unless-stopped` e voltam sozinhos depois de um reinício, desde que o Docker Desktop abra no login. Depois de um `bun server down` (ou `bun stop`), eles só voltam com `bun server up`.
+
+### Site em zovic.com.br
+
+Na Cloudflare, uma vez:
+
+1. No túnel `zovic-desktop`: **Routes → Add route → Published application**, subdomínio vazio, domínio `zovic.com.br`, Service URL `http://web:3000`.
+2. Para `www.zovic.com.br` levar ao mesmo site: em **DNS → Records**, um registro `CNAME` com nome `www` e destino `zovic.com.br`, **Proxied**. Depois, em **Rules → Redirect Rules**, o modelo **Redirect from WWW to root**. A API só aceita chamadas vindas de `https://zovic.com.br`, então o site precisa ter um endereço só.
 
 ### Acesso da equipe ao banco de produção
 

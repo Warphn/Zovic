@@ -93,6 +93,8 @@ O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
 | API      | http://localhost:3333   |
 | Postgres | localhost:5432          |
 
+Em produção, o site está em https://zovic.com.br e a API em https://api.zovic.com.br, os dois servidos pelo desktop da equipe (`bun server`, veja a seção "Produção" de [docs/docker.md](docs/docker.md)).
+
 Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/docker.md).
 
 Migrations, Prisma, seed e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
