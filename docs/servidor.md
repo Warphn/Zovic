@@ -63,6 +63,7 @@ Tudo roda no Ubuntu do desktop, no clone `~/zovic`, onde está o `.env` de produ
 
 - **O que o `bun server up` recusa:** ele não sobe sem o `.env`, nem com a senha do banco, o segredo do login, a URL da API, o token do túnel ou o `NEXT_PUBLIC_API_URL` vazios. Por baixo, ele roda `docker compose --profile prod up -d --build --wait`.
 - **Publicar uma versão nova:** depois de um merge na `main`, rode `bun server update`. O Flyway aplica as migrations novas antes de a API subir, e o front é recompilado. Front e API sobem sempre da mesma versão do código.
+- **O `bun start` e o `bun stop` não rodam aqui.** No `~/zovic`, eles mexeriam nos containers de produção, então se recusam ao ver o token do túnel no `.env`. Para desenvolver no desktop, use o clone do Windows (veja [Problemas comuns](#problemas-comuns)).
 - **Depois de um `bun server down`:** os containers só voltam com `bun server up`. Depois de um reinício do Windows, eles voltam sozinhos, desde que o Docker Desktop abra no login e ninguém os tenha derrubado antes.
 
 ### O `.env` de produção
@@ -80,6 +81,7 @@ O `~/zovic/.env` só existe no servidor e nunca vai para o git. Não mostre o co
 | `COOKIE_SECURE` | `true` |
 | `TRUST_PROXY` | `1`, porque o `cloudflared` é o proxy à frente da API e o rate limit do login precisa do IP real |
 | `CLOUDFLARE_TUNNEL_TOKEN` | O token do túnel `zovic-desktop` |
+| `COMPOSE_PROJECT_NAME` | Não defina. Sem ela, o projeto do Docker se chama `zovic`, o nome com que o volume do banco foi criado (`zovic_pgdata`). Outro nome criaria um banco novo e vazio. |
 | `NEXT_PUBLIC_API_URL` | `https://api.zovic.com.br`. O Next embute o valor no build: se ele mudar, rode `bun server up` de novo. |
 
 ## Cloudflare
@@ -137,6 +139,8 @@ No desktop, o `localhost:3333` é a API de produção. Uma chamada por ali grava
 | Sintoma | Causa provável | O que fazer |
 | --- | --- | --- |
 | Os endereços respondem **530** (erro 1033 da Cloudflare) | O túnel está desconectado: servidor parado, Docker Desktop fechado ou desktop dormindo | No Ubuntu, `bun server status`; depois `bun server up` |
+| `bun start` ou `bun stop` dizem "Este é o clone do servidor" | O terminal está no `~/zovic`, que tem o `.env` de produção | Para o servidor, use `bun server`. Para desenvolver, use o clone do Windows, cujo `.env` tem `COMPOSE_PROJECT_NAME=zovic-dev`. |
+| `bun start` no clone do Windows falha com "port is already allocated" | O servidor de produção está no ar e usa as mesmas portas (5432, 3333 e 3000) | No Ubuntu, `bun server down`. Depois de desenvolver, `bun stop` no Windows e `bun server up` no Ubuntu. |
 | Os endereços respondem **502** | O túnel está no ar, mas o container de destino está parado ou ainda subindo | `bun server status` e `bun server logs web` (ou `api`) |
 | `https://www.zovic.com.br` responde **404** | A regra de redirecionamento do `www` está desligada ou foi apagada | **Rules → Redirect Rules** no painel da Cloudflare |
 | `bun server` diz "Não há .env em /mnt/c/..." | O terminal está na cópia do Windows, não no clone do servidor | `cd ~/zovic` |

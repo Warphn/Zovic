@@ -38,7 +38,7 @@ O `bun start` pergunta três coisas:
    | `full` | o sistema inteiro | nada, é só abrir o site |
    | `banco de produção` | nada: abre o acesso ao banco do servidor (o mesmo que `bun db:connect`) | o DBeaver ou o `psql` |
 
-2. **É o seu primeiro acesso?** "Sim" cria o `.env` (se ainda não existir), roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não".
+2. **É o seu primeiro acesso?** "Sim" roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não". O `.env` é criado a partir do `.env.example` sempre que ainda não existir.
 3. **Quer popular o banco?** **Não** mantém os dados. **LOCAL** apaga o banco local e insere os dados de teste. **PROD** insere só os dados reais (tipos de plano e gêneros), sem apagar nada.
 
 Para pular as perguntas, passe as respostas como argumentos: `bun start backend`, `bun start frontend --seed=local` ou `bun start full --first`.
