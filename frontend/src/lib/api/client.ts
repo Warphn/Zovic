@@ -24,6 +24,7 @@ const MESSAGES: Record<string, string> = {
   "Audio file must be an MP3": "O áudio precisa ser um MP3.",
   "Audio file must be at most 20 MB": "O áudio pode ter no máximo 20 MB.",
   "Album not found": "Esse álbum não está mais no catálogo.",
+  "A genre with this name already exists": "Já existe um gênero com esse nome.",
   // Playlists (api/domain/use-cases): only the playlist's admins can change it
   "Only playlist admins can edit it": "Só quem administra a playlist pode editá-la.",
   "Only playlist admins can delete it": "Só quem administra a playlist pode apagá-la.",

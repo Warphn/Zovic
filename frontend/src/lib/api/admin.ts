@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { type Album, type CatalogMusic, catalogApi, catalogKeys, type NamedItem } from "./catalog"
+import { type Album, type CatalogMusic, catalogApi, catalogKeys, type Genre, type NamedItem } from "./catalog"
 import { json, queryString, request } from "./client"
 import { searchKeys } from "./search"
 
@@ -57,6 +57,12 @@ export interface MusicInput {
 
 /** A new music also carries its MP3; editing doesn't change the audio. */
 export type NewMusicInput = MusicInput & { audio: File }
+
+export interface GenreInput {
+  name: string
+  /** Hex #RRGGBB; the API stores it uppercase. */
+  color: string
+}
 
 export interface AlbumInput {
   name: string
@@ -129,6 +135,7 @@ export const adminApi = {
   createAlbum: (input: AlbumInput) => request<unknown>("/admin/albums", json("POST", input)),
   updateAlbum: (id: number, input: Partial<AlbumInput>) => request<unknown>(`/admin/albums/${id}`, json("PATCH", input)),
   removeAlbum: (id: number) => request<void>(`/admin/albums/${id}`, { method: "DELETE" }),
+  createGenre: (input: GenreInput) => request<Genre>("/admin/genres", json("POST", input)),
   createArtist: (name: string) => request<NamedItem>("/admin/artists", json("POST", { name })),
   renameArtist: (id: number, name: string) => request<NamedItem>(`/admin/artists/${id}`, json("PATCH", { name })),
   removeArtist: (id: number) => request<void>(`/admin/artists/${id}`, { method: "DELETE" }),
@@ -230,6 +237,11 @@ export function useUpdateAlbum() {
 export function useRemoveAlbum() {
   const invalidate = useInvalidate("catalog")
   return useMutation({ mutationFn: adminApi.removeAlbum, onSuccess: invalidate })
+}
+
+export function useCreateGenre() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({ mutationFn: adminApi.createGenre, onSuccess: invalidate })
 }
 
 export function useCreateArtist() {

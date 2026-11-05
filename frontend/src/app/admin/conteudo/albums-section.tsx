@@ -9,6 +9,7 @@ import { albumChanges, useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/
 import type { Album, NamedItem } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { ConfirmDialog } from "./confirm-dialog"
+import { NewArtistField } from "./new-catalog-item"
 import { Picker } from "./picker"
 
 /** The API's lower bound (Album.MIN_YEAR); the upper one is the current year. */
@@ -136,6 +137,7 @@ function AlbumForm({ album, artists, onClose }: { album: Album | null; artists: 
         </Field>
       </div>
       <Picker label="Artistas" items={artists} selected={artistIds} onChange={setArtistIds} />
+      <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       {error && <Notice>{error}</Notice>}
       <DialogFooter>
         <Button type="button" variant="ghost" size="lg" onClick={onClose}>

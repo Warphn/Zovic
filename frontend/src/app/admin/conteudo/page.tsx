@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { AlbumsSection } from "./albums-section"
 import { ArtistsSection } from "./artists-section"
 import { ConfirmDialog } from "./confirm-dialog"
+import { NewArtistField, NewGenreField } from "./new-catalog-item"
 import { Picker } from "./picker"
 
 // "Nova música" (null id) or the music being edited
@@ -284,7 +285,9 @@ function MusicForm({
         </Field>
       )}
       <Picker label="Artistas" items={artists} selected={artistIds} onChange={setArtistIds} />
+      <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       <Picker label="Gêneros" items={genres} selected={genreIds} onChange={setGenreIds} />
+      <NewGenreField onCreated={(genreId) => setGenreIds((selected) => [...selected, genreId])} />
       <Field label="Álbum" id="music-album">
         <select
           id="music-album"
