@@ -7,7 +7,8 @@ export interface ExistingAlbumData {
   name: string;
   artistIds: number[];
   genreIds: number[];
-  musicIds: number[];
+  /** Ano de lançamento; null só nos álbuns anteriores à coluna. */
+  year: number | null;
   createdAt: Date;
   deletedAt: Date | null;
 }
@@ -17,13 +18,17 @@ export interface NewAlbumData {
   name: string;
   artistIds: number[];
   genreIds?: number[];
-  musicIds?: number[];
+  year: number;
   now?: Date;
 }
 
-/** Álbum com seus vínculos: album_artist, album_genre e album_music. */
+/**
+ * Álbum com seus vínculos: album_artist e album_genre. As faixas (album_music) são
+ * da música: cada uma diz o próprio álbum (Music.albumId).
+ */
 export class Album {
   static readonly MAX_NAME_LENGTH = 255;
+  static readonly MIN_YEAR = 1900;
 
   private constructor(private readonly input: ExistingAlbumData) {}
 
@@ -37,7 +42,7 @@ export class Album {
       name: validateName(input.name, Album.MAX_NAME_LENGTH, "Album"),
       artistIds,
       genreIds: normalizeIds(input.genreIds ?? [], "Genre"),
-      musicIds: normalizeIds(input.musicIds ?? [], "Music"),
+      year: Album.validateYear(input.year, input.now ?? new Date()),
       createdAt: input.now ?? new Date(),
       deletedAt: null,
     });
@@ -63,8 +68,8 @@ export class Album {
     return [...this.input.genreIds];
   }
 
-  get musicIds(): number[] {
-    return [...this.input.musicIds];
+  get year(): number | null {
+    return this.input.year;
   }
 
   get createdAt(): Date {
@@ -108,19 +113,23 @@ export class Album {
     this.input.genreIds = removeId(this.input.genreIds, genreId, "Genre");
   }
 
-  addMusic(musicId: number): void {
+  changeYear(year: number, now: Date = new Date()): void {
     this.ensureNotDeleted();
-    this.input.musicIds = addId(this.input.musicIds, musicId, "Music");
-  }
-
-  removeMusic(musicId: number): void {
-    this.ensureNotDeleted();
-    this.input.musicIds = removeId(this.input.musicIds, musicId, "Music");
+    this.input.year = Album.validateYear(year, now);
   }
 
   delete(now: Date = new Date()): void {
     this.ensureNotDeleted();
     this.input.deletedAt = now;
+  }
+
+  /** O limite superior muda com o tempo, por isso fica aqui e não num CHECK do banco. */
+  private static validateYear(year: number, now: Date): number {
+    const currentYear = now.getFullYear();
+    if (!Number.isInteger(year) || year < Album.MIN_YEAR || year > currentYear) {
+      throw new ValidationError(`Album year must be between ${Album.MIN_YEAR} and ${currentYear}`);
+    }
+    return year;
   }
 
   private ensureNotDeleted(): void {
@@ -135,6 +144,5 @@ function copy(data: ExistingAlbumData): ExistingAlbumData {
     ...data,
     artistIds: [...data.artistIds],
     genreIds: [...data.genreIds],
-    musicIds: [...data.musicIds],
   };
 }

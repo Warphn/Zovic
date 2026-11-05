@@ -45,7 +45,7 @@ async function newMusic(name: string, artistIds: number[], genreIds: number[] = 
 async function newAlbum(artistIds: number[]): Promise<Album> {
   const id = await albums.nextId();
   created.album.push(id);
-  return Album.create({ id, name: "Integration", artistIds });
+  return Album.create({ id, name: "Integration", artistIds, year: 1998 });
 }
 
 beforeAll(async () => {
@@ -181,17 +181,24 @@ describe("PostgresMusicRepository", () => {
 });
 
 describe("PostgresAlbumRepository", () => {
-  it("grava o álbum com artistas, gêneros e músicas", async () => {
-    const music = await newMusic("Track", [artistId]);
-    await musics.save(music);
+  it("grava o álbum com artistas, gêneros e ano", async () => {
     const album = await newAlbum([artistId]);
     album.addGenre(genreId);
-    album.addMusic(music.id);
 
     await albums.save(album);
 
     const found = await albums.findById(album.id);
-    expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], musicIds: [music.id] });
+    expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], year: 1998 });
+  });
+
+  it("grava a troca de ano", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    album.changeYear(2001);
+
+    await albums.save(album);
+
+    expect((await albums.findById(album.id))?.year).toBe(2001);
   });
 
   it("não encontra álbum apagado", async () => {
@@ -199,12 +206,5 @@ describe("PostgresAlbumRepository", () => {
     album.delete();
     await albums.save(album);
     expect(await albums.findById(album.id)).toBeNull();
-  });
-
-  it("traduz música inexistente em NotFoundError", async () => {
-    const album = await newAlbum([artistId]);
-    album.addMusic(MISSING_ID);
-    const error = await albums.save(album).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(NotFoundError);
   });
 });

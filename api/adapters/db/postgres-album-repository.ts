@@ -6,16 +6,15 @@ import { inTransaction, type LinkTable, nextId, replaceLinks, translateConstrain
 
 const ARTISTS: LinkTable = { table: "album_artist", owner: "album_id", other: "artist_id" };
 const GENRES: LinkTable = { table: "album_genre", owner: "album_id", other: "genre_id" };
-const MUSICS: LinkTable = { table: "album_music", owner: "album_id", other: "music_id" };
 
 interface AlbumRow {
   id: number;
   name: string;
+  year: number | null;
   created_at: Date;
   deleted_at: Date | null;
   artist_ids: number[];
   genre_ids: number[];
-  music_ids: number[];
 }
 
 export class PostgresAlbumRepository implements AlbumRepository {
@@ -30,32 +29,30 @@ export class PostgresAlbumRepository implements AlbumRepository {
     try {
       await inTransaction(this.pool, async (client) => {
         await client.query(
-          `INSERT INTO album (id, name, created_at, deleted_at)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO album (id, name, year, created_at, deleted_at)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
+             year = EXCLUDED.year,
              deleted_at = EXCLUDED.deleted_at`,
-          [data.id, data.name, data.createdAt, data.deletedAt],
+          [data.id, data.name, data.year, data.createdAt, data.deletedAt],
         );
         await replaceLinks(client, ARTISTS, data.id, data.artistIds);
         await replaceLinks(client, GENRES, data.id, data.genreIds);
-        await replaceLinks(client, MUSICS, data.id, data.musicIds);
       });
     } catch (error) {
       throw translateConstraintError(error, {
         album_artist_artist_id_fkey: () => new NotFoundError("Artist not found"),
         album_genre_genre_id_fkey: () => new NotFoundError("Genre not found"),
-        album_music_music_id_fkey: () => new NotFoundError("Music not found"),
       });
     }
   }
 
   async findById(id: number): Promise<Album | null> {
     const { rows } = await this.pool.query<AlbumRow>(
-      `SELECT a.id, a.name, a.created_at, a.deleted_at,
+      `SELECT a.id, a.name, a.year, a.created_at, a.deleted_at,
          ARRAY(SELECT artist_id FROM album_artist WHERE album_id = a.id ORDER BY artist_id) AS artist_ids,
-         ARRAY(SELECT genre_id FROM album_genre WHERE album_id = a.id ORDER BY genre_id) AS genre_ids,
-         ARRAY(SELECT music_id FROM album_music WHERE album_id = a.id ORDER BY music_id) AS music_ids
+         ARRAY(SELECT genre_id FROM album_genre WHERE album_id = a.id ORDER BY genre_id) AS genre_ids
        FROM album a
        WHERE a.id = $1 AND a.deleted_at IS NULL`,
       [id],
@@ -67,7 +64,7 @@ export class PostgresAlbumRepository implements AlbumRepository {
           name: row.name,
           artistIds: row.artist_ids,
           genreIds: row.genre_ids,
-          musicIds: row.music_ids,
+          year: row.year,
           createdAt: row.created_at,
           deletedAt: row.deleted_at,
         })

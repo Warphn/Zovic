@@ -3,7 +3,7 @@ import { BusinessRuleError, ValidationError } from "../errors/domain-error.ts";
 import { Album } from "./album.ts";
 
 const now = new Date("2026-10-20T12:00:00Z");
-const valid = { id: 1, name: "Construção", artistIds: [7], now };
+const valid = { id: 1, name: "Construção", artistIds: [7], year: 1971, now };
 
 describe("Album.create", () => {
   it("cria com os vínculos vazios por padrão", () => {
@@ -12,7 +12,7 @@ describe("Album.create", () => {
       name: "Construção",
       artistIds: [7],
       genreIds: [],
-      musicIds: [],
+      year: 1971,
       createdAt: now,
       deletedAt: null,
     });
@@ -29,25 +29,45 @@ describe("Album.create", () => {
   it.each(["", "a".repeat(256)])("recusa o nome %p", (name) => {
     expect(() => Album.create({ ...valid, name })).toThrow(ValidationError);
   });
+
+  it.each([Album.MIN_YEAR, 2026])("aceita o ano %p, entre 1900 e o ano atual", (year) => {
+    expect(Album.create({ ...valid, year }).year).toBe(year);
+  });
+
+  it.each([1899, 2027, 1971.5])("recusa o ano %p", (year) => {
+    expect(() => Album.create({ ...valid, year })).toThrow(
+      new ValidationError("Album year must be between 1900 and 2026"),
+    );
+  });
+});
+
+describe("Album.restore", () => {
+  it("aceita um álbum antigo, sem ano", () => {
+    const album = Album.restore({ ...Album.create(valid).toData(), year: null });
+    expect(album.year).toBeNull();
+  });
 });
 
 describe("Album depois de criado", () => {
-  it("adiciona e remove artistas, gêneros e músicas", () => {
+  it("adiciona e remove artistas e gêneros", () => {
     const album = Album.create(valid);
     album.addArtist(8);
     album.addGenre(3);
-    album.addMusic(10);
-    album.addMusic(11);
     album.removeArtist(7);
-    album.removeMusic(10);
     expect(album.artistIds).toEqual([8]);
     expect(album.genreIds).toEqual([3]);
-    expect(album.musicIds).toEqual([11]);
   });
 
   it("não remove o último artista", () => {
     const album = Album.create(valid);
     expect(() => album.removeArtist(7)).toThrow(BusinessRuleError);
+  });
+
+  it("troca o ano com a mesma regra do cadastro", () => {
+    const album = Album.create(valid);
+    album.changeYear(1984, now);
+    expect(album.year).toBe(1984);
+    expect(() => album.changeYear(2027, now)).toThrow(ValidationError);
   });
 
   it("toData devolve uma cópia", () => {
@@ -59,6 +79,7 @@ describe("Album depois de criado", () => {
   it("não aceita mudanças depois de apagado", () => {
     const album = Album.create(valid);
     album.delete(now);
-    expect(() => album.addMusic(1)).toThrow(BusinessRuleError);
+    expect(() => album.addGenre(1)).toThrow(BusinessRuleError);
+    expect(() => album.changeYear(1980, now)).toThrow(BusinessRuleError);
   });
 });

@@ -133,7 +133,9 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 
 ### Album
 
-Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`, `album_music`
+Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`
+
+As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`.
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |
@@ -141,18 +143,18 @@ Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `al
 | `name` | `string` | Até 255 caracteres. |
 | `artistIds` | `number[]` | **Ao menos um.** |
 | `genreIds` | `number[]` | Pode ser vazio. |
-| `musicIds` | `number[]` | Faixas do álbum. Pode ser vazio. |
+| `year` | `number \| null` | Ano de lançamento, de 1900 (`Album.MIN_YEAR`) até o ano atual. Obrigatório no `create`. `null` só nos álbuns anteriores à coluna. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
 | --- | --- |
-| `create({ id, name, artistIds, genreIds?, musicIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia. |
+| `create({ id, name, artistIds, year, genreIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia e ano fora do intervalo. |
 | `restore(dados)` | Reconstrói a partir do banco. |
 | `toData()` | Dados do álbum, com cópia das listas. |
 | `rename(name)` | Troca o nome. |
 | `addArtist(artistId)` / `removeArtist(artistId)` | Vincula / desvincula um artista. **Não remove o último.** |
 | `addGenre(genreId)` / `removeGenre(genreId)` | Vincula / desvincula um gênero. |
-| `addMusic(musicId)` / `removeMusic(musicId)` | Inclui / tira uma faixa do álbum. |
+| `changeYear(year, now?)` | Troca o ano, com a mesma regra do `create`. |
 | `delete(now?)` | Soft delete. |
 
 ### Music
@@ -202,7 +204,7 @@ Erros do banco traduzidos para erros de domínio:
 | --- | --- | --- |
 | Playlist | Membro com usuário inexistente | `NotFoundError` |
 | Genre | Nome igual ao de outro gênero ativo | `BusinessRuleError` |
-| Album | Artista, gênero ou música inexistente | `NotFoundError` |
+| Album | Artista ou gênero inexistente | `NotFoundError` |
 | Music | Artista ou gênero inexistente | `NotFoundError` |
 
 Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
