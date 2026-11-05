@@ -19,7 +19,7 @@ describe("GetMySubscription", () => {
 
   it("devolve a assinatura individual com startedAt em ISO", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(7, STARTED);
+    await repository.create(7, "individual", STARTED);
 
     const output = await useCase.execute({ userId: 7 });
 
@@ -47,14 +47,14 @@ describe("GetMySubscription", () => {
 
   it("não mostra a assinatura de outra conta", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(1, STARTED);
+    await repository.create(1, "individual", STARTED);
 
     expect(await useCase.execute({ userId: 2 })).toBeNull();
   });
 
   it("depois de cancelar, devolve null", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(7, STARTED);
+    await repository.create(7, "individual", STARTED);
     await new CancelSubscription(repository).execute({ userId: 7 });
 
     expect(await useCase.execute({ userId: 7 })).toBeNull();

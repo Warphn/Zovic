@@ -1,10 +1,10 @@
 import type { RequestHandler } from "express";
 import type { CancelSubscriptionUseCase } from "../../domain/use-cases/cancel-subscription.ts";
 import type { GetMySubscriptionUseCase } from "../../domain/use-cases/get-my-subscription.ts";
-import type { SubscribeIndividualPlanUseCase } from "../../domain/use-cases/subscribe-individual-plan.ts";
+import type { SubscribePlanUseCase } from "../../domain/use-cases/subscribe-plan.ts";
 
 export interface SubscriptionUseCases {
-  subscribeIndividualPlan: SubscribeIndividualPlanUseCase;
+  subscribePlan: SubscribePlanUseCase;
   getMySubscription: GetMySubscriptionUseCase;
   cancelSubscription: CancelSubscriptionUseCase;
 }
@@ -18,7 +18,8 @@ export interface SubscriptionController {
 export function makeSubscriptionController(useCases: SubscriptionUseCases): SubscriptionController {
   return {
     subscribe: async (_req, res) => {
-      const subscription = await useCases.subscribeIndividualPlan.execute({
+      const subscription = await useCases.subscribePlan.execute({
+        kind: "individual",
         userId: res.locals.userId,
         birthdate: res.locals.birthdate,
       });

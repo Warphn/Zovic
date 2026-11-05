@@ -11,7 +11,7 @@ import type { Auth } from "../adapters/auth/create-auth.ts";
 import { makeSubscriptionController } from "../adapters/http/subscription-controller.ts";
 import { CancelSubscription } from "../domain/use-cases/cancel-subscription.ts";
 import { GetMySubscription } from "../domain/use-cases/get-my-subscription.ts";
-import { SubscribeIndividualPlan } from "../domain/use-cases/subscribe-individual-plan.ts";
+import { SubscribePlan } from "../domain/use-cases/subscribe-plan.ts";
 import { makeAdminController, makeCatalogController } from "../adapters/http/admin-controller.ts";
 import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
@@ -64,7 +64,7 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
   const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({
-    subscribeIndividualPlan: new SubscribeIndividualPlan(subscriptionRepository),
+    subscribePlan: new SubscribePlan(subscriptionRepository),
     getMySubscription,
     cancelSubscription: new CancelSubscription(subscriptionRepository),
   });

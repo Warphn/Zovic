@@ -8,7 +8,7 @@ import type { Seeder } from "./support.ts";
 
 export const PLAN_TYPES = [
   { name: "Individual", price: "12.99", userAmount: 1 },
-  { name: "Família", price: "29.99", userAmount: 6 },
+  { name: "Família", price: "29.99", userAmount: 4 },
 ] as const;
 
 export const seedPlanTypes: Seeder["run"] = async (tx) => {

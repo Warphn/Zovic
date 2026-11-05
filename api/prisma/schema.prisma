@@ -37,13 +37,14 @@ model PlanType {
 }
 
 model Plan {
-  id        Int        @id @default(autoincrement())
-  name      String     @db.VarChar(100)
-  typeId    Int        @map("type_id")
-  deletedAt DateTime?  @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  type      PlanType   @relation(fields: [typeId], references: [id], onUpdate: NoAction)
-  users     PlanUser[]
+  id             Int              @id @default(autoincrement())
+  name           String           @db.VarChar(100)
+  typeId         Int              @map("type_id")
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  type           PlanType         @relation(fields: [typeId], references: [id], onUpdate: NoAction)
+  planInvitation PlanInvitation[]
+  users          PlanUser[]
 
   @@index([typeId])
   @@map("plan")
@@ -347,6 +348,22 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model PlanInvitation {
+  id         Int       @id @default(autoincrement())
+  planId     Int       @map("plan_id")
+  email      String    @db.VarChar(254)
+  tokenHash  String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+  canceledAt DateTime? @map("canceled_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  plan       Plan      @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([planId])
+  @@map("plan_invitation")
 }
 
 enum UserEventType {
