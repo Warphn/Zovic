@@ -3,7 +3,7 @@ import { BusinessRuleError, ValidationError } from "../errors/domain-error.ts";
 import { Album } from "./album.ts";
 
 const now = new Date("2026-10-20T12:00:00Z");
-const valid = { id: 1, name: "Construção", artistIds: [7], year: 1971, now };
+const valid = { id: 1, name: "Construção", artistIds: [7], year: 1971, coverFile: "capa.png", now };
 
 describe("Album.create", () => {
   it("cria com os vínculos vazios por padrão", () => {
@@ -13,6 +13,7 @@ describe("Album.create", () => {
       artistIds: [7],
       genreIds: [],
       year: 1971,
+      coverFile: "capa.png",
       createdAt: now,
       deletedAt: null,
     });
@@ -42,9 +43,24 @@ describe("Album.create", () => {
 });
 
 describe("Album.restore", () => {
-  it("aceita um álbum antigo, sem ano", () => {
-    const album = Album.restore({ ...Album.create(valid).toData(), year: null });
+  it("aceita um álbum antigo, sem ano e sem capa", () => {
+    const album = Album.restore({ ...Album.create(valid).toData(), year: null, coverFile: null });
     expect(album.year).toBeNull();
+    expect(album.coverFile).toBeNull();
+  });
+});
+
+describe("Album: capa", () => {
+  it("exige a capa no cadastro", () => {
+    expect(() => Album.create({ ...valid, coverFile: "  " })).toThrow(new ValidationError("Album must have a cover image"));
+  });
+
+  it("troca a capa e não aceita troca depois de apagado", () => {
+    const album = Album.create(valid);
+    album.changeCover("nova.webp");
+    expect(album.coverFile).toBe("nova.webp");
+    album.delete(now);
+    expect(() => album.changeCover("outra.png")).toThrow(BusinessRuleError);
   });
 });
 

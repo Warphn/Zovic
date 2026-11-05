@@ -4,6 +4,7 @@ import { Genre } from "../entities/genre.ts";
 import { Music } from "../entities/music.ts";
 import { NotFoundError } from "../errors/domain-error.ts";
 import { validateAudio } from "../shared/audio.ts";
+import { validateCover } from "../shared/cover-image.ts";
 import { normalizeIds } from "../shared/ids.ts";
 import type { AlbumRepository } from "../ports/album-repository.ts";
 import type { ArtistRepository } from "../ports/artist-repository.ts";
@@ -62,6 +63,8 @@ export interface AlbumOutput {
   name: string;
   year: number | null;
   artistIds: number[];
+  /** O nome do arquivo não sai da API: a capa é entregue por GET /api/albums/:id/cover. */
+  hasCover: boolean;
   createdAt: string;
   deletedAt: string | null;
 }
@@ -98,6 +101,7 @@ export class ManageCatalog {
     private readonly genres: GenreRepository,
     private readonly albums: AlbumRepository,
     private readonly audioStorage: FileStorage,
+    private readonly coverStorage: FileStorage,
   ) {}
 
   /**
@@ -156,10 +160,37 @@ export class ManageCatalog {
     await this.musics.save(music);
   }
 
-  async createAlbum(input: CreateAlbumInput): Promise<AlbumOutput> {
+  /** Como no cadastro de música: a capa só vai para o disco depois das conferências, e sai se o álbum não for salvo. */
+  async createAlbum(input: CreateAlbumInput, cover: Uint8Array | null): Promise<AlbumOutput> {
     await this.ensureArtistsExist(input.artistIds);
-    const album = Album.create({ id: await this.albums.nextId(), ...input });
-    await this.albums.save(album);
+    const extension = validateCover(cover);
+
+    const coverFile = await this.coverStorage.save(cover!, extension);
+    try {
+      const album = Album.create({ id: await this.albums.nextId(), ...input, coverFile });
+      await this.albums.save(album);
+      return toAlbumOutput(album);
+    } catch (error) {
+      await this.coverStorage.remove(coverFile);
+      throw error;
+    }
+  }
+
+  /** A capa antiga só é apagada depois que o álbum foi salvo com a nova. */
+  async changeAlbumCover(id: number, cover: Uint8Array | null): Promise<AlbumOutput> {
+    const album = await this.findAlbum(id);
+    const extension = validateCover(cover);
+    const previousCover = album.coverFile;
+
+    const coverFile = await this.coverStorage.save(cover!, extension);
+    try {
+      album.changeCover(coverFile);
+      await this.albums.save(album);
+    } catch (error) {
+      await this.coverStorage.remove(coverFile);
+      throw error;
+    }
+    if (previousCover !== null) await this.coverStorage.remove(previousCover);
     return toAlbumOutput(album);
   }
 
@@ -263,6 +294,7 @@ function toAlbumOutput(album: Album): AlbumOutput {
     name: album.name,
     year: album.year,
     artistIds: album.artistIds,
+    hasCover: album.coverFile !== null,
     createdAt: album.createdAt.toISOString(),
     deletedAt: album.deletedAt?.toISOString() ?? null,
   };

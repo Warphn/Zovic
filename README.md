@@ -54,7 +54,7 @@ Para pular as perguntas, passe as respostas como argumentos: `bun start backend`
 
 Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
 
-**Arquivos de áudio.** Os MP3 enviados pelo painel de admin ficam em `AUDIO_DIR`. Com `bun dev`, o padrão é `api/storage/audio/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam no volume `audio`, em `/data/audio`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esse volume junto com o banco.
+**Arquivos enviados pelo painel.** Os MP3 das músicas ficam em `AUDIO_DIR`, e as capas dos álbuns em `COVER_DIR`. Com `bun dev`, os padrões são `api/storage/audio/` e `api/storage/covers/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam nos volumes `audio` e `covers`, em `/data/audio` e `/data/covers`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esses volumes junto com o banco.
 
 ## Comandos
 
@@ -138,7 +138,8 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 - **Conteúdo:** cria, edita e remove músicas, álbuns e artistas.
   - **Música:** o cadastro pede o arquivo MP3 (até 20 MB), e a duração é lida do arquivo. Ela também tem álbum (opcional), gêneros e a marca de conteúdo explícito. As músicas do seed não têm áudio e aparecem como "sem áudio".
   - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
-  - **Álbuns:** aparecem em cards, com a capa gerada pelas iniciais, o ano, os artistas e quantas faixas têm.
+  - **Álbuns:** aparecem em cards, com a capa, o ano, os artistas e quantas faixas têm. Todo álbum novo pede nome, artistas, ano e a imagem de capa (JPEG, PNG ou WebP, até 2 MB), que pode ser trocada depois. Os álbuns do seed não têm capa e mostram as iniciais.
+  - **Álbum da música:** o formulário de música mostra as capas dos álbuns dos artistas marcados, e dá para criar um álbum novo ali mesmo.
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 

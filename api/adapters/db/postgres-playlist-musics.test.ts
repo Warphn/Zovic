@@ -42,7 +42,7 @@ async function music(name: string, options: { artistIds?: number[]; deleted?: bo
 async function album(name: string, musicIds: number[], deleted = false): Promise<number> {
   const id = await albums.nextId();
   created.album.push(id);
-  const entity = Album.create({ id, name, artistIds: [artistId], year: 2000 });
+  const entity = Album.create({ id, name, artistIds: [artistId], year: 2000, coverFile: "capa.png" });
   if (deleted) entity.delete();
   await albums.save(entity);
   // Uma música em vários álbuns só existe nos dados antigos (o domínio limita a um), por isso

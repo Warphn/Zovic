@@ -60,6 +60,7 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 | `TRUST_PROXY` | Número de proxies na frente da API, para o limite de login ver o IP real. Vazia em desenvolvimento e `1` em produção. |
 | `NEXT_PUBLIC_API_URL` | Endereço da API para o front no Docker. Vazio vale `http://localhost:3333`. |
 | `AUDIO_DIR` | Diretório dos MP3 das músicas. Vazio vale `api/storage/audio`. No Docker, o compose passa `/data/audio`, o volume `audio`. |
+| `COVER_DIR` | Diretório das capas dos álbuns. Vazio vale `api/storage/covers`. No Docker, o compose passa `/data/covers`, o volume `covers`. |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Só no servidor de produção |
 
 ## Rotas
@@ -144,7 +145,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | --- | --- |
 | `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
 | `GET /api/artists` | Lista os artistas |
-| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas e quantas faixas ativas cada um tem (`musicCount`) |
+| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`) e o endereço da capa (`coverUrl`, ou `null`) |
+| `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |
 | `GET /api/genres` | Lista os gêneros |
 | `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
 
@@ -162,7 +164,9 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `GET /api/admin/users/:id/plays` | As últimas 50 reproduções da conta |
 | `POST /api/admin/musics` | Cadastra uma música com o arquivo de áudio, em multipart (veja abaixo) |
 | `PATCH` e `DELETE` em `/api/admin/musics/:id` | Edita (nome, duração, artistas, gêneros, álbum e explícito) e remove músicas. O `PATCH` é em JSON e não troca o áudio. |
-| `POST`, `PATCH` e `DELETE` em `/api/admin/albums` | Cria, edita (nome, artistas e ano) e remove álbuns |
+| `POST /api/admin/albums` | Cria um álbum com a imagem de capa, em multipart: a parte `data` com `{ name, artistIds, year }` e a parte `cover` com a imagem |
+| `PUT /api/admin/albums/:id/cover` | Troca a capa, em multipart com a parte `cover`. A antiga só é apagada depois de salvar a nova. |
+| `PATCH` e `DELETE` em `/api/admin/albums/:id` | Edita (nome, artistas e ano, em JSON) e remove álbuns |
 | `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas |
 
@@ -195,6 +199,12 @@ curl -b cookies.txt -H "Origin: http://localhost:3000" http://localhost:3333/api
   | Artista, gênero ou álbum inexistente | 404 |
 
 O arquivo só é gravado depois dessas conferências. Se a música não chegar a ser salva, ele é apagado.
+
+**Capa do álbum.** O cadastro e a troca de capa seguem o mesmo esquema, com a imagem na parte `cover`:
+
+- **Formato:** JPEG, PNG ou WebP, de até 2 MB, conferido pelos primeiros bytes. Acima do limite, a resposta é 413 `COVER_TOO_LARGE`.
+- **Obrigatória:** sem capa, o álbum não é criado (400). Os álbuns antigos, sem capa, têm `coverUrl: null`.
+- **Cache:** o `coverUrl` termina com uma versão (`?v=`), que muda a cada troca. O navegador guarda a imagem, mas nunca mostra a capa antiga depois da troca.
 
 ## Assinaturas
 

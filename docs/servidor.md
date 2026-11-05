@@ -42,7 +42,7 @@ O compose de produção é o profile `prod` do `docker-compose.yml`.
 
 - **`tunnel`:** a rede onde o `cloudflared` alcança a API e o banco.
 - **`site`:** só o `web` e o `cloudflared`.
-- **Volumes:** `pgdata` guarda o banco, e `audio` guarda os MP3 enviados pelo painel de admin, montado em `/data/audio` no `api`.
+- **Volumes:** `pgdata` guarda o banco, `audio` guarda os MP3 enviados pelo painel de admin e `covers` guarda as capas dos álbuns. Os dois últimos são montados em `/data/audio` e `/data/covers` no `api`.
 - **Portas:** a API, o banco e o site só aceitam conexões da própria máquina (`127.0.0.1`). Da rede da casa, nenhuma porta responde.
 - **Tetos:** se um container passa do teto de memória, o Docker o encerra (código 137) e o `restart: unless-stopped` o liga de novo. Acompanhe com `docker stats`.
 - **Banda:** o limite mais apertado no caminho do áudio (fase 6) é o `cloudflared`, por onde passam todos os bytes. Mas o gargalo real deve ser a velocidade de **upload** da internet do desktop, de cerca de 0,3 Mbps por ouvinte.
@@ -82,7 +82,7 @@ O `~/zovic/.env` só existe no servidor e nunca vai para o git. Não mostre o co
 | `TRUST_PROXY` | `1`, porque o `cloudflared` é o proxy à frente da API e o rate limit do login precisa do IP real |
 | `CLOUDFLARE_TUNNEL_TOKEN` | O token do túnel `zovic-desktop` |
 | `NEXT_PUBLIC_API_URL` | `https://api.zovic.com.br`. O Next embute o valor no build: se ele mudar, rode `bun server up` de novo. |
-| `AUDIO_DIR` | Não defina. O compose já passa `/data/audio`, o volume `audio`. |
+| `AUDIO_DIR` e `COVER_DIR` | Não defina. O compose já passa `/data/audio` e `/data/covers`, os volumes `audio` e `covers`. |
 
 ## Cloudflare
 
@@ -154,7 +154,7 @@ No desktop, o `localhost:3333` é a API de produção. Uma chamada por ali grava
 
 ## Pendências
 
-- **Backup do banco e dos áudios:** ainda não existe. Os dados de produção (os volumes `pgdata` e `audio`) estão só no disco do WSL do desktop.
+- **Backup do banco, dos áudios e das capas:** ainda não existe. Os dados de produção (os volumes `pgdata`, `audio` e `covers`) estão só no disco do WSL do desktop.
 - **Servidor sempre de pé:** o desktop suspende depois de 30 minutos parado, e o Docker Desktop e o login não abrem sozinhos depois de um reinício. Hoje o servidor fica no ar só enquanto quem administra o mantém ligado.
 - **Rate limit geral da API:** só o login e o cadastro têm limite por IP.
 - **Swagger público:** `https://api.zovic.com.br/docs` mostra todas as rotas para qualquer pessoa.

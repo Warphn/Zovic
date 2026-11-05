@@ -69,13 +69,14 @@ class FakeFileStorage implements FileStorage {
 
 /** Um MP3 mínimo para o domínio: só a tag ID3 do começo importa. */
 const MP3 = new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]);
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 
 let musics: InMemoryMusics;
 let artists: InMemoryArtists;
 let genres: InMemoryGenres;
 let albums: InMemoryAlbums;
 let audioStorage: FakeFileStorage;
+let coverStorage: FakeFileStorage;
 let catalog: ManageCatalog;
 
 beforeEach(async () => {
@@ -84,13 +85,14 @@ beforeEach(async () => {
   genres = new InMemoryGenres();
   albums = new InMemoryAlbums();
   audioStorage = new FakeFileStorage();
-  catalog = new ManageCatalog(musics, artists, genres, albums, audioStorage);
+  coverStorage = new FakeFileStorage();
+  catalog = new ManageCatalog(musics, artists, genres, albums, audioStorage, coverStorage);
   for (const name of ["Chico Buarque", "Elis Regina", "Tom Jobim"]) {
     await artists.save(Artist.create({ id: await artists.nextId(), name }));
   }
   await genres.save(Genre.create({ id: await genres.nextId(), name: "MPB", color: "#d33a2c" }));
   await genres.save(Genre.create({ id: await genres.nextId(), name: "Bossa", color: "#1e7f82" }));
-  await albums.save(Album.create({ id: await albums.nextId(), name: "Construção", artistIds: [1], year: 1971 }));
+  await albums.save(Album.create({ id: await albums.nextId(), name: "Construção", artistIds: [1], year: 1971, coverFile: "capa.png" }));
 });
 
 describe("ManageCatalog: músicas", () => {
@@ -218,7 +220,7 @@ describe("ManageCatalog: áudio, álbum e explícito", () => {
 
 describe("ManageCatalog: álbuns", () => {
   it("cria, edita nome, ano e artistas, e remove", async () => {
-    const created = await catalog.createAlbum({ name: "Clube da Esquina", artistIds: [1], year: 1972 });
+    const created = await catalog.createAlbum({ name: "Clube da Esquina", artistIds: [1], year: 1972 }, PNG);
     expect(created).toMatchObject({ name: "Clube da Esquina", artistIds: [1], year: 1972, deletedAt: null });
 
     const updated = await catalog.updateAlbum(created.id, { name: "Clube da Esquina 2", year: 1978, artistIds: [2, 3] });
@@ -229,8 +231,73 @@ describe("ManageCatalog: álbuns", () => {
   });
 
   it("recusa artista inexistente e ano fora do intervalo", async () => {
-    expect(await rejection(catalog.createAlbum({ name: "X", artistIds: [99], year: 2000 }))).toBeInstanceOf(NotFoundError);
-    expect(await rejection(catalog.createAlbum({ name: "X", artistIds: [1], year: 1899 }))).toBeInstanceOf(ValidationError);
+    expect(await rejection(catalog.createAlbum({ name: "X", artistIds: [99], year: 2000 }, PNG))).toBeInstanceOf(NotFoundError);
+    expect(await rejection(catalog.createAlbum({ name: "X", artistIds: [1], year: 1899 }, PNG))).toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("ManageCatalog: capa do álbum", () => {
+  it("grava a capa com a extensão do tipo e cria o álbum", async () => {
+    const created = await catalog.createAlbum({ name: "Clube da Esquina", artistIds: [1], year: 1972 }, PNG);
+
+    expect(created).toMatchObject({ hasCover: true });
+    expect([...coverStorage.saved.keys()]).toEqual(["file-1.png"]);
+    expect(albums.items.get(created.id)?.coverFile).toBe("file-1.png");
+  });
+
+  it("não cria o álbum sem capa e não grava nada", async () => {
+    const error = await rejection(catalog.createAlbum({ name: "Sem capa", artistIds: [1], year: 1972 }, null));
+
+    expect(error).toEqual(new ValidationError("Album must have a cover image"));
+    expect(coverStorage.saved.size).toBe(0);
+  });
+
+  it("recusa um arquivo que não é imagem antes de gravar", async () => {
+    const error = await rejection(catalog.createAlbum({ name: "Áudio", artistIds: [1], year: 1972 }, MP3));
+
+    expect(error).toEqual(new ValidationError("Cover image must be a JPEG, PNG or WebP"));
+    expect(coverStorage.saved.size).toBe(0);
+  });
+
+  it("recusa artista inexistente sem gravar a capa", async () => {
+    expect(await rejection(catalog.createAlbum({ name: "X", artistIds: [99], year: 2000 }, PNG))).toBeInstanceOf(NotFoundError);
+    expect(coverStorage.saved.size).toBe(0);
+  });
+
+  it("apaga a capa gravada quando o álbum não é salvo", async () => {
+    const failure = new Error("banco fora do ar");
+    albums.save = async () => {
+      throw failure;
+    };
+
+    expect(await rejection(catalog.createAlbum({ name: "Perdido", artistIds: [1], year: 2000 }, PNG))).toBe(failure);
+    expect(coverStorage.removed).toEqual(["file-1.png"]);
+  });
+
+  it("troca a capa e só então apaga a antiga", async () => {
+    const { id } = await catalog.createAlbum({ name: "Minas", artistIds: [1], year: 1975 }, PNG);
+
+    const updated = await catalog.changeAlbumCover(id, PNG);
+
+    expect(updated).toMatchObject({ hasCover: true });
+    expect(albums.items.get(id)?.coverFile).toBe("file-2.png");
+    expect(coverStorage.removed).toEqual(["file-1.png"]);
+  });
+
+  it("mantém a capa antiga quando a troca não é salva", async () => {
+    const { id } = await catalog.createAlbum({ name: "Minas", artistIds: [1], year: 1975 }, PNG);
+    const failure = new Error("banco fora do ar");
+    albums.save = async () => {
+      throw failure;
+    };
+
+    expect(await rejection(catalog.changeAlbumCover(id, PNG))).toBe(failure);
+    expect(coverStorage.removed).toEqual(["file-2.png"]);
+  });
+
+  it("recusa trocar a capa de um álbum removido", async () => {
+    expect(await rejection(catalog.changeAlbumCover(99, PNG))).toEqual(new NotFoundError("Album not found"));
+    expect(coverStorage.saved.size).toBe(0);
   });
 });
 

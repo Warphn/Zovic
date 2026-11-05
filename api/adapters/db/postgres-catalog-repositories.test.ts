@@ -45,7 +45,7 @@ async function newMusic(name: string, artistIds: number[], genreIds: number[] = 
 async function newAlbum(artistIds: number[]): Promise<Album> {
   const id = await albums.nextId();
   created.album.push(id);
-  return Album.create({ id, name: "Integration", artistIds, year: 1998 });
+  return Album.create({ id, name: "Integration", artistIds, year: 1998, coverFile: "capa.png" });
 }
 
 beforeAll(async () => {
@@ -225,6 +225,17 @@ describe("PostgresAlbumRepository", () => {
 
     const found = await albums.findById(album.id);
     expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], year: 1998 });
+  });
+
+  it("grava a capa e a troca de capa", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    expect((await albums.findById(album.id))?.coverFile).toBe("capa.png");
+
+    album.changeCover("nova.webp");
+    await albums.save(album);
+
+    expect((await albums.findById(album.id))?.coverFile).toBe("nova.webp");
   });
 
   it("grava a troca de ano", async () => {

@@ -9,6 +9,8 @@ export interface ExistingAlbumData {
   genreIds: number[];
   /** Ano de lançamento; null só nos álbuns anteriores à coluna. */
   year: number | null;
+  /** Nome da imagem de capa no armazenamento (FileStorage); null só nos álbuns anteriores à capa. */
+  coverFile: string | null;
   createdAt: Date;
   deletedAt: Date | null;
 }
@@ -19,6 +21,7 @@ export interface NewAlbumData {
   artistIds: number[];
   genreIds?: number[];
   year: number;
+  coverFile: string;
   now?: Date;
 }
 
@@ -43,6 +46,7 @@ export class Album {
       artistIds,
       genreIds: normalizeIds(input.genreIds ?? [], "Genre"),
       year: Album.validateYear(input.year, input.now ?? new Date()),
+      coverFile: Album.validateCoverFile(input.coverFile),
       createdAt: input.now ?? new Date(),
       deletedAt: null,
     });
@@ -70,6 +74,10 @@ export class Album {
 
   get year(): number | null {
     return this.input.year;
+  }
+
+  get coverFile(): string | null {
+    return this.input.coverFile;
   }
 
   get createdAt(): Date {
@@ -118,9 +126,21 @@ export class Album {
     this.input.year = Album.validateYear(year, now);
   }
 
+  changeCover(coverFile: string): void {
+    this.ensureNotDeleted();
+    this.input.coverFile = Album.validateCoverFile(coverFile);
+  }
+
   delete(now: Date = new Date()): void {
     this.ensureNotDeleted();
     this.input.deletedAt = now;
+  }
+
+  private static validateCoverFile(coverFile: string): string {
+    if (coverFile.trim() === "") {
+      throw new ValidationError("Album must have a cover image");
+    }
+    return coverFile;
   }
 
   /** O limite superior muda com o tempo, por isso fica aqui e não num CHECK do banco. */

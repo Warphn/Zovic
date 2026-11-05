@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { MAX_AUDIO_BYTES } from "../../domain/shared/audio.ts";
+import { MAX_COVER_BYTES } from "../../domain/shared/cover-image.ts";
 import { createAuth } from "../auth/create-auth.ts";
 import { LocalFileStorage } from "../storage/local-file-storage.ts";
 import { composeApp } from "../../infra/composition-root.ts";
@@ -23,6 +24,7 @@ let adminCookie: string;
 let userCookie: string;
 let adminId: number;
 let audioDir: string;
+let coverDir: string;
 const created = { musics: [] as number[], album: [] as number[], artist: [] as number[], genre: [] as number[] };
 
 /** Arquivo de `size` bytes que começa com `header` (o domínio só olha o começo). */
@@ -32,7 +34,7 @@ function audioFile(header: number[], size = 64): Uint8Array {
   return bytes;
 }
 const MP3 = audioFile([0x49, 0x44, 0x33, 0x04, 0x00]);
-const PNG = audioFile([0x89, 0x50, 0x4e, 0x47]);
+const PNG = audioFile([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** Cadastro de música em multipart: `data` com o JSON e o arquivo na parte `audio.field`. */
 function postMusic(cookie: string, data: unknown, audio?: { field: string; bytes: Uint8Array }) {
@@ -43,6 +45,20 @@ function postMusic(cookie: string, data: unknown, audio?: { field: string; bytes
 }
 
 const audioPart = (bytes: Uint8Array = MP3) => ({ field: "audio", bytes });
+
+/** Cadastro de álbum em multipart: `data` com o JSON e a imagem na parte `cover` (PNG, se nada vier). */
+function postAlbum(cookie: string, data: unknown, cover: Uint8Array | null = PNG) {
+  const form = new FormData();
+  form.append("data", JSON.stringify(data));
+  if (cover) form.append("cover", new File([cover], "capa.png", { type: "image/png" }));
+  return fetch(`${url}/api/admin/albums`, { method: "POST", headers: { Origin: ORIGIN, Cookie: cookie }, body: form });
+}
+
+function putCover(cookie: string, albumId: number, cover: Uint8Array) {
+  const form = new FormData();
+  form.append("cover", new File([cover], "capa.png", { type: "image/png" }));
+  return fetch(`${url}/api/admin/albums/${albumId}/cover`, { method: "PUT", headers: { Origin: ORIGIN, Cookie: cookie }, body: form });
+}
 
 /** Quantos arquivos o armazenamento de teste tem agora. */
 async function storedFiles(): Promise<number> {
@@ -94,7 +110,9 @@ beforeAll(async () => {
     rateLimit: false,
   });
   audioDir = await mkdtemp(join(tmpdir(), "zovic-admin-flow-"));
-  server = composeApp(auth, null, [ORIGIN], pool, new LocalFileStorage(audioDir)).listen(0);
+  coverDir = await mkdtemp(join(tmpdir(), "zovic-admin-covers-"));
+  const storages = { audio: new LocalFileStorage(audioDir), covers: new LocalFileStorage(coverDir) };
+  server = composeApp(auth, null, [ORIGIN], pool, storages).listen(0);
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("Test server has no port");
   url = `http://127.0.0.1:${address.port}`;
@@ -110,6 +128,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await rm(audioDir, { recursive: true, force: true });
+  await rm(coverDir, { recursive: true, force: true });
   for (const [table, ids] of Object.entries(created)) {
     await pool.query(`DELETE FROM ${table} WHERE id = ANY($1::integer[])`, [ids]);
   }
@@ -270,7 +289,7 @@ describe("cadastro de música com áudio e álbuns", () => {
   });
 
   it("o admin cria, edita e remove um álbum, que some da lista ao ser removido", async () => {
-    const res = await call("/admin/albums", adminCookie, { method: "POST", body: { name: `${PREFIX} disco`, artistIds: [artistId], year: 2019 } });
+    const res = await postAlbum(adminCookie, { name: `${PREFIX} disco`, artistIds: [artistId], year: 2019 });
     expect(res.status).toBe(201);
     albumId = (await json<{ id: number }>(res)).id;
     created.album.push(albumId);
@@ -282,7 +301,7 @@ describe("cadastro de música com áudio e álbuns", () => {
     expect(listed.find((album) => album.id === albumId)).toMatchObject({ year: 2020, artists: [{ id: artistId }] });
 
     const removable = await json<{ id: number }>(
-      await call("/admin/albums", adminCookie, { method: "POST", body: { name: `${PREFIX} descartado`, artistIds: [artistId], year: 2001 } }),
+      await postAlbum(adminCookie, { name: `${PREFIX} descartado`, artistIds: [artistId], year: 2001 }),
     );
     created.album.push(removable.id);
     expect((await call(`/admin/albums/${removable.id}`, adminCookie, { method: "DELETE" })).status).toBe(204);
@@ -291,7 +310,7 @@ describe("cadastro de música com áudio e álbuns", () => {
   });
 
   it("recusa álbum com ano fora do intervalo", async () => {
-    const res = await call("/admin/albums", adminCookie, { method: "POST", body: { name: `${PREFIX} velho`, artistIds: [artistId], year: 1899 } });
+    const res = await postAlbum(adminCookie, { name: `${PREFIX} velho`, artistIds: [artistId], year: 1899 });
     expect(res.status).toBe(400);
   });
 
@@ -383,7 +402,7 @@ describe("cadastro de música com áudio e álbuns", () => {
 
   it("conta só as faixas ativas de cada álbum", async () => {
     const album = await json<{ id: number }>(
-      await call("/admin/albums", adminCookie, { method: "POST", body: { name: `${PREFIX} contado`, artistIds: [artistId], year: 2010 } }),
+      await postAlbum(adminCookie, { name: `${PREFIX} contado`, artistIds: [artistId], year: 2010 }),
     );
     created.album.push(album.id);
     for (const name of ["um", "dois"]) {
@@ -399,7 +418,7 @@ describe("cadastro de música com áudio e álbuns", () => {
 
   it("assinante não cadastra música nem álbum", async () => {
     expect((await postMusic(userCookie, musicData(), audioPart())).status).toBe(403);
-    const album = await call("/admin/albums", userCookie, { method: "POST", body: { name: "Invadido", artistIds: [artistId], year: 2000 } });
+    const album = await postAlbum(userCookie, { name: "Invadido", artistIds: [artistId], year: 2000 });
     expect(album.status).toBe(403);
   });
 });
@@ -438,5 +457,93 @@ describe("gêneros pelo painel", () => {
   it("assinante não cria gênero", async () => {
     const res = await call("/admin/genres", userCookie, { method: "POST", body: { name: genreName(), color: "#123456" } });
     expect(res.status).toBe(403);
+  });
+});
+
+/** O coverUrl do álbum na listagem do catálogo. */
+async function listedCoverUrl(id: number): Promise<string | null | undefined> {
+  const listed = await json<{ id: number; coverUrl: string | null }[]>(await call("/albums", userCookie));
+  return listed.find((album) => album.id === id)?.coverUrl;
+}
+
+describe("capa do álbum", () => {
+  let artistId: number;
+  let albumId: number;
+  const albumData = (name: string) => ({ name: `${PREFIX} ${name}`, artistIds: [artistId], year: 2015 });
+
+  beforeAll(async () => {
+    const artist = await json<{ id: number }>(await call("/admin/artists", adminCookie, { method: "POST", body: { name: `${PREFIX} capista` } }));
+    artistId = artist.id;
+    created.artist.push(artistId);
+  });
+
+  it("cria o álbum com a capa, e o assinante recebe a imagem pela rota da capa", async () => {
+    const res = await postAlbum(adminCookie, albumData("com capa"));
+    expect(res.status).toBe(201);
+    const album = await json<{ id: number }>(res);
+    albumId = album.id;
+    created.album.push(albumId);
+    expect(album).toMatchObject({ hasCover: true });
+    expect(album).not.toHaveProperty("coverFile");
+
+    const coverUrl = await listedCoverUrl(albumId);
+    expect(coverUrl).toMatch(new RegExp(`^/api/albums/${albumId}/cover\\?v=`));
+    const image = await fetch(`${url}${coverUrl}`, { headers: { Cookie: userCookie } });
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toBe("image/png");
+    expect([...new Uint8Array(await image.arrayBuffer())]).toEqual([...PNG]);
+  });
+
+  it("troca a capa: a URL muda e o arquivo antigo sai do disco", async () => {
+    const before = await listedCoverUrl(albumId);
+    const filesBefore = await readdir(coverDir);
+    const webp = audioFile([0x52, 0x49, 0x46, 0x46, 0x10, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]);
+
+    const res = await putCover(adminCookie, albumId, webp);
+
+    expect(res.status).toBe(200);
+    const after = await listedCoverUrl(albumId);
+    expect(after).not.toBe(before);
+    const filesAfter = await readdir(coverDir);
+    expect(filesAfter).toHaveLength(filesBefore.length);
+    expect(filesAfter.some((name) => name.endsWith(".webp"))).toBe(true);
+    const image = await fetch(`${url}${after}`, { headers: { Cookie: userCookie } });
+    expect(image.headers.get("content-type")).toBe("image/webp");
+  });
+
+  it("sem capa, não cria o álbum", async () => {
+    const res = await postAlbum(adminCookie, albumData("sem capa"), null);
+    expect(res.status).toBe(400);
+    expect(await json(res)).toMatchObject({ message: "Album must have a cover image" });
+  });
+
+  it("recusa uma capa que não é imagem", async () => {
+    const res = await postAlbum(adminCookie, albumData("capa errada"), MP3);
+    expect(res.status).toBe(400);
+    expect(await json(res)).toMatchObject({ message: "Cover image must be a JPEG, PNG or WebP" });
+  });
+
+  it("acima de 2 MB, responde 413 com o erro da capa", async () => {
+    const res = await postAlbum(adminCookie, albumData("capa grande"), audioFile([0x89, 0x50, 0x4e, 0x47], MAX_COVER_BYTES + 1));
+    expect(res.status).toBe(413);
+    expect(await json(res)).toMatchObject({ error: "COVER_TOO_LARGE" });
+  });
+
+  it("responde 404 para um álbum sem capa e 401 sem sessão", async () => {
+    const legacy = await pool.query<{ id: number }>(
+      "INSERT INTO album (name, year) VALUES ($1, 2000) RETURNING id",
+      [`${PREFIX} antigo`],
+    );
+    const legacyId = legacy.rows[0]!.id;
+    created.album.push(legacyId);
+    await pool.query("INSERT INTO album_artist (album_id, artist_id) VALUES ($1, $2)", [legacyId, artistId]);
+
+    expect(await listedCoverUrl(legacyId)).toBeNull();
+    expect((await fetch(`${url}/api/albums/${legacyId}/cover`, { headers: { Cookie: userCookie } })).status).toBe(404);
+    expect((await fetch(`${url}/api/albums/${albumId}/cover`)).status).toBe(401);
+  });
+
+  it("assinante não troca a capa", async () => {
+    expect((await putCover(userCookie, albumId, PNG)).status).toBe(403);
   });
 });

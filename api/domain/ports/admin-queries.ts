@@ -30,6 +30,8 @@ export interface AlbumListItem {
   artists: { id: number; name: string }[];
   /** Faixas ativas do álbum. */
   musicCount: number;
+  /** Endereço da capa (GET /api/albums/:id/cover), com a versão no fim; null nos álbuns sem capa. */
+  coverUrl: string | null;
 }
 
 export interface CatalogQueries {
@@ -38,6 +40,8 @@ export interface CatalogQueries {
   listArtists(): Promise<{ id: number; name: string }[]>;
   /** Álbuns ativos, por nome. */
   listAlbums(): Promise<AlbumListItem[]>;
+  /** O arquivo da capa de um álbum ativo; null se ele não existe, foi removido ou não tem capa. */
+  findAlbumCoverFile(albumId: number): Promise<string | null>;
   listGenres(): Promise<{ id: number; name: string; color: string }[]>;
 }
 

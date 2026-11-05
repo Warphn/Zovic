@@ -16,6 +16,11 @@ export class LocalFileStorage implements FileStorage {
     return fileName;
   }
 
+  /** O caminho no disco, para a rota que entrega o arquivo. `fileName` vem do banco, nunca do cliente. */
+  pathOf(fileName: string): string {
+    return join(this.directory, fileName);
+  }
+
   async remove(fileName: string): Promise<void> {
     await rm(join(this.directory, fileName), { force: true });
   }

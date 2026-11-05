@@ -1093,6 +1093,33 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/albums/{id}/cover": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Entrega a imagem de capa de um álbum",
+        description:
+          "A imagem, com o `Content-Type` do formato (`image/jpeg`, `image/png` ou `image/webp`). Use o `coverUrl` da `GET /api/albums`, que tem a versão no fim e muda a cada troca de capa.",
+        operationId: "getAlbumCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+          { name: "v", in: "query", required: false, description: "Versão da capa, só para o cache do navegador.", schema: { type: "string" } },
+        ],
+        responses: {
+          "200": {
+            description: "A imagem de capa",
+            content: { "image/png": { schema: { type: "string", format: "binary" } }, "image/jpeg": { schema: { type: "string", format: "binary" } }, "image/webp": { schema: { type: "string", format: "binary" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Álbum inexistente, removido ou sem capa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Cover not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/admin/musics": {
       post: {
         tags: ["Admin"],
@@ -1226,25 +1253,88 @@ export const openApiDocument = {
     "/api/admin/albums": {
       post: {
         tags: ["Admin"],
-        summary: "Cadastra um álbum",
-        description: "O ano vai de 1900 até o ano atual.",
+        summary: "Cadastra um álbum com a imagem de capa",
+        description:
+          "Recebe `multipart/form-data` com duas partes: `data`, um texto JSON com nome, artistas e ano (de 1900 até o ano atual), e `cover`, a imagem JPEG, PNG ou WebP de até 2 MB. O formato é conferido pelos primeiros bytes. Sem capa, o álbum não é criado.",
         operationId: "createAlbum",
         security: [{ cookieAuth: [] }],
         requestBody: {
           required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/AlbumInput" } } },
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["data", "cover"],
+                properties: {
+                  data: { type: "string", description: "JSON no formato de `AlbumInput`.", example: '{"name":"Ondas de Concreto","artistIds":[1],"year":2018}' },
+                  cover: { type: "string", format: "binary", description: "A imagem de capa (JPEG, PNG ou WebP), de até 2 MB." },
+                },
+              },
+              encoding: { data: { contentType: "application/json" }, cover: { contentType: "image/jpeg, image/png, image/webp" } },
+            },
+          },
         },
         responses: {
           "201": { description: "O álbum criado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminAlbum" } } } },
           "400": {
-            description: "Campos inválidos, ou ano depois do atual",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+            description:
+              "Campos inválidos ou ano depois do atual (`VALIDATION_ERROR`), `data` que não é JSON (`INVALID_JSON`), sem capa ou com um arquivo que não é imagem, ou multipart malformado (`INVALID_UPLOAD`)",
+            content: {
+              "application/json": {
+                schema: { oneOf: [{ $ref: "#/components/schemas/FieldValidationError" }, errorResponse("VALIDATION_ERROR", "Album must have a cover image")] },
+              },
+            },
+          },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("COVER_TOO_LARGE", "Cover image must be at most 2 MB") } },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlatformAdmin" },
           "404": {
             description: "Artista inexistente ou removido",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist 7 not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/albums/{id}/cover": {
+      put: {
+        tags: ["Admin"],
+        summary: "Troca a imagem de capa de um álbum",
+        description: "Recebe `multipart/form-data` com a parte `cover`. A capa antiga só é apagada depois que o álbum foi salvo com a nova.",
+        operationId: "changeAlbumCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["cover"],
+                properties: { cover: { type: "string", format: "binary", description: "A imagem de capa (JPEG, PNG ou WebP), de até 2 MB." } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "O álbum com a capa nova", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminAlbum" } } } },
+          "400": {
+            description:
+              "Sem a parte `cover`, ou com um arquivo que não é JPEG, PNG ou WebP; arquivo numa parte que não é `cover`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`)",
+            content: { "application/json": { schema: errorResponse("VALIDATION_ERROR", "Cover image must be a JPEG, PNG or WebP") } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Álbum inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Album not found") } },
+          },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("COVER_TOO_LARGE", "Cover image must be at most 2 MB") } },
           },
           "500": { $ref: "#/components/responses/InternalError" },
         },
@@ -1880,13 +1970,18 @@ export const openApiDocument = {
       },
       AlbumListItem: {
         type: "object",
-        required: ["id", "name", "year", "artists", "musicCount"],
+        required: ["id", "name", "year", "artists", "musicCount", "coverUrl"],
         properties: {
           id: { type: "integer", example: 3 },
           name: { type: "string", example: "Ondas de Concreto" },
           year: { type: ["integer", "null"], description: "null só nos álbuns antigos.", example: 2018 },
           artists: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } } },
           musicCount: { type: "integer", description: "Faixas ativas do álbum.", example: 5 },
+          coverUrl: {
+            type: ["string", "null"],
+            description: "Endereço da capa, relativo à API, com a versão no fim. null nos álbuns sem capa.",
+            example: "/api/albums/3/cover?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
         },
       },
       MusicInput: {
@@ -1951,12 +2046,13 @@ export const openApiDocument = {
       },
       AdminAlbum: {
         type: "object",
-        required: ["id", "name", "year", "artistIds", "createdAt", "deletedAt"],
+        required: ["id", "name", "year", "artistIds", "hasCover", "createdAt", "deletedAt"],
         properties: {
           id: { type: "integer", example: 3 },
           name: { type: "string", example: "Ondas de Concreto" },
           year: { type: ["integer", "null"], example: 2018 },
           artistIds: { type: "array", items: { type: "integer" }, example: [1] },
+          hasCover: { type: "boolean", example: true },
           createdAt: { type: "string", format: "date-time" },
           deletedAt: { type: ["string", "null"], format: "date-time", example: null },
         },

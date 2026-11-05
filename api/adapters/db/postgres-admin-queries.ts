@@ -16,6 +16,15 @@ const TOP_CONTENT = 10;
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
+/**
+ * A versão é o nome do arquivo sem a extensão: muda a cada troca de capa, então o navegador pode
+ * guardar a imagem em cache sem nunca mostrar a antiga. O nome em si não é segredo (é um UUID).
+ */
+function coverUrlOf(albumId: number, coverFile: string): string {
+  const version = coverFile.slice(0, coverFile.lastIndexOf("."));
+  return `/api/albums/${albumId}/cover?v=${version}`;
+}
+
 interface MusicRow {
   id: number;
   name: string;
@@ -78,8 +87,10 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
   }
 
   async listAlbums(): Promise<AlbumListItem[]> {
-    const { rows } = await this.pool.query<Omit<AlbumListItem, "musicCount"> & { music_count: string }>(
-      `SELECT al.id, al.name, al.year,
+    const { rows } = await this.pool.query<
+      Omit<AlbumListItem, "musicCount" | "coverUrl"> & { music_count: string; cover_file: string | null }
+    >(
+      `SELECT al.id, al.name, al.year, al.cover_file,
          (SELECT count(*) FROM album_music amu JOIN musics m ON m.id = amu.music_id
             WHERE amu.album_id = al.id AND m.deleted_at IS NULL) AS music_count,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
@@ -88,7 +99,19 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
        WHERE al.deleted_at IS NULL
        ORDER BY al.name, al.id`,
     );
-    return rows.map(({ music_count: musicCount, ...album }) => ({ ...album, musicCount: Number(musicCount) }));
+    return rows.map(({ music_count: musicCount, cover_file: coverFile, ...album }) => ({
+      ...album,
+      musicCount: Number(musicCount),
+      coverUrl: coverFile === null ? null : coverUrlOf(album.id, coverFile),
+    }));
+  }
+
+  async findAlbumCoverFile(albumId: number): Promise<string | null> {
+    const { rows } = await this.pool.query<{ cover_file: string | null }>(
+      "SELECT cover_file FROM album WHERE id = $1 AND deleted_at IS NULL",
+      [albumId],
+    );
+    return rows[0]?.cover_file ?? null;
   }
 
   async listGenres(): Promise<{ id: number; name: string; color: string }[]> {

@@ -8,7 +8,7 @@ import type { SearchController } from "./search-controller.ts";
 import type { SubscriptionController } from "./subscription-controller.ts";
 import { validateInvitationToken } from "./middlewares/validate-invitation-token.ts";
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
-import { receiveAudio } from "./middlewares/audio-upload.ts";
+import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import {
   artistSchema,
@@ -108,6 +108,7 @@ export function makeRouter(
   router.post("/musics/:id/plays", subscriberOnly, catalog.recordPlay);
   router.get("/artists", subscriberOnly, catalog.listArtists);
   router.get("/albums", subscriberOnly, catalog.listAlbums);
+  router.get("/albums/:id/cover", subscriberOnly, catalog.albumCover);
   router.get("/genres", subscriberOnly, catalog.listGenres);
 
   // Comentários
@@ -127,7 +128,9 @@ export function makeRouter(
   adminRouter.post("/musics", receiveAudio, validateMultipartData(createMusicSchema), admin.createMusic);
   adminRouter.patch("/musics/:id", validateBody(updateMusicSchema), admin.updateMusic);
   adminRouter.delete("/musics/:id", admin.removeMusic);
-  adminRouter.post("/albums", validateBody(createAlbumSchema), admin.createAlbum);
+  // Multipart: o JSON dos campos na parte "data" e a imagem na parte "cover".
+  adminRouter.post("/albums", receiveCover, validateMultipartData(createAlbumSchema), admin.createAlbum);
+  adminRouter.put("/albums/:id/cover", receiveCover, admin.changeAlbumCover);
   adminRouter.patch("/albums/:id", validateBody(updateAlbumSchema), admin.updateAlbum);
   adminRouter.delete("/albums/:id", admin.removeAlbum);
   adminRouter.post("/genres", validateBody(genreSchema), admin.createGenre);

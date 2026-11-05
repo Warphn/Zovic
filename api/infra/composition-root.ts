@@ -50,17 +50,22 @@ import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musi
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
 import { UpdatePlaylist } from "../domain/use-cases/update-playlist.ts";
-import type { FileStorage } from "../domain/ports/file-storage.ts";
 import type { Pool } from "pg";
 import { pool } from "./db/pool.ts";
 import { config } from "./config.ts";
+
+/** Onde ficam os arquivos enviados pelo painel; os testes passam diretórios temporários. */
+export interface MediaStorages {
+  audio: LocalFileStorage;
+  covers: LocalFileStorage;
+}
 
 export function composeApp(
   auth: Auth,
   trustProxy: number | null,
   corsOrigins: string[] = [],
   db: Pool = pool,
-  audioStorage: FileStorage = new LocalFileStorage(config.audioDir),
+  storages: MediaStorages = { audio: new LocalFileStorage(config.audioDir), covers: new LocalFileStorage(config.coverDir) },
 ) {
   const playlistRepository = new PostgresPlaylistRepository(db);
   const playlistMusics = new PostgresPlaylistMusics(db);
@@ -78,14 +83,15 @@ export function composeApp(
   const searchController = makeSearchController(new SearchCatalog(new PostgresSearchQuery(db)));
 
   const catalogQueries = new PostgresCatalogQueries(db);
-  const catalogController = makeCatalogController(catalogQueries, catalogQueries);
+  const catalogController = makeCatalogController(catalogQueries, catalogQueries, storages.covers);
 
   const manageCatalog = new ManageCatalog(
     new PostgresMusicRepository(db),
     new PostgresArtistRepository(db),
     new PostgresGenreRepository(db),
     new PostgresAlbumRepository(db),
-    audioStorage,
+    storages.audio,
+    storages.covers,
   );
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);

@@ -11,6 +11,7 @@ interface AlbumRow {
   id: number;
   name: string;
   year: number | null;
+  cover_file: string | null;
   created_at: Date;
   deleted_at: Date | null;
   artist_ids: number[];
@@ -29,13 +30,14 @@ export class PostgresAlbumRepository implements AlbumRepository {
     try {
       await inTransaction(this.pool, async (client) => {
         await client.query(
-          `INSERT INTO album (id, name, year, created_at, deleted_at)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO album (id, name, year, cover_file, created_at, deleted_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              year = EXCLUDED.year,
+             cover_file = EXCLUDED.cover_file,
              deleted_at = EXCLUDED.deleted_at`,
-          [data.id, data.name, data.year, data.createdAt, data.deletedAt],
+          [data.id, data.name, data.year, data.coverFile, data.createdAt, data.deletedAt],
         );
         await replaceLinks(client, ARTISTS, data.id, data.artistIds);
         await replaceLinks(client, GENRES, data.id, data.genreIds);
@@ -50,7 +52,7 @@ export class PostgresAlbumRepository implements AlbumRepository {
 
   async findById(id: number): Promise<Album | null> {
     const { rows } = await this.pool.query<AlbumRow>(
-      `SELECT a.id, a.name, a.year, a.created_at, a.deleted_at,
+      `SELECT a.id, a.name, a.year, a.cover_file, a.created_at, a.deleted_at,
          ARRAY(SELECT artist_id FROM album_artist WHERE album_id = a.id ORDER BY artist_id) AS artist_ids,
          ARRAY(SELECT genre_id FROM album_genre WHERE album_id = a.id ORDER BY genre_id) AS genre_ids
        FROM album a
@@ -65,6 +67,7 @@ export class PostgresAlbumRepository implements AlbumRepository {
           artistIds: row.artist_ids,
           genreIds: row.genre_ids,
           year: row.year,
+          coverFile: row.cover_file,
           createdAt: row.created_at,
           deletedAt: row.deleted_at,
         })

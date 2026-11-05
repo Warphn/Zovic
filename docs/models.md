@@ -144,17 +144,19 @@ As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.
 | `artistIds` | `number[]` | **Ao menos um.** |
 | `genreIds` | `number[]` | Pode ser vazio. |
 | `year` | `number \| null` | Ano de lançamento, de 1900 (`Album.MIN_YEAR`) até o ano atual. Obrigatório no `create`. `null` só nos álbuns anteriores à coluna. |
+| `coverFile` | `string \| null` | Nome da imagem de capa no armazenamento. Obrigatório no `create`. `null` só nos álbuns anteriores à capa. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
 | --- | --- |
-| `create({ id, name, artistIds, year, genreIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia e ano fora do intervalo. |
+| `create({ id, name, artistIds, year, coverFile, genreIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia, ano fora do intervalo e capa vazia. |
 | `restore(dados)` | Reconstrói a partir do banco. |
 | `toData()` | Dados do álbum, com cópia das listas. |
 | `rename(name)` | Troca o nome. |
 | `addArtist(artistId)` / `removeArtist(artistId)` | Vincula / desvincula um artista. **Não remove o último.** |
 | `addGenre(genreId)` / `removeGenre(genreId)` | Vincula / desvincula um gênero. |
 | `changeYear(year, now?)` | Troca o ano, com a mesma regra do `create`. |
+| `changeCover(coverFile)` | Troca a capa. |
 | `delete(now?)` | Soft delete. |
 
 ### Music
@@ -223,16 +225,19 @@ Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 
 ## Armazenamento de arquivos
 
-A porta `FileStorage` (`api/domain/ports/file-storage.ts`) guarda os arquivos enviados pelo painel: os MP3 das músicas. O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile`.
+A porta `FileStorage` (`api/domain/ports/file-storage.ts`) guarda os arquivos enviados pelo painel: os MP3 das músicas e as capas dos álbuns. O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile` e em `Album.coverFile`.
 
 | Função | O que faz |
 | --- | --- |
 | `save(bytes, extension)` | Grava o arquivo e devolve o nome com que ele foi guardado, como `<uuid>.mp3`. |
 | `remove(fileName)` | Apaga o arquivo. Um nome que não existe não é erro. |
 
-A implementação, `LocalFileStorage` (`api/adapters/storage/local-file-storage.ts`), grava num diretório (`AUDIO_DIR`, para os áudios) com um nome gerado e descarta o nome enviado pelo admin. A regra do áudio (MP3, até 20 MB) fica em `api/domain/shared/audio.ts`: `validateAudio(bytes)` confere os primeiros bytes, sem confiar na extensão.
+A implementação, `LocalFileStorage` (`api/adapters/storage/local-file-storage.ts`), grava num diretório (`AUDIO_DIR` para os áudios, `COVER_DIR` para as capas) com um nome gerado e descarta o nome enviado pelo admin. As regras conferem os primeiros bytes, sem confiar na extensão:
 
-No `ManageCatalog.createMusic`, o arquivo só vai para o disco depois de conferidos os artistas, os gêneros, o álbum e o áudio. Se a música não chegar a ser salva, o arquivo é apagado.
+- **Áudio** (`api/domain/shared/audio.ts`): `validateAudio(bytes)`, MP3 de até 20 MB.
+- **Capa** (`api/domain/shared/cover-image.ts`): `validateCover(bytes)`, JPEG, PNG ou WebP de até 2 MB. Ela devolve a extensão com que a imagem é guardada (`.jpg`, `.png` ou `.webp`).
+
+No `ManageCatalog.createMusic` e no `createAlbum`, o arquivo só vai para o disco depois das conferências. Se a música ou o álbum não chegar a ser salvo, o arquivo é apagado. No `changeAlbumCover`, a capa antiga só é apagada depois que o álbum foi salvo com a nova.
 
 ## Portas de consulta
 
