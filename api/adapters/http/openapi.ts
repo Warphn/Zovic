@@ -1172,6 +1172,57 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/admin/genres": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra um gênero",
+        description: "A cor é guardada em maiúsculas. O nome é único entre os gêneros ativos.",
+        operationId: "createGenre",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "color"],
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 100, example: "Forró" },
+                  color: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$", example: "#e8a33d" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "O gênero criado",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "integer", example: 9 },
+                    name: { type: "string", example: "Forró" },
+                    color: { type: "string", example: "#E8A33D" },
+                    createdAt: { type: "string", format: "date-time" },
+                    deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Nome vazio ou longo demais, ou cor fora do formato", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "409": {
+            description: "Já existe um gênero ativo com esse nome",
+            content: { "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "A genre with this name already exists") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/admin/albums": {
       post: {
         tags: ["Admin"],

@@ -1,0 +1,34 @@
+meta {
+  name: Criar gênero
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/admin/genres
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+script:pre-request {
+  // O nome de um gênero ativo é único: cada execução usa um nome novo.
+  bru.setVar("genreName", `Gênero do Bruno ${Date.now()}`);
+}
+
+body:json {
+  {
+    "name": "{{genreName}}",
+    "color": "#e8a33d"
+  }
+}
+
+tests {
+  test("responde 201 com a cor em maiúsculas", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().color).to.equal("#E8A33D");
+  });
+}

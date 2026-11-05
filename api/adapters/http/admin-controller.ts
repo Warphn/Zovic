@@ -60,6 +60,7 @@ export interface AdminController {
   createAlbum: RequestHandler;
   updateAlbum: RequestHandler;
   removeAlbum: RequestHandler;
+  createGenre: RequestHandler;
   createArtist: RequestHandler;
   renameArtist: RequestHandler;
   removeArtist: RequestHandler;
@@ -105,6 +106,9 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
     removeAlbum: async (req, res) => {
       await catalog.deleteAlbum(idParam(req));
       res.sendStatus(204);
+    },
+    createGenre: async (req, res) => {
+      res.status(201).json(await catalog.createGenre(req.body));
     },
     createArtist: async (req, res) => {
       res.status(201).json(await catalog.createArtist(req.body.name));

@@ -8,6 +8,7 @@ docs {
 
   Rode a pasta inteira (`bru run admin -r --env local`): "Login do admin" abre a sessão do admin padrão,
   "Pegar um artista" guarda o `artistId` e "Criar álbum" guarda o `albumId`, que as requisições seguintes usam.
+  "Criar gênero" usa um nome novo a cada execução, porque o nome de um gênero ativo é único.
   O cadastro de música é multipart: a parte `data` leva o JSON dos campos e a parte `audio` leva o MP3
   (`fixtures/teste.mp3`, um arquivo mínimo que só tem o cabeçalho de um MP3).
 

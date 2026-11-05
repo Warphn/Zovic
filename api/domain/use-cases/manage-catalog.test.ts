@@ -234,6 +234,20 @@ describe("ManageCatalog: álbuns", () => {
   });
 });
 
+describe("ManageCatalog: gêneros", () => {
+  it("cria o gênero com a cor normalizada", async () => {
+    const created = await catalog.createGenre({ name: "  Forró ", color: "#e8a33d" });
+
+    expect(created).toMatchObject({ name: "Forró", color: "#E8A33D", deletedAt: null });
+    expect(genres.items.has(created.id)).toBe(true);
+  });
+
+  it("recusa nome em branco e cor fora do formato", async () => {
+    expect(await rejection(catalog.createGenre({ name: "  ", color: "#e8a33d" }))).toBeInstanceOf(ValidationError);
+    expect(await rejection(catalog.createGenre({ name: "Forró", color: "laranja" }))).toBeInstanceOf(ValidationError);
+  });
+});
+
 describe("ManageCatalog: artistas", () => {
   it("cria, renomeia e remove", async () => {
     const created = await catalog.createArtist("  Lô Borges ");

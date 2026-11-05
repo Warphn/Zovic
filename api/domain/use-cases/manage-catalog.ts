@@ -1,5 +1,6 @@
 import { Album } from "../entities/album.ts";
 import { Artist } from "../entities/artist.ts";
+import { Genre } from "../entities/genre.ts";
 import { Music } from "../entities/music.ts";
 import { NotFoundError } from "../errors/domain-error.ts";
 import { validateAudio } from "../shared/audio.ts";
@@ -58,6 +59,20 @@ export interface AlbumOutput {
   name: string;
   year: number | null;
   artistIds: number[];
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+export interface CreateGenreInput {
+  name: string;
+  /** Hex #RRGGBB. */
+  color: string;
+}
+
+export interface GenreOutput {
+  id: number;
+  name: string;
+  color: string;
   createdAt: string;
   deletedAt: string | null;
 }
@@ -166,6 +181,13 @@ export class ManageCatalog {
     await this.albums.save(album);
   }
 
+  /** Um nome igual ao de outro gênero ativo vira BusinessRuleError no repositório. */
+  async createGenre(input: CreateGenreInput): Promise<GenreOutput> {
+    const genre = Genre.create({ id: await this.genres.nextId(), ...input });
+    await this.genres.save(genre);
+    return toGenreOutput(genre);
+  }
+
   async createArtist(name: string): Promise<ArtistOutput> {
     const artist = Artist.create({ id: await this.artists.nextId(), name });
     await this.artists.save(artist);
@@ -240,6 +262,16 @@ function toAlbumOutput(album: Album): AlbumOutput {
     artistIds: album.artistIds,
     createdAt: album.createdAt.toISOString(),
     deletedAt: album.deletedAt?.toISOString() ?? null,
+  };
+}
+
+function toGenreOutput(genre: Genre): GenreOutput {
+  return {
+    id: genre.id,
+    name: genre.name,
+    color: genre.color,
+    createdAt: genre.createdAt.toISOString(),
+    deletedAt: genre.deletedAt?.toISOString() ?? null,
   };
 }
 

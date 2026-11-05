@@ -387,3 +387,40 @@ describe("cadastro de música com áudio e álbuns", () => {
     expect(album.status).toBe(403);
   });
 });
+
+/** Nome único por teste: o nome de gênero ativo é único no banco. */
+const genreName = () => `${PREFIX} gênero ${crypto.randomUUID().slice(0, 8)}`;
+
+describe("gêneros pelo painel", () => {
+  it("o admin cria um gênero, que aparece na lista com a cor normalizada", async () => {
+    const name = genreName();
+    const res = await call("/admin/genres", adminCookie, { method: "POST", body: { name, color: "#e8a33d" } });
+
+    expect(res.status).toBe(201);
+    const genre = await json<{ id: number; color: string }>(res);
+    created.genre.push(genre.id);
+    expect(genre.color).toBe("#E8A33D");
+    const listed = await json<{ id: number }[]>(await call("/genres", userCookie));
+    expect(listed.some((item) => item.id === genre.id)).toBe(true);
+  });
+
+  it("recusa um nome que já existe", async () => {
+    const name = genreName();
+    const first = await json<{ id: number }>(await call("/admin/genres", adminCookie, { method: "POST", body: { name, color: "#123456" } }));
+    created.genre.push(first.id);
+
+    const res = await call("/admin/genres", adminCookie, { method: "POST", body: { name, color: "#654321" } });
+
+    expect(res.status).toBe(409);
+  });
+
+  it("recusa cor fora do formato #RRGGBB", async () => {
+    const res = await call("/admin/genres", adminCookie, { method: "POST", body: { name: genreName(), color: "laranja" } });
+    expect(res.status).toBe(400);
+  });
+
+  it("assinante não cria gênero", async () => {
+    const res = await call("/admin/genres", userCookie, { method: "POST", body: { name: genreName(), color: "#123456" } });
+    expect(res.status).toBe(403);
+  });
+});

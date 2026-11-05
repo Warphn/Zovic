@@ -1,6 +1,7 @@
 import Joi from "joi";
 import { Album } from "../../../domain/entities/album.ts";
 import { Artist } from "../../../domain/entities/artist.ts";
+import { Genre } from "../../../domain/entities/genre.ts";
 import { Music } from "../../../domain/entities/music.ts";
 import { birthdateSchema, EMAIL_MAX_LENGTH, NAME_MAX_LENGTH } from "../../auth/create-auth.ts";
 
@@ -50,6 +51,12 @@ export const updateAlbumSchema = Joi.object({
   artistIds: ids.min(1),
   year: albumYear,
 }).min(1);
+
+export const genreSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(Genre.MAX_NAME_LENGTH).required(),
+  // O domínio confere o formato de novo e guarda em maiúsculas (normalizeHexColor).
+  color: Joi.string().trim().pattern(/^#[0-9A-Fa-f]{6}$/).required(),
+});
 
 export const artistSchema = Joi.object({
   name: Joi.string().trim().min(1).max(Artist.MAX_NAME_LENGTH).required(),

@@ -163,6 +163,7 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `POST /api/admin/musics` | Cadastra uma música com o arquivo de áudio, em multipart (veja abaixo) |
 | `PATCH` e `DELETE` em `/api/admin/musics/:id` | Edita (nome, duração, artistas, gêneros, álbum e explícito) e remove músicas. O `PATCH` é em JSON e não troca o áudio. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/albums` | Cria, edita (nome, artistas e ano) e remove álbuns |
+| `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas |
 
 Remover é sempre soft delete. Remover um álbum não remove as músicas dele.

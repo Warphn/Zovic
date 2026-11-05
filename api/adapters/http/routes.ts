@@ -15,6 +15,7 @@ import {
   createAlbumSchema,
   createMusicSchema,
   createUserSchema,
+  genreSchema,
   updateAlbumSchema,
   updateMusicSchema,
 } from "./schemas/admin-schemas.ts";
@@ -129,6 +130,7 @@ export function makeRouter(
   adminRouter.post("/albums", validateBody(createAlbumSchema), admin.createAlbum);
   adminRouter.patch("/albums/:id", validateBody(updateAlbumSchema), admin.updateAlbum);
   adminRouter.delete("/albums/:id", admin.removeAlbum);
+  adminRouter.post("/genres", validateBody(genreSchema), admin.createGenre);
   adminRouter.post("/artists", validateBody(artistSchema), admin.createArtist);
   adminRouter.patch("/artists/:id", validateBody(artistSchema), admin.renameArtist);
   adminRouter.delete("/artists/:id", admin.removeArtist);
