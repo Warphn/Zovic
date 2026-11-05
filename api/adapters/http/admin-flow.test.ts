@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { createAuth } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 import { pool } from "../../infra/db/pool.ts";
 
 // Painel de admin pela app Express real (composeApp), com o Better Auth e o banco de verdade.
@@ -72,6 +73,7 @@ beforeAll(async () => {
   adminCookie = admin.cookie;
   adminId = admin.id;
   userCookie = (await signUp("assinante")).cookie;
+  await subscribeAccount(url, userCookie);
 });
 
 afterAll(async () => {
@@ -79,6 +81,7 @@ afterAll(async () => {
   for (const [table, ids] of Object.entries(created)) {
     await pool.query(`DELETE FROM ${table} WHERE id = ANY($1::integer[])`, [ids]);
   }
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
   // O pool é o da app (infra/db/pool.ts), compartilhado pelos testes HTTP: não fechar aqui,
   // senão o próximo arquivo a rodar fica sem conexão. O bun test encerra o processo no fim.
@@ -180,6 +183,7 @@ describe("catálogo e reproduções", () => {
 
   it("reprodução entra nas estatísticas por música, por gênero e nas recentes do usuário", async () => {
     const listener = await signUp("ouvinte");
+    await subscribeAccount(url, listener.cookie);
     expect((await call(`/musics/${musicId}/plays`, listener.cookie, { method: "POST" })).status).toBe(204);
     expect((await call(`/musics/${musicId}/plays`, listener.cookie, { method: "POST" })).status).toBe(204);
 

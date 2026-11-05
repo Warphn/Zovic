@@ -63,8 +63,9 @@ export class PostgresSubscriptionRepository implements SubscriptionRepository {
       );
       const created = rows[0];
       if (!created) {
-        await assertUserAndPlanTypeExist(client, userId);
-        throw new Error("Could not create the subscription");
+        await assertUserExists(client, userId);
+        // Com o usuário existindo, o que falta é o tipo de plano, que vem do seed.
+        throw new Error(`Plan type "${INDIVIDUAL_TYPE_NAME}" not found: run the seed`);
       }
 
       await client.query("COMMIT");
@@ -99,7 +100,7 @@ async function findActive(db: Pool | PoolClient, userId: number): Promise<Active
   };
 }
 
-async function assertUserAndPlanTypeExist(client: PoolClient, userId: number): Promise<void> {
+async function assertUserExists(client: PoolClient, userId: number): Promise<void> {
   const { rowCount } = await client.query('SELECT 1 FROM "user" WHERE id = $1 AND deleted_at IS NULL', [userId]);
   if (rowCount === 0) {
     throw new NotFoundError("User not found");

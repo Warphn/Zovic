@@ -15,6 +15,7 @@ import { SubscribeIndividualPlan } from "../domain/use-cases/subscribe-individua
 import { makeAdminController, makeCatalogController } from "../adapters/http/admin-controller.ts";
 import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
+import { makeRequireSubscription } from "../adapters/http/middlewares/require-subscription.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
@@ -61,9 +62,10 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);
 
   const subscriptionRepository = new PostgresSubscriptionRepository(db);
+  const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({
     subscribeIndividualPlan: new SubscribeIndividualPlan(subscriptionRepository),
-    getMySubscription: new GetMySubscription(subscriptionRepository),
+    getMySubscription,
     cancelSubscription: new CancelSubscription(subscriptionRepository),
   });
 
@@ -76,6 +78,7 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
       subscriptions: subscriptionController,
     },
     makeAuthenticate(auth),
+    makeRequireSubscription(getMySubscription),
   );
 
   return createApp({ auth, router, trustProxy, corsOrigins });

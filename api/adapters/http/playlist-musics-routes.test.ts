@@ -8,6 +8,7 @@ import { createAuth } from "../auth/create-auth.ts";
 import { PostgresArtistRepository } from "../db/postgres-artist-repository.ts";
 import { PostgresMusicRepository } from "../db/postgres-music-repository.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 
 // Rotas /api/playlists/:id/musics pela app Express real. As regras de SQL (ordem, soft delete,
 // álbum, concorrência) estão em postgres-playlist-musics.test.ts; aqui ficam sessão, permissão,
@@ -42,7 +43,9 @@ async function signUp(label: string): Promise<string> {
   });
   const raw = res.headers.getSetCookie().find((value) => /session_token=/.test(value));
   if (!raw) throw new Error(`Sign-up failed with ${res.status}`);
-  return raw.split(";")[0]!;
+  const sessionCookie = raw.split(";")[0]!;
+  await subscribeAccount(baseUrl, sessionCookie);
+  return sessionCookie;
 }
 
 function call(method: string, path: string, cookie: string | null, body?: unknown) {
@@ -107,6 +110,7 @@ afterAll(async () => {
        SELECT pu.playlist_id FROM playlist_user pu JOIN "user" u ON u.id = pu.user_id WHERE u.email LIKE $1)`,
     [`%${EMAIL_DOMAIN}`],
   );
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
   for (const [table, list] of Object.entries(created)) {
     await pool.query(`DELETE FROM ${table} WHERE id = ANY($1::integer[])`, [list]);

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { Pool } from "pg";
 import { createAuth } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts } from "./testing/subscriptions.ts";
 
 // Rotas de assinatura pela app Express real (composeApp), com sessão do Better Auth e o banco de verdade.
 // Pool próprio: o singleton de infra/db/pool.ts é encerrado pelo auth-flow.test.ts, que roda no mesmo processo.
@@ -91,11 +92,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
-  await pool.query(
-    `DELETE FROM plan WHERE id IN (
-       SELECT pu.plan_id FROM plan_user pu JOIN "user" u ON u.id = pu.user_id WHERE u.email LIKE $1)`,
-    [`%${EMAIL_DOMAIN}`],
-  );
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
+  await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
   await pool.end();
 });
 
@@ -232,5 +230,72 @@ describe("plano familiar", () => {
 
     // Ex-membro volta a poder assinar.
     expect((await call("POST", "/plans", membro.cookie)).status).toBe(201);
+  });
+});
+
+describe("acesso ao catálogo", () => {
+  // Quem chega aqui já passou pelo authenticate: o bloqueio vem antes da validação e do caso de uso.
+  const CATALOG_ROUTES = [
+    ["GET", "/playlists"],
+    ["POST", "/playlists"],
+    ["GET", "/playlists/1"],
+    ["GET", "/playlists/1/musics"],
+    ["POST", "/playlists/1/musics"],
+    ["PUT", "/playlists/1/musics/order"],
+    ["DELETE", "/playlists/1/musics/1"],
+    ["GET", "/search?q=mar"],
+    ["GET", "/musics"],
+    ["POST", "/musics/1/plays"],
+    ["GET", "/artists"],
+    ["GET", "/genres"],
+  ] as const;
+
+  it("sem assinatura, todas as rotas do catálogo respondem 403", async () => {
+    const { cookie } = await signUp("sem-plano");
+
+    for (const [method, path] of CATALOG_ROUTES) {
+      const res = await call(method, path, cookie);
+      expect(`${method} ${path} ${res.status}`).toBe(`${method} ${path} 403`);
+      expect(await json<{ error: string }>(res)).toMatchObject({ error: "SUBSCRIPTION_REQUIRED" });
+    }
+  });
+
+  it("sem sessão continua respondendo 401", async () => {
+    expect((await call("GET", "/musics", null)).status).toBe(401);
+  });
+
+  it("o assinante acessa e, ao cancelar, perde o acesso e volta a ver os planos", async () => {
+    const { cookie } = await signUp("assinante");
+
+    await call("POST", "/plans", cookie);
+    expect((await call("GET", "/musics", cookie)).status).toBe(200);
+
+    await call("DELETE", "/plans/me", cookie);
+    expect((await call("GET", "/musics", cookie)).status).toBe(403);
+    expect((await call("GET", "/plans/me", cookie)).status).toBe(200);
+  });
+
+  it("o membro de um familiar acessa até o gestor cancelar", async () => {
+    const gestor = await signUp("gestor-catalogo");
+    const membros = [await signUp("membro-a"), await signUp("membro-b"), await signUp("membro-c")];
+    await createFamilyPlan(gestor, membros);
+
+    const everyone = [gestor, ...membros];
+    for (const { cookie } of everyone) {
+      expect((await call("GET", "/musics", cookie)).status).toBe(200);
+    }
+
+    await call("DELETE", "/plans/me", gestor.cookie);
+
+    for (const { cookie } of everyone) {
+      expect((await call("GET", "/musics", cookie)).status).toBe(403);
+    }
+  });
+
+  it("o admin da plataforma acessa sem assinatura", async () => {
+    const admin = await signUp("admin");
+    await pool.query(`UPDATE "user" SET role = 'admin' WHERE id = $1`, [admin.id]);
+
+    expect((await call("GET", "/musics", admin.cookie)).status).toBe(200);
   });
 });

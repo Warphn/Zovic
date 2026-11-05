@@ -214,6 +214,7 @@ export const openApiDocument = {
             },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -279,6 +280,7 @@ export const openApiDocument = {
             },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -299,6 +301,7 @@ export const openApiDocument = {
           },
           "400": { $ref: "#/components/responses/InvalidPlaylistId" },
           "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
@@ -379,6 +382,7 @@ export const openApiDocument = {
           },
           "400": { $ref: "#/components/responses/InvalidPlaylistId" },
           "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
@@ -619,6 +623,7 @@ export const openApiDocument = {
             },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -681,8 +686,15 @@ export const openApiDocument = {
           "application/json": { schema: errorResponse("NOT_FOUND", "Playlist not found") },
         },
       },
+      SubscriptionRequired: {
+        description: "A conta não tem assinatura ativa. Admins da plataforma passam sem assinatura",
+        content: {
+          "application/json": { schema: errorResponse("SUBSCRIPTION_REQUIRED", "Active subscription required") },
+        },
+      },
       NotPlaylistAdmin: {
-        description: "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas)",
+        description:
+          "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
         },

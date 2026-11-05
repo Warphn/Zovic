@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { createAuth } from "../auth/create-auth.ts";
 import type { AuthOptions } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 import { pool } from "../../infra/db/pool.ts";
 
 // Fluxo de autenticação pela app Express real (composeApp), com o Better Auth e o banco de verdade.
@@ -103,6 +104,13 @@ async function signUp(app: TestApp, email: string, extra: Record<string, unknown
   return { res, cookie: sessionCookie(res) };
 }
 
+/** POST /api/playlists é a rota usada para provar a sessão, e ela exige assinatura ativa. */
+async function signUpSubscribed(app: TestApp, email: string) {
+  const account = await signUp(app, email);
+  await subscribeAccount(app.url, account.cookie!.header);
+  return account;
+}
+
 async function signIn(app: TestApp, email: string, password: string, headers: Record<string, string> = {}) {
   return fetch(`${app.url}/api/auth/sign-in/email`, json({ email, password }, headers));
 }
@@ -113,6 +121,7 @@ async function cleanup(): Promise<void> {
        SELECT pu.playlist_id FROM playlist_user pu JOIN "user" u ON u.id = pu.user_id WHERE u.email LIKE $1)`,
     [`%${EMAIL_DOMAIN}`],
   );
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   // session e account saem junto, por ON DELETE CASCADE.
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
 }
@@ -208,7 +217,7 @@ describe("autenticação com Better Auth", () => {
 
   describe("sessão", () => {
     it("o cookie válido dá acesso a POST /api/playlists", async () => {
-      const { cookie } = await signUp(app, uniqueEmail("sessao"));
+      const { cookie } = await signUpSubscribed(app, uniqueEmail("sessao"));
 
       const res = await playlistsWith(app, cookie!.header);
 
@@ -218,7 +227,7 @@ describe("autenticação com Better Auth", () => {
 
     it("a playlist fica ligada ao usuário da sessão", async () => {
       const email = uniqueEmail("dono");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       const playlist = await bodyOf(await playlistsWith(app, cookie!.header));
 
       const { rows } = await pool.query(
@@ -255,7 +264,7 @@ describe("autenticação com Better Auth", () => {
 
     it("renova a sessão na segunda metade da validade e reenvia o cookie", async () => {
       const email = uniqueEmail("renovacao");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       await pool.query(
         `UPDATE session SET expires_at = now() + interval '10 days'
           WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`,
@@ -325,7 +334,7 @@ describe("autenticação com Better Auth", () => {
 
     it("o Better Auth continua usando o token por dentro (revogar as outras sessões)", async () => {
       const email = uniqueEmail("revoga");
-      const first = await signUp(app, email);
+      const first = await signUpSubscribed(app, email);
       const second = sessionCookie(await signIn(app, email, PASSWORD))!;
 
       const revoke = await fetch(`${app.url}/api/auth/revoke-other-sessions`, json({}, { Cookie: second.header }));
@@ -338,7 +347,7 @@ describe("autenticação com Better Auth", () => {
 
   describe("logout", () => {
     it("invalida a sessão no servidor, inclusive para quem guardou o cookie", async () => {
-      const { cookie } = await signUp(app, uniqueEmail("logout"));
+      const { cookie } = await signUpSubscribed(app, uniqueEmail("logout"));
       expect((await playlistsWith(app, cookie!.header)).status).toBe(201);
 
       const out = await fetch(`${app.url}/api/auth/sign-out`, json({}, { Cookie: cookie!.header }));
@@ -352,7 +361,7 @@ describe("autenticação com Better Auth", () => {
   describe("login", () => {
     it("com a senha certa abre uma sessão nova", async () => {
       const email = uniqueEmail("login");
-      await signUp(app, email);
+      await signUpSubscribed(app, email);
 
       const res = await signIn(app, email.toUpperCase(), PASSWORD);
 
@@ -498,7 +507,7 @@ describe("autenticação com Better Auth", () => {
 
     it("perde também a sessão que já estava aberta", async () => {
       const email = uniqueEmail("removido-logado");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       expect((await playlistsWith(app, cookie!.header)).status).toBe(201);
 
       await pool.query(`UPDATE "user" SET deleted_at = now() WHERE email = $1`, [email]);
