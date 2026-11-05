@@ -1,0 +1,291 @@
+direction: right
+vars: {d2-config: {layout-engine: elk}}
+
+contas: "Contas e planos" {
+  user: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(150)"
+    birthdate: "date"
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+    email: "varchar(254)"
+    email_verified: "boolean"
+    image: "text"
+    updated_at: "timestamptz"
+    role: "varchar(20)"
+  }
+  user_event: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    user_id: "integer" {constraint: [foreign_key]}
+    event_type: "user_event_type"
+    created_at: "timestamptz"
+    music_id: "integer" {constraint: [foreign_key]}
+  }
+  plan_type: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(100)"
+    price: "numeric(10,2)"
+    user_amount: "integer"
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+  plan: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(100)"
+    type_id: "integer" {constraint: [foreign_key]}
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+  plan_user: {
+    shape: sql_table
+    plan_id: "integer" {constraint: [primary_key; foreign_key]}
+    user_id: "integer" {constraint: [primary_key; foreign_key]}
+    is_admin: "boolean"
+  }
+  plan_invitation: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    plan_id: "integer" {constraint: [foreign_key]}
+    email: "varchar(254)"
+    token_hash: "varchar(64)"
+    expires_at: "timestamptz"
+    accepted_at: "timestamptz"
+    canceled_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+}
+
+catalogo: "Catálogo" {
+  musics: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(255)"
+    duration: "integer"
+    lyrics_id: "integer"
+    streams: "integer"
+    rating: "double"
+    created_at: "timestamptz"
+    deleted_at: "timestamptz"
+  }
+  album: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(255)"
+    created_at: "timestamptz"
+    deleted_at: "timestamptz"
+  }
+  artist: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(255)"
+    created_at: "timestamptz"
+    deleted_at: "timestamptz"
+  }
+  genre: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(100)"
+    color: "character(7)"
+    created_at: "timestamptz"
+    deleted_at: "timestamptz"
+  }
+  album_music: {
+    shape: sql_table
+    album_id: "integer" {constraint: [primary_key; foreign_key]}
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+  }
+  artist_music: {
+    shape: sql_table
+    artist_id: "integer" {constraint: [primary_key; foreign_key]}
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+  }
+  album_artist: {
+    shape: sql_table
+    album_id: "integer" {constraint: [primary_key; foreign_key]}
+    artist_id: "integer" {constraint: [primary_key; foreign_key]}
+  }
+  genre_music: {
+    shape: sql_table
+    genre_id: "integer" {constraint: [primary_key; foreign_key]}
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+  }
+  album_genre: {
+    shape: sql_table
+    genre_id: "integer" {constraint: [primary_key; foreign_key]}
+    album_id: "integer" {constraint: [primary_key; foreign_key]}
+  }
+}
+
+playlists: "Playlists" {
+  playlists: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    name: "varchar(150)"
+    is_private: "boolean"
+    color: "character(7)"
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+  playlist_user: {
+    shape: sql_table
+    playlist_id: "integer" {constraint: [primary_key; foreign_key]}
+    user_id: "integer" {constraint: [primary_key; foreign_key]}
+    is_admin: "boolean"
+  }
+  music_playlist: {
+    shape: sql_table
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+    playlist_id: "integer" {constraint: [primary_key; foreign_key]}
+    position: "integer"
+    added_at: "timestamptz"
+  }
+}
+
+interacoes: "Interações" {
+  comments: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    music_id: "integer" {constraint: [foreign_key]}
+    user_id: "integer" {constraint: [foreign_key]}
+    comment: "text"
+    timestamp: "integer"
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+  rating: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    music_id: "integer" {constraint: [foreign_key]}
+    user_id: "integer" {constraint: [foreign_key]}
+    rating: "smallint"
+    deleted_at: "timestamptz"
+    created_at: "timestamptz"
+  }
+  music_user: {
+    shape: sql_table
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+    user_id: "integer" {constraint: [primary_key; foreign_key]}
+    created_at: "timestamptz"
+    deleted_at: "timestamptz"
+  }
+}
+
+sistema: "Sistema" {
+  system_data: {
+    shape: sql_table
+    singleton: "boolean" {constraint: [primary_key]}
+    users: "integer"
+    songs: "integer"
+    playlists: "integer"
+    created_at: "timestamptz"
+  }
+}
+
+catalogo.album_artist.album_id <-> catalogo.album.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.album_artist.artist_id <-> catalogo.artist.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.album_genre.album_id <-> catalogo.album.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.album_genre.genre_id <-> catalogo.genre.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.album_music.album_id <-> catalogo.album.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.album_music.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.artist_music.artist_id <-> catalogo.artist.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.artist_music.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.comments.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.comments.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.genre_music.genre_id <-> catalogo.genre.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+catalogo.genre_music.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+playlists.music_playlist.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+playlists.music_playlist.playlist_id <-> playlists.playlists.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.music_user.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.music_user.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+contas.plan.type_id <-> contas.plan_type.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+contas.plan_invitation.plan_id <-> contas.plan.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+contas.plan_user.plan_id <-> contas.plan.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+contas.plan_user.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+playlists.playlist_user.playlist_id <-> playlists.playlists.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+playlists.playlist_user.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.rating.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.rating.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+contas.user_event.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one
+}
+contas.user_event.user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}

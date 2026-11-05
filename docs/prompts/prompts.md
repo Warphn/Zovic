@@ -139,3 +139,12 @@ No fim, a coleção do Bruno passou 29/29 contra a API real, e o fluxo no navega
 
 A diagramação do `docs/assets/modelo-er.png` não foi refeita: a imagem atual vem do draw.io, e a saída do mermaid ficou menos legível.
 
+
+### 05/11/2026: diagrama ER gerado do banco
+
+Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do banco (tbls, SchemaSpy e D2 com o layout ELK) e comparou as imagens. O usuário escolheu o D2. Um subagente Claude Sonnet implementou o script a partir do protótipo aprovado.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Gerar o diagrama ER a partir do banco, com tabelas agrupadas por área, PK, FK e pé de galinha, sem alterar a imagem feita à mão | Protótipo com tbls e D2, aprovado pelo usuário |
+| 2 | Implementar o `db:erd`: ler o Postgres com o `pg`, escrever o `.d2` e desenhar o `.svg` com o D2 em Docker, de forma determinística | [`api/scripts/db-erd.ts`](../../api/scripts/db-erd.ts), [`modelo-er-gerado.d2`](../assets/modelo-er-gerado.d2) e [`modelo-er-gerado.svg`](../assets/modelo-er-gerado.svg) |

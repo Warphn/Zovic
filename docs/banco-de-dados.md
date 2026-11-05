@@ -18,6 +18,7 @@ Os comandos `bun run` rodam em `api/`, e os `docker compose` na raiz. Todos prec
 | `docker compose up flyway` | Aplica no banco local as migrations que ele ainda não tem |
 | `bun run db:sync` | Atualiza o `schema.prisma` a partir do banco e gera o client. Rode depois de criar uma migration. |
 | `bun run db:sync --check` | Só confere se o `schema.prisma` está igual ao banco. Mostra a diferença e sai com erro se não estiver. |
+| `bun run db:erd` | Gera o diagrama ER (`docs/assets/modelo-er-gerado.d2` e `.svg`) a partir do banco, com o D2 em Docker. Precisa do Docker. |
 | `bun run db:generate` | Gera o client a partir do `schema.prisma`, sem consultar o banco. Rode depois do `bun install` e quando o `schema.prisma` mudar num `git pull`. |
 | `bun run db:format` e `bun run db:validate` | Formatam e validam o `schema.prisma` |
 | `bun run db:seed` | Apaga o banco local e insere os dados de teste |
@@ -34,6 +35,7 @@ O Flyway roda a cada `docker compose up` (e, portanto, a cada `bun start`). Ele 
 1. Crie o arquivo em `db/migrations/` com o nome no padrão (veja abaixo).
 2. Aplique no banco local com `docker compose up flyway`. Se falhar, o log mostra o erro: corrija o arquivo e rode de novo. Se a migration foi aplicada pela metade, apague o banco com `docker compose down -v` e suba de novo.
 3. Rode `bun run db:sync` em `api/` e commite o `schema.prisma` junto com a migration.
+4. Rode `bun run db:erd` em `api/` (precisa do Docker) e commite o `docs/assets/modelo-er-gerado.d2` e o `.svg` junto com a migration. Se a migration criar uma tabela, o script pede que você a coloque numa área do diagrama, em `GROUPS`, no `api/scripts/db-erd.ts`.
 4. Atualize o [Modelo ER](modelo-er.md), a imagem `docs/assets/modelo-er.png` e esta página, se ela mencionar a tabela.
 
 ### Nome do arquivo
