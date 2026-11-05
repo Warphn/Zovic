@@ -12,7 +12,7 @@ Não confunda com os `model` do `schema.prisma`: aqueles só espelham as tabelas
 | **Porta** | `api/domain/ports/` | Interface do repositório: diz *o que* o domínio precisa do banco (`save`, `findById`…), sem dizer *como*. |
 | **Repositório** | `api/adapters/db/` | Implementa a porta com SQL no Postgres. Converte linha do banco ↔ entidade. |
 | **Caso de uso** | `api/domain/use-cases/` | Orquestra: pede um id, cria/carrega a entidade, chama os métodos e salva. |
-| **Porta de consulta** | `api/domain/ports/` | Para leituras que cruzam muitas tabelas (como a busca, `SearchQuery`): devolve os dados já no formato da resposta, sem montar entidades. A implementação fica em `api/adapters/db/postgres-<nome>-query.ts`. |
+| **Porta de consulta** | `api/domain/ports/` | Para leituras que cruzam muitas tabelas e não têm regra de negócio: devolve os dados já no formato da resposta, sem montar entidades. Veja [Portas de consulta](#portas-de-consulta). |
 | **Controller e rotas** | `api/adapters/http/` | Validam a requisição com Joi (`schemas/` e `middlewares/validate-request.ts`), chamam o caso de uso e respondem. A ligação das peças fica em `api/infra/composition-root.ts`. |
 
 O fluxo típico de um caso de uso:
@@ -49,7 +49,7 @@ Ficam em `api/domain/errors/domain-error.ts`. O `error-handler` da API converte 
 | Erro | HTTP | Quando acontece |
 | --- | --- | --- |
 | `ValidationError` | 400 | Dado inválido: nome vazio, cor fora do formato, duração negativa, id que não é inteiro positivo. |
-| `ForbiddenError` | 403 | Ação não permitida para o usuário (reservado para os próximos casos de uso). |
+| `ForbiddenError` | 403 | Ação não permitida para o usuário, por exemplo editar uma playlist de que ele não é admin. |
 | `NotFoundError` | 404 | Algo referenciado não existe, por exemplo um artista inexistente ao salvar uma música. |
 | `BusinessRuleError` | 409 | Regra de negócio violada: remover o último artista, membro repetido, alterar algo apagado, nome de gênero já usado. |
 
@@ -213,6 +213,21 @@ Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 | `inTransaction(pool, work)` | Roda `work` entre `BEGIN` e `COMMIT`; faz `ROLLBACK` e relança o erro se algo falhar. |
 | `replaceLinks(client, link, ownerId, ids)` | Apaga os vínculos do dono numa tabela associativa e insere os novos. |
 | `translateConstraintError(error, map)` | Troca o erro do Postgres pelo erro de domínio mapeado para a constraint violada. |
+
+## Portas de consulta
+
+Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entidades. Quem decide se o usuário pode ver ou editar algo é o caso de uso, antes de chamar a porta.
+
+| Porta | Arquivo | O que faz |
+| --- | --- | --- |
+| `SearchQuery` | `search-query.ts` | A busca de músicas, artistas e playlists (`GET /api/search`) |
+| `PlaylistMusics` | `playlist-musics.ts` | Lista, põe, tira e reordena as músicas de uma playlist. As escritas mexem só em `music_playlist`. |
+| `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
+| `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
+| `AdminQueries` | `admin-queries.ts` | Os números do painel e as reproduções recentes de um usuário |
+| `UserAccounts` | `admin-queries.ts` | Cria e remove contas e conta os admins ativos, para o painel de admin |
+
+As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
 
 ## Criando uma entidade nova
 

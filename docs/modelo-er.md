@@ -1,12 +1,12 @@
-# Modelo Entidade-Relacionamento — Zovic
+# Modelo Entidade-Relacionamento
 
-Documentação do modelo de dados, transcrita do diagrama `Zovic2.drawio`.
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261103_163300__Ordena_musicas_da_playlist.sql`).
 
 ![Diagrama ER do Zovic](assets/modelo-er.png)
 
-> Os tipos das colunas no diagrama Mermaid foram inferidos pelo nome do campo (o diagrama original não especifica tipos). Ajuste conforme a implementação real.
-
 ## Diagrama
+
+Os tipos são os do Postgres. `PK` marca a chave primária, `FK` a chave estrangeira e `UK` uma coluna única.
 
 ```mermaid
 erDiagram
@@ -44,237 +44,239 @@ erDiagram
     artist ||--o{ artist_music : "cria"
 
     plan_type {
-        int id PK
-        string name
-        decimal price
+        serial id PK
+        varchar name
+        numeric price
         int user_amount
-        datetime deleted_at
-        datetime created_at
+        timestamptz deleted_at
+        timestamptz created_at
     }
     plan {
-        int id PK
-        string name
+        serial id PK
+        varchar name
         int type_id FK
-        datetime deleted_at
-        datetime created_at
+        timestamptz deleted_at
+        timestamptz created_at
     }
     plan_user {
-        int plan_id FK
-        int user_id FK
-        bool is_admin
+        int plan_id PK, FK
+        int user_id PK, FK
+        boolean is_admin
     }
     user {
-        int id PK
-        string name
+        serial id PK
+        varchar name
         date birthdate
-        string email
-        bool email_verified
-        string image
-        datetime deleted_at
-        datetime created_at
-        datetime updated_at
+        varchar email UK
+        boolean email_verified
+        text image
+        varchar role "admin ou assinante"
+        timestamptz deleted_at
+        timestamptz created_at
+        timestamptz updated_at
     }
     session {
-        int id PK
+        serial id PK
         int user_id FK
-        string token
-        datetime expires_at
-        string ip_address
-        string user_agent
-        datetime created_at
-        datetime updated_at
+        text token UK
+        timestamptz expires_at
+        text ip_address
+        text user_agent
+        timestamptz created_at
+        timestamptz updated_at
     }
     account {
-        int id PK
+        serial id PK
         int user_id FK
-        string account_id
-        string provider_id
-        string password
-        string access_token
-        string refresh_token
-        string id_token
-        datetime access_token_expires_at
-        datetime refresh_token_expires_at
-        string scope
-        datetime created_at
-        datetime updated_at
+        text account_id
+        text provider_id
+        text password "hash"
+        text access_token
+        text refresh_token
+        text id_token
+        timestamptz access_token_expires_at
+        timestamptz refresh_token_expires_at
+        text scope
+        timestamptz created_at
+        timestamptz updated_at
     }
     verification {
-        int id PK
-        string identifier
-        string value
-        datetime expires_at
-        datetime created_at
-        datetime updated_at
+        serial id PK
+        text identifier
+        text value
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz updated_at
     }
     user_event {
-        int id PK
+        serial id PK
         int user_id FK
-        enum event_type
+        user_event_type event_type
         int music_id FK
-        datetime created_at
+        timestamptz created_at
     }
     playlist_user {
-        int playlist_id FK
-        int user_id FK
-        bool is_admin
+        int playlist_id PK, FK
+        int user_id PK, FK
+        boolean is_admin
     }
     music_user {
-        int music_id FK
-        int user_id FK
-        datetime created_at
-        datetime deleted_at
+        int music_id PK, FK
+        int user_id PK, FK
+        timestamptz created_at
+        timestamptz deleted_at
     }
     system_data {
-        int users "tabela de linha única"
+        boolean singleton PK "sempre true"
+        int users
         int songs
         int playlists
-        datetime created_at
+        timestamptz created_at
     }
     rating {
-        int id PK
+        serial id PK
         int music_id FK
         int user_id FK
-        int rating
-        datetime deleted_at
-        datetime created_at
+        smallint rating "1 a 5"
+        timestamptz deleted_at
+        timestamptz created_at
     }
     comments {
-        int id PK
+        serial id PK
         int music_id FK
         int user_id FK
-        string comment
+        text comment
         int timestamp "segundos"
-        datetime deleted_at
-        datetime created_at
+        timestamptz deleted_at
+        timestamptz created_at
     }
     playlists {
-        int id PK
-        string name
-        bool is_private
-        string color
-        datetime deleted_at
-        datetime created_at
+        serial id PK
+        varchar name
+        boolean is_private
+        char color "#RRGGBB"
+        timestamptz deleted_at
+        timestamptz created_at
     }
     music_playlist {
-        int music_id FK
-        int playlist_id FK
+        int music_id PK, FK
+        int playlist_id PK, FK
         int position
-        datetime added_at
+        timestamptz added_at
     }
     musics {
-        int id PK
-        string name
-        int duration
-        int lyrics_id "armazenamento ainda não definido"
+        serial id PK
+        varchar name
+        int duration "segundos"
+        int lyrics_id
         int streams
         float rating
-        datetime created_at
-        datetime deleted_at
+        timestamptz created_at
+        timestamptz deleted_at
     }
     genre_music {
-        int genre_id FK
-        int music_id FK
+        int genre_id PK, FK
+        int music_id PK, FK
     }
     genre {
-        int id PK
-        string name
-        string color
-        datetime created_at
-        datetime deleted_at
+        serial id PK
+        varchar name
+        char color "#RRGGBB"
+        timestamptz created_at
+        timestamptz deleted_at
     }
     album_genre {
-        int genre_id FK
-        int album_id FK
+        int genre_id PK, FK
+        int album_id PK, FK
     }
     album {
-        int id PK
-        string name
-        datetime created_at
-        datetime deleted_at
+        serial id PK
+        varchar name
+        timestamptz created_at
+        timestamptz deleted_at
     }
     album_music {
-        int album_id FK
-        int music_id FK
+        int album_id PK, FK
+        int music_id PK, FK
     }
     album_artist {
-        int album_id FK
-        int artist_id FK
+        int album_id PK, FK
+        int artist_id PK, FK
     }
     artist {
-        int id PK
-        string name
-        datetime created_at
-        datetime deleted_at
+        serial id PK
+        varchar name
+        timestamptz created_at
+        timestamptz deleted_at
     }
     artist_music {
-        int artist_id FK
-        int music_id FK
+        int artist_id PK, FK
+        int music_id PK, FK
     }
 ```
 
-## Entidades
+## Tabelas
+
+As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e as regras do modelo. As regras de formato e de valor (CHECK e UNIQUE) são garantidas pelo banco. As de cardinalidade ("ao menos um") são garantidas pelas entidades do domínio, descritas em [Models](models.md).
 
 ### Planos e usuários
 
-| Tabela | Colunas | Relacionamentos |
-|---|---|---|
-| `plan_type` | `id`, `name`, `price`, `user_amount`, `deleted_at`, `created_at` | 1:N com `plan` (todo tipo tem ao menos um plano) |
-| `plan` | `id`, `name`, `type_id`, `deleted_at`, `created_at` | `type_id` → `plan_type.id` |
-| `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário. Uma conta nova não tem plano até assinar. A assinatura ativa é um plano sem `deleted_at`, e `is_admin` marca o assinante do individual ou o gestor do familiar |
-| `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
-| `user_event` | `id`, `user_id`, `event_type` (ENUM), `music_id`, `created_at` | `user_id` → `user.id`; `music_id` → `musics.id`, preenchido só em `music_play` e `music_skip` (CHECK). É a base das estatísticas do painel de admin e das reproduções recentes |
-| `system_data` | `users`, `songs`, `playlists`, `created_at` | Tabela de linha única com contagens agregadas do sistema (sem `id` e sem FK) |
+| Tabela | O que guarda | Regras |
+| --- | --- | --- |
+| `plan_type` | Os tipos de plano, com preço e limite de pessoas | `price >= 0` e `user_amount > 0` |
+| `plan` | Um plano assinado | Todo plano é de um tipo. A assinatura ativa é um plano sem `deleted_at`. |
+| `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`): o assinante do individual ou o gestor do familiar | Todo plano tem ao menos uma pessoa. Uma conta nova não tem plano até assinar. |
+| `user` | Os usuários. É também a tabela de usuário do Better Auth. | `email` é único e sempre minúsculo. `role` é `admin` ou `assinante` (o padrão). O email de uma conta removida continua reservado. |
+| `user_event` | Cadastros, logins, logouts e reproduções (`sign_up`, `login`, `logout`, `music_play` e `music_skip`) | `music_id` só pode ser preenchido em `music_play` e `music_skip`. É a base das estatísticas do painel de admin. |
+| `system_data` | Os totais do sistema: usuários, músicas e playlists | Tem uma linha só: a chave `singleton` só aceita `true`, então um segundo `INSERT` falha. A migration já cria essa linha. |
 
-### Interações do usuário com músicas
+### Interações com músicas
 
-| Tabela | Colunas | Relacionamentos |
-|---|---|---|
-| `music_user` | `music_id`, `user_id`, `created_at`, `deleted_at` | Associativa `musics` ↔ `user` (músicas salvas) |
-| `rating` | `id`, `music_id`, `user_id`, `rating`, `deleted_at`, `created_at` | `music_id` → `musics.id`, `user_id` → `user.id` |
-| `comments` | `id`, `music_id`, `user_id`, `comment`, `timestamp` (segundos), `deleted_at`, `created_at` | `music_id` → `musics.id`, `user_id` → `user.id` |
+| Tabela | O que guarda | Regras |
+| --- | --- | --- |
+| `music_user` | As músicas salvas por cada usuário | |
+| `rating` | As avaliações | Nota de 1 a 5. Cada usuário tem uma avaliação ativa por música. |
+| `comments` | Os comentários | `timestamp` é o segundo da música a que o comentário se refere, opcional e `>= 0` |
 
 ### Playlists
 
-| Tabela | Colunas | Relacionamentos |
-|---|---|---|
-| `playlists` | `id`, `name`, `is_private`, `color`, `deleted_at`, `created_at` | — |
-| `playlist_user` | `playlist_id`, `user_id`, `is_admin` | Associativa `playlists` ↔ `user`; toda playlist tem ao menos um membro |
-| `music_playlist` | `music_id`, `playlist_id`, `position`, `added_at` | Associativa `musics` ↔ `playlists`. `position` é a ordem da música na playlist (única por playlist, pode ter buracos); `added_at`, quando ela entrou |
+| Tabela | O que guarda | Regras |
+| --- | --- | --- |
+| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional |
+| `playlist_user` | Os membros de cada playlist e quem é admin | Toda playlist tem ao menos um membro |
+| `music_playlist` | As músicas de cada playlist, com a posição e a data em que entraram | `position` é única em cada playlist e pode ter buracos. A unicidade só é conferida no `COMMIT`, para a reordenação trocar as posições num `UPDATE` só. |
 
-### Catálogo musical
+### Catálogo
 
-| Tabela | Colunas | Relacionamentos |
-|---|---|---|
-| `musics` | `id`, `name`, `duration`, `lyrics_id`, `streams`, `rating`, `created_at`, `deleted_at` | `streams` e `rating` são estatísticas da música; `lyrics_id` ainda não referencia nenhuma tabela |
-| `genre` | `id`, `name`, `color`, `created_at`, `deleted_at` | — |
-| `genre_music` | `genre_id`, `music_id` | Associativa `genre` ↔ `musics` |
-| `album` | `id`, `name`, `created_at`, `deleted_at` | — |
-| `album_genre` | `genre_id`, `album_id` | Associativa `genre` ↔ `album` |
-| `album_music` | `album_id`, `music_id` | Associativa `album` ↔ `musics` |
-| `artist` | `id`, `name`, `created_at`, `deleted_at` | — |
-| `album_artist` | `album_id`, `artist_id` | Associativa `album` ↔ `artist`; todo álbum tem ao menos um artista |
-| `artist_music` | `artist_id`, `music_id` | Associativa `artist` ↔ `musics`; toda música tem ao menos um artista |
+| Tabela | O que guarda | Regras |
+| --- | --- | --- |
+| `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. |
+| `genre` | Os gêneros | Nome único entre os gêneros ativos. `color` obrigatória, no formato `#RRGGBB`. |
+| `album` | Os álbuns | |
+| `artist` | Os artistas | |
+| `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
+| `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |
+| `album_music` | As faixas de cada álbum | |
+| `genre_music` e `album_genre` | Os gêneros de cada música e de cada álbum | |
 
-### Autenticação
+### Autenticação (Better Auth)
 
-Tabelas exigidas pelo [Better Auth](https://www.better-auth.com), adicionadas pela migration `V261020_162546__Adota_Better_Auth.sql`. O Flyway continua dono do schema; o Better Auth só lê e grava. Os ids são inteiros gerados pelo banco, e as colunas em snake_case são mapeadas no código (`api/adapters/auth/create-auth.ts`).
+As tabelas vêm da migration `V261020_162546__Adota_Better_Auth.sql`. O Flyway é dono do schema, e o Better Auth só lê e grava. O mapeamento das colunas fica em `api/adapters/auth/create-auth.ts`.
 
-| Tabela | Colunas | Relacionamentos |
-|---|---|---|
-| `user` (colunas novas) | `email`, `email_verified`, `image`, `updated_at` | `email` é único e sempre em minúsculas (CHECK). É `NULL` nos usuários anteriores ao Better Auth, que não têm credenciais e por isso não conseguem entrar. O email de um usuário com soft delete continua reservado |
-| `session` | `id`, `user_id`, `token`, `expires_at`, `ip_address`, `user_agent`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); `token` é único e é o valor (assinado) do cookie de sessão |
-| `account` | `id`, `user_id`, `account_id`, `provider_id`, `password`, `access_token`, `refresh_token`, `id_token`, `access_token_expires_at`, `refresh_token_expires_at`, `scope`, `created_at`, `updated_at` | `user_id` → `user.id` (`ON DELETE CASCADE`); uma linha por forma de login. Email e senha usam `provider_id = 'credential'` e `account_id` igual ao id do usuário, com o hash em `password`; (`provider_id`, `account_id`) é único. Login social entra como outra linha, sem mudar o schema |
-| `verification` | `id`, `identifier`, `value`, `expires_at`, `created_at`, `updated_at` | Sem FK. Guarda os tokens de confirmação de email e de recuperação de senha, que ainda não são usados |
+| Tabela | O que guarda | Regras |
+| --- | --- | --- |
+| `session` | As sessões abertas | `token` é único e é o valor do cookie de sessão |
+| `account` | Uma linha por forma de login. Com email e senha, `provider_id` é `credential` e o hash fica em `password`. | O par (`provider_id`, `account_id`) é único. Um login social seria outra linha, sem mudar o schema. |
+| `verification` | Tokens de confirmação de email e de recuperação de senha | Ainda não é usada |
 
 ## Convenções
 
-- Tabelas com `deleted_at` usam *soft delete*.
-- As tabelas registram só `created_at` (e `deleted_at`, quando aplicável); o modelo não tem `updated_at`. As exceções são as tabelas do Better Auth (`user`, `session`, `account` e `verification`), que têm `updated_at` porque o Better Auth atualiza esses registros.
-- Tabelas associativas (N:N) não têm `id` próprio; a chave primária é composta pelas duas FKs.
-- As estatísticas de uma música (`streams` e `rating`, a média das avaliações) ficam na própria `musics`, e não numa tabela separada.
-- `system_data` é uma tabela de linha única: guarda os totais agregados do sistema (usuários, músicas e playlists) e é sempre atualizada no lugar, nunca recebe novas linhas. Por isso não tem `id` de negócio nem relacionamentos. No banco, ela ganhou uma coluna `singleton`, sempre `true`, que é a chave primária: um CHECK impede outro valor, então um segundo `INSERT` falha. A coluna também serve de identificador para o Prisma, que exige um em toda tabela. A migration já cria a linha, com os totais zerados.
+- **Soft delete:** as tabelas com `deleted_at` nunca apagam linhas. Uma linha removida tem `deleted_at` preenchido.
+- **Datas:** as tabelas registram `created_at` e, quando aplicável, `deleted_at`. Só as tabelas do Better Auth têm `updated_at`, porque a biblioteca atualiza esses registros.
+- **Tabelas associativas** (N:N) não têm `id`: a chave primária é o par de chaves estrangeiras.
+- **Exclusão em cascata:** apagar de verdade um usuário, uma música, uma playlist, um álbum, um artista ou um gênero apaga os vínculos deles. Na prática, isso quase não acontece, porque a aplicação usa soft delete. Um tipo de plano em uso não pode ser apagado.
+- **CHECKs ficam só no SQL.** O Prisma não os representa, então o `schema.prisma` não mostra essas regras.
 
 ## Pontos em aberto
 
-- Letras: `musics.lyrics_id` existe, mas ainda não há tabela de letras. A forma de armazenar o texto das letras ainda não foi decidida.
+- **Letras:** a coluna `musics.lyrics_id` existe, mas ainda não há tabela de letras.
