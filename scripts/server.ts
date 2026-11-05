@@ -1,5 +1,5 @@
 /**
- * Sobe e derruba o servidor de produção: banco, migrations, API e o túnel da Cloudflare (profile prod).
+ * Sobe e derruba o servidor de produção: banco, migrations, API, frontend e o túnel da Cloudflare (profile prod).
  * Roda no desktop, a partir do clone do Ubuntu (~/zovic), onde está o .env de produção.
  *
  *   bun server                   → menu
@@ -17,11 +17,20 @@ import { join } from "node:path";
 type Command = "up" | "down" | "status" | "logs" | "update";
 
 const COMMANDS: Command[] = ["up", "down", "status", "logs", "update"];
-const SERVICES = ["db", "flyway", "api", "cloudflared"];
+const SERVICES = ["db", "flyway", "api", "web", "cloudflared"];
 const COMPOSE = ["--profile", "prod"];
 
-/** Sem elas o banco não inicializa, o login não assina sessões ou o túnel não conecta. */
-const REQUIRED_VARS = ["POSTGRES_PASSWORD", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "CLOUDFLARE_TUNNEL_TOKEN"];
+/**
+ * Sem elas o banco não inicializa, o login não assina sessões, o túnel não conecta ou o
+ * frontend é compilado chamando a API em localhost.
+ */
+const REQUIRED_VARS = [
+  "POSTGRES_PASSWORD",
+  "BETTER_AUTH_SECRET",
+  "BETTER_AUTH_URL",
+  "CLOUDFLARE_TUNNEL_TOKEN",
+  "NEXT_PUBLIC_API_URL",
+];
 
 const ROOT = join(import.meta.dir, "..");
 const ENV_PATH = join(ROOT, ".env");
@@ -114,7 +123,7 @@ async function status() {
   await $`docker compose ${COMPOSE} ps -a`;
   const env = readEnv();
   if (env?.BETTER_AUTH_URL) await publicHealth(env.BETTER_AUTH_URL, 1);
-  p.outro("db e api devem estar healthy, flyway Exited (0) e cloudflared Up.");
+  p.outro("db, api e web devem estar healthy, flyway Exited (0) e cloudflared Up.");
 }
 
 async function logs(service: string | undefined) {
@@ -145,7 +154,7 @@ async function chooseCommand(): Promise<[Command, string | undefined]> {
       message: "O que fazer com o servidor?",
       showInstructions: false,
       options: [
-        { value: "up", label: "Subir", hint: "banco, migrations, API e túnel" },
+        { value: "up", label: "Subir", hint: "banco, migrations, API, frontend e túnel" },
         { value: "down", label: "Derrubar", hint: "tira a API do ar; o banco continua salvo" },
         { value: "status", label: "Status", hint: "containers e endereço público" },
         { value: "logs", label: "Logs", hint: "acompanha a saída de um serviço" },
