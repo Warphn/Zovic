@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import type { AdminController, CatalogController } from "./admin-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
+import type { SubscriptionController } from "./subscription-controller.ts";
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { validateBody, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import { artistSchema, createMusicSchema, createUserSchema, updateMusicSchema } from "./schemas/admin-schemas.ts";
@@ -17,40 +18,51 @@ export interface Controllers {
   search: SearchController;
   catalog: CatalogController;
   admin: AdminController;
+  subscriptions: SubscriptionController;
 }
 
-export function makeRouter({ playlists, search, catalog, admin }: Controllers, authenticate: RequestHandler): Router {
+export function makeRouter(
+  { playlists, search, catalog, admin, subscriptions }: Controllers,
+  authenticate: RequestHandler,
+  requireSubscription: RequestHandler,
+): Router {
   const router = Router();
+  const subscriberOnly = [authenticate, requireSubscription];
+
+  router.post("/plans", authenticate, subscriptions.subscribe);
+  router.get("/plans/me", authenticate, subscriptions.getMine);
+  router.delete("/plans/me", authenticate, subscriptions.cancel);
+
   const playlistId = validateParams(playlistIdParamsSchema);
 
-  router.get("/playlists", authenticate, playlists.list);
-  router.post("/playlists", authenticate, validateBody(createPlaylistSchema), playlists.create);
-  router.get("/playlists/:id", authenticate, playlistId, playlists.get);
-  router.patch("/playlists/:id", authenticate, playlistId, validateBody(updatePlaylistSchema), playlists.update);
-  router.delete("/playlists/:id", authenticate, playlistId, playlists.remove);
+  router.get("/playlists", subscriberOnly, playlists.list);
+  router.post("/playlists", subscriberOnly, validateBody(createPlaylistSchema), playlists.create);
+  router.get("/playlists/:id", subscriberOnly, playlistId, playlists.get);
+  router.patch("/playlists/:id", subscriberOnly, playlistId, validateBody(updatePlaylistSchema), playlists.update);
+  router.delete("/playlists/:id", subscriberOnly, playlistId, playlists.remove);
 
-  router.get("/playlists/:id/musics", authenticate, playlistId, playlists.listMusics);
-  router.post("/playlists/:id/musics", authenticate, playlistId, validateBody(addPlaylistMusicSchema), playlists.addMusic);
+  router.get("/playlists/:id/musics", subscriberOnly, playlistId, playlists.listMusics);
+  router.post("/playlists/:id/musics", subscriberOnly, playlistId, validateBody(addPlaylistMusicSchema), playlists.addMusic);
   router.put(
     "/playlists/:id/musics/order",
-    authenticate,
+    subscriberOnly,
     playlistId,
     validateBody(reorderPlaylistMusicsSchema),
     playlists.reorderMusics,
   );
   router.delete(
     "/playlists/:id/musics/:musicId",
-    authenticate,
+    subscriberOnly,
     validateParams(playlistMusicParamsSchema),
     playlists.removeMusic,
   );
 
-  router.get("/search", authenticate, validateQuery(searchQuerySchema), search.search);
+  router.get("/search", subscriberOnly, validateQuery(searchQuerySchema), search.search);
 
-  router.get("/musics", authenticate, catalog.listMusics);
-  router.post("/musics/:id/plays", authenticate, catalog.recordPlay);
-  router.get("/artists", authenticate, catalog.listArtists);
-  router.get("/genres", authenticate, catalog.listGenres);
+  router.get("/musics", subscriberOnly, catalog.listMusics);
+  router.post("/musics/:id/plays", subscriberOnly, catalog.recordPlay);
+  router.get("/artists", subscriberOnly, catalog.listArtists);
+  router.get("/genres", subscriberOnly, catalog.listGenres);
 
   // Painel dos admins da plataforma: tudo em /api/admin passa pelos dois middlewares.
   const adminRouter = Router();

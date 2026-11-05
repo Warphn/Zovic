@@ -65,6 +65,16 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 
 Fora `/api/auth/*`, toda rota exige sessão: sem um cookie válido, a resposta é 401.
 
+As rotas de playlists, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
+
+### Planos
+
+| Rota | O que faz |
+| --- | --- |
+| `POST /api/plans` | Assina o plano individual. Menor de idade recebe 403, e quem já tem assinatura ativa recebe 409. |
+| `GET /api/plans/me` | Mostra a assinatura ativa da conta, inclusive como membro de um plano familiar, ou `null` |
+| `DELETE /api/plans/me` | Cancela a assinatura na hora. Só o assinante do individual ou o gestor do familiar (o membro recebe 403). |
+
 ### Playlists e busca
 
 | Rota | O que faz |
@@ -117,11 +127,10 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 
 Remover é sempre soft delete.
 
-## Assinaturas (ainda simuladas no front)
+## Assinaturas
 
-Ainda não há rotas de assinatura. Por enquanto, elas ficam no `localStorage` do navegador (`frontend/src/lib/subscription/`), com as regras que a API vai aplicar:
-
-- Só quem tem assinatura acessa o catálogo. Sem ela, a conta vai para `/planos`. Admins da plataforma não precisam de assinatura.
-- Só maiores de 18 anos assinam.
-- O plano Família aceita até 4 pessoas, contando o titular. Em `/meu-plano`, o titular inclui e remove pessoas pelo email, e quem não é titular pode sair do plano.
+- Só quem tem assinatura ativa, própria ou como membro de um plano familiar, acessa o catálogo. A API verifica isso em cada rota, e o front leva a conta sem assinatura para `/planos`. Admins da plataforma não precisam de assinatura.
+- Só maiores de 18 anos assinam. O pagamento é simulado, então a assinatura fica ativa na hora.
+- A API só cria o plano individual. O plano Família aparece como "Em breve" em `/planos`, porque ainda não há planos familiares nem convites. Os planos familiares do seed funcionam: quem é membro acessa o catálogo, e quem gerencia pode cancelar.
+- Cancelar é imediato, em `/meu-plano`. No plano familiar, todos perdem o acesso, mas as contas continuam.
 - A restrição de conteúdo para menores ainda não existe, porque a API não marca conteúdo explícito.

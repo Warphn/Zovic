@@ -1,0 +1,17 @@
+meta {
+  name: Cancelar
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

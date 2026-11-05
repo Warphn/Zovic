@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { safeRedirectPath } from "@/lib/auth/validation"
-import { subscriptionClient, subscriptionMessage, useSubscription } from "@/lib/subscription/client"
+import { apiErrorMessage } from "@/lib/api/client"
+import { useSubscribe, useSubscription } from "@/lib/api/subscriptions"
 import { PLAN_TYPES, type PlanType } from "@/lib/subscription/rules"
 import { cn } from "@/lib/utils"
 
@@ -17,7 +18,7 @@ const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 
 const PERKS: Record<PlanType["id"], string[]> = {
   individual: ["1 perfil de acesso", "Todo o catálogo", "Histórico e recomendações só seus"],
-  familia: [
+  family: [
     "Até 4 pessoas, cada uma com o próprio perfil",
     "Menores de 18 anos entram com conta infantil",
     "Quem assina gerencia quem entra e sai",
@@ -27,23 +28,18 @@ const PERKS: Record<PlanType["id"], string[]> = {
 function PlansContent() {
   const router = useRouter()
   const next = useSearchParams().get("next")
-  const { account, subscription, isPending } = useSubscription()
+  const { account, subscription, isPending, isError } = useSubscription()
+  const subscribe = useSubscribe()
   const [choosing, setChoosing] = React.useState<PlanType | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [saving, setSaving] = React.useState(false)
 
   const confirm = async () => {
-    if (!account || !choosing) return
-    setSaving(true)
     try {
-      await subscriptionClient.subscribe(account, choosing.id)
-      setChoosing(null)
-      router.push(next ? safeRedirectPath(next) : "/meu-plano")
-    } catch (err) {
-      setError(subscriptionMessage(err))
-    } finally {
-      setSaving(false)
+      await subscribe.mutateAsync()
+    } catch {
+      return // the dialog shows subscribe.error
     }
+    setChoosing(null)
+    router.push(next ? safeRedirectPath(next) : "/meu-plano")
   }
 
   return (
@@ -53,10 +49,9 @@ function PlansContent() {
 
       <div className="mt-6 space-y-3">
         {next && !subscription && account && <Notice tone="info">Para ouvir, você precisa de uma assinatura.</Notice>}
-        {account && !account.isAdult && !subscription && (
-          <Notice tone="info">
-            Só maiores de 18 anos podem assinar. Peça para um adulto incluir você em um plano Família.
-          </Notice>
+        {isError && <Notice>Não foi possível verificar a sua assinatura. Recarregue a página para tentar de novo.</Notice>}
+        {account && !account.isAdult && !subscription && !isPending && !isError && (
+          <Notice tone="info">Só maiores de 18 anos podem assinar.</Notice>
         )}
         {subscription && (
           <Notice tone="info">
@@ -70,7 +65,7 @@ function PlansContent() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {PLAN_TYPES.map((plan) => {
-          const current = subscription?.typeId === plan.id
+          const current = subscription?.kind === plan.id
           return (
             <section
               key={plan.id}
@@ -115,13 +110,18 @@ function PlansContent() {
                   >
                     Gerenciar plano
                   </Link>
+                ) : plan.id === "family" ? (
+                  // The API only subscribes to the individual plan until family plans exist (issue #86)
+                  <Button size="lg" className="h-9 w-full text-sm font-semibold" disabled>
+                    Em breve
+                  </Button>
                 ) : (
                   <Button
                     size="lg"
                     className="h-9 w-full text-sm font-semibold"
-                    disabled={!account.isAdult || Boolean(subscription)}
+                    disabled={!account.isAdult || Boolean(subscription) || isError}
                     onClick={() => {
-                      setError(null)
+                      subscribe.reset()
                       setChoosing(plan)
                     }}
                   >
@@ -142,13 +142,13 @@ function PlansContent() {
               {choosing && `${price.format(choosing.price)} por mês.`} O pagamento ainda é simulado: a assinatura começa na hora.
             </DialogDescription>
           </DialogHeader>
-          {error && <Notice>{error}</Notice>}
+          {subscribe.isError && <Notice>{apiErrorMessage(subscribe.error)}</Notice>}
           <DialogFooter>
             <Button variant="ghost" size="lg" onClick={() => setChoosing(null)}>
               Cancelar
             </Button>
-            <Button size="lg" onClick={confirm} disabled={saving}>
-              {saving ? "Assinando…" : "Confirmar assinatura"}
+            <Button size="lg" onClick={confirm} disabled={subscribe.isPending}>
+              {subscribe.isPending ? "Assinando…" : "Confirmar assinatura"}
             </Button>
           </DialogFooter>
         </DialogContent>

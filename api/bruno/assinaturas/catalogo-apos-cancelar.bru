@@ -1,0 +1,17 @@
+meta {
+  name: Catálogo após cancelar
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 403 de novo", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

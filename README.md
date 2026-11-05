@@ -77,7 +77,7 @@ Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.
 | `bun run db:generate` | Só gera o client do Prisma, sem consultar o banco | Depois do `bun install` |
 | `bun run db:seed` | Apaga o banco local e insere os dados de teste | Para ter dados para testar ou para voltar a um estado limpo |
 | `bun run test` | Testes do domínio, sem banco | Antes de commitar |
-| `bun run test:integration` | Testes das rotas e dos repositórios, no Postgres (precisa do banco no ar) | Antes de commitar uma mudança no banco ou nas rotas |
+| `bun run test:integration` | Testes das rotas e dos repositórios, no Postgres (precisa do banco no ar e do seed, LOCAL ou PROD) | Antes de commitar uma mudança no banco ou nas rotas |
 | `bun run typecheck` | Confere os tipos do TypeScript | Antes de commitar |
 | `bun run lint` | Procura problemas no código. `lint:fix` corrige o que for automático. | Antes de commitar |
 
@@ -123,7 +123,8 @@ Depois do seed LOCAL, toda conta de teste entra com o email `nome.sobrenome@zovi
 | --- | --- |
 | `admin@zovic.test`, senha `admin` | Admin padrão, sem plano. Só existe no seed LOCAL. |
 | `elisa.andrade@zovic.test` | Admin com plano |
-| `ana.andrade@zovic.test` | Assinante maior de idade |
+| `ana.andrade@zovic.test` | Gestora do plano Família |
+| `bruno.andrade@zovic.test` | Membro do plano Família |
 | `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade |
 
 Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três abas:
@@ -134,7 +135,7 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
-Para demonstrar o plano familiar, entre como `ana.andrade@zovic.test`, assine o Família e inclua `heitor.costa@zovic.test`. Depois entre como Heitor no mesmo navegador: ele acessa o catálogo pelo plano da Ana. As assinaturas ainda ficam só no navegador.
+Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 
 ## Documentação
 

@@ -57,5 +57,6 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 | `search.ts` | `GET /search` |
 | `playlists.ts` | `GET/POST /playlists`, `GET/PATCH/DELETE /playlists/:id` (a API ainda não devolve as músicas da playlist) |
 | `catalog.ts` | `GET /musics`, `GET /artists`, `GET /genres`, `POST /musics/:id/plays` (chamado por `useRecordPlays`, uma vez por audição) |
+| `subscriptions.ts` | `GET /plans/me`, `POST /plans`, `DELETE /plans/me`. O hook `useSubscription` junta a sessão e a assinatura; assinar ou cancelar reinicia todas as consultas, porque a assinatura decide o que a API responde no catálogo |
 | `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas e artistas |
 | `lib/auth/client.ts` | `/auth/*` pelo cliente do Better Auth (cadastro, login, logout, sessão) |

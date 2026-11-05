@@ -224,8 +224,8 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
 | `plan_type` | Os tipos de plano, com preço e limite de pessoas | `price >= 0` e `user_amount > 0` |
-| `plan` | Um plano assinado | Todo plano é de um tipo |
-| `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`) | Todo plano tem ao menos uma pessoa |
+| `plan` | Um plano assinado | Todo plano é de um tipo. A assinatura ativa é um plano sem `deleted_at`. |
+| `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`): o assinante do individual ou o gestor do familiar | Todo plano tem ao menos uma pessoa. Uma conta nova não tem plano até assinar. |
 | `user` | Os usuários. É também a tabela de usuário do Better Auth. | `email` é único e sempre minúsculo. `role` é `admin` ou `assinante` (o padrão). O email de uma conta removida continua reservado. |
 | `user_event` | Cadastros, logins, logouts e reproduções (`sign_up`, `login`, `logout`, `music_play` e `music_skip`) | `music_id` só pode ser preenchido em `music_play` e `music_skip`. É a base das estatísticas do painel de admin. |
 | `system_data` | Os totais do sistema: usuários, músicas e playlists | Tem uma linha só: a chave `singleton` só aceita `true`, então um segundo `INSERT` falha. A migration já cria essa linha. |

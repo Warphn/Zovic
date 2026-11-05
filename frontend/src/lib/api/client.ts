@@ -31,6 +31,12 @@ const MESSAGES: Record<string, string> = {
   "Playlist not found": "A playlist não existe mais ou é privada.",
   "The new order must have exactly the playlist's musics; reload it and try again":
     "A playlist mudou enquanto você ordenava. Recarregue e tente de novo.",
+  // Subscriptions (api/domain/use-cases and the requireSubscription middleware)
+  "Only adults can subscribe": "Só maiores de 18 anos podem assinar.",
+  "Account already has an active subscription": "Você já tem uma assinatura ativa.",
+  "Only the plan manager can cancel it": "Só quem gerencia o plano pode cancelar a assinatura.",
+  "No active subscription": "Você não tem uma assinatura ativa.",
+  "Active subscription required": "Para ouvir, você precisa de uma assinatura.",
 }
 
 /** Message to show for any error thrown by a request (or by anything else). */

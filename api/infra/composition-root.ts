@@ -6,10 +6,16 @@ import { PostgresMusicRepository } from "../adapters/db/postgres-music-repositor
 import { PostgresPlaylistMusics } from "../adapters/db/postgres-playlist-musics.ts";
 import { PostgresPlaylistRepository } from "../adapters/db/postgres-playlist-repository.ts";
 import { PostgresSearchQuery } from "../adapters/db/postgres-search-query.ts";
+import { PostgresSubscriptionRepository } from "../adapters/db/postgres-subscription-repository.ts";
 import type { Auth } from "../adapters/auth/create-auth.ts";
+import { makeSubscriptionController } from "../adapters/http/subscription-controller.ts";
+import { CancelSubscription } from "../domain/use-cases/cancel-subscription.ts";
+import { GetMySubscription } from "../domain/use-cases/get-my-subscription.ts";
+import { SubscribeIndividualPlan } from "../domain/use-cases/subscribe-individual-plan.ts";
 import { makeAdminController, makeCatalogController } from "../adapters/http/admin-controller.ts";
 import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
+import { makeRequireSubscription } from "../adapters/http/middlewares/require-subscription.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
@@ -55,9 +61,24 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);
 
+  const subscriptionRepository = new PostgresSubscriptionRepository(db);
+  const getMySubscription = new GetMySubscription(subscriptionRepository);
+  const subscriptionController = makeSubscriptionController({
+    subscribeIndividualPlan: new SubscribeIndividualPlan(subscriptionRepository),
+    getMySubscription,
+    cancelSubscription: new CancelSubscription(subscriptionRepository),
+  });
+
   const router = makeRouter(
-    { playlists: playlistController, search: searchController, catalog: catalogController, admin: adminController },
+    {
+      playlists: playlistController,
+      search: searchController,
+      catalog: catalogController,
+      admin: adminController,
+      subscriptions: subscriptionController,
+    },
     makeAuthenticate(auth),
+    makeRequireSubscription(getMySubscription),
   );
 
   return createApp({ auth, router, trustProxy, corsOrigins });
