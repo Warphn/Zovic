@@ -1880,12 +1880,13 @@ export const openApiDocument = {
       },
       AlbumListItem: {
         type: "object",
-        required: ["id", "name", "year", "artists"],
+        required: ["id", "name", "year", "artists", "musicCount"],
         properties: {
           id: { type: "integer", example: 3 },
           name: { type: "string", example: "Ondas de Concreto" },
           year: { type: ["integer", "null"], description: "null só nos álbuns antigos.", example: 2018 },
           artists: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } } },
+          musicCount: { type: "integer", description: "Faixas ativas do álbum.", example: 5 },
         },
       },
       MusicInput: {

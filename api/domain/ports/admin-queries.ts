@@ -28,6 +28,8 @@ export interface AlbumListItem {
   name: string;
   year: number | null;
   artists: { id: number; name: string }[];
+  /** Faixas ativas do álbum. */
+  musicCount: number;
 }
 
 export interface CatalogQueries {

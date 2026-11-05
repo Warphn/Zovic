@@ -78,15 +78,17 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
   }
 
   async listAlbums(): Promise<AlbumListItem[]> {
-    const { rows } = await this.pool.query<AlbumListItem>(
+    const { rows } = await this.pool.query<Omit<AlbumListItem, "musicCount"> & { music_count: string }>(
       `SELECT al.id, al.name, al.year,
+         (SELECT count(*) FROM album_music amu JOIN musics m ON m.id = amu.music_id
+            WHERE amu.album_id = al.id AND m.deleted_at IS NULL) AS music_count,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
             FROM album_artist aa JOIN artist a ON a.id = aa.artist_id WHERE aa.album_id = al.id), '[]') AS artists
        FROM album al
        WHERE al.deleted_at IS NULL
        ORDER BY al.name, al.id`,
     );
-    return rows;
+    return rows.map(({ music_count: musicCount, ...album }) => ({ ...album, musicCount: Number(musicCount) }));
   }
 
   async listGenres(): Promise<{ id: number; name: string; color: string }[]> {

@@ -381,6 +381,22 @@ describe("cadastro de música com áudio e álbuns", () => {
     expect(await json(res)).toMatchObject({ message: "Album not found" });
   });
 
+  it("conta só as faixas ativas de cada álbum", async () => {
+    const album = await json<{ id: number }>(
+      await call("/admin/albums", adminCookie, { method: "POST", body: { name: `${PREFIX} contado`, artistIds: [artistId], year: 2010 } }),
+    );
+    created.album.push(album.id);
+    for (const name of ["um", "dois"]) {
+      const music = await json<{ id: number }>(await postMusic(adminCookie, { ...musicData(), name: `${PREFIX} ${name}`, albumId: album.id }, audioPart()));
+      created.musics.push(music.id);
+    }
+    await call(`/admin/musics/${created.musics.at(-1)}`, adminCookie, { method: "DELETE" });
+
+    const listed = await json<{ id: number; musicCount: number }[]>(await call("/albums", userCookie));
+
+    expect(listed.find((item) => item.id === album.id)?.musicCount).toBe(1);
+  });
+
   it("assinante não cadastra música nem álbum", async () => {
     expect((await postMusic(userCookie, musicData(), audioPart())).status).toBe(403);
     const album = await call("/admin/albums", userCookie, { method: "POST", body: { name: "Invadido", artistIds: [artistId], year: 2000 } });

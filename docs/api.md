@@ -144,7 +144,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | --- | --- |
 | `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
 | `GET /api/artists` | Lista os artistas |
-| `GET /api/albums` | Lista os álbuns ativos, com o ano e os artistas |
+| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas e quantas faixas ativas cada um tem (`musicCount`) |
 | `GET /api/genres` | Lista os gêneros |
 | `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
 
