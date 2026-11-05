@@ -175,7 +175,9 @@ Remover é sempre soft delete. Remover um álbum não remove as músicas dele.
 | `audio` | O arquivo MP3, de até 20 MB |
 
 ```bash
-curl -b cookies.txt -H "Origin: http://localhost:3000" http://localhost:3333/api/admin/musics \n  -F 'data={"name":"Ressaca","duration":214,"artistIds":[1],"albumId":3}' \n  -F 'audio=@faixa.mp3;type=audio/mpeg'
+curl -b cookies.txt -H "Origin: http://localhost:3000" http://localhost:3333/api/admin/musics \
+  -F 'data={"name":"Ressaca","duration":214,"artistIds":[1],"albumId":3}' \
+  -F 'audio=@faixa.mp3;type=audio/mpeg'
 ```
 
 - **Formato:** a API confere os primeiros bytes do arquivo (a tag ID3 ou o sincronismo de quadro MPEG), e não a extensão.
@@ -187,7 +189,7 @@ curl -b cookies.txt -H "Origin: http://localhost:3000" http://localhost:3333/api
   | --- | --- |
   | Sem a parte `audio`, ou o arquivo não é MP3 | 400, com `"Music must have an audio file"` ou `"Audio file must be an MP3"` |
   | A parte `data` não é JSON | 400 `INVALID_JSON` |
-  | O arquivo veio numa parte com outro nome, ou mais de um arquivo | 400 `INVALID_UPLOAD` |
+  | O arquivo veio numa parte com outro nome, mais de um arquivo, ou o multipart está malformado (sem o separador das partes, ou cortado no meio do envio) | 400 `INVALID_UPLOAD` |
   | O arquivo passa de 20 MB | 413 `AUDIO_TOO_LARGE` |
   | Artista, gênero ou álbum inexistente | 404 |
 

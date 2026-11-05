@@ -351,6 +351,16 @@ describe("cadastro de música com áudio e álbuns", () => {
     expect(await json(res)).toMatchObject({ error: "INVALID_UPLOAD" });
   });
 
+  it("com um multipart malformado, sem o separador das partes, responde INVALID_UPLOAD", async () => {
+    const res = await fetch(`${url}/api/admin/musics`, {
+      method: "POST",
+      headers: { Origin: ORIGIN, Cookie: adminCookie, "Content-Type": "multipart/form-data" },
+      body: "isto não é um multipart",
+    });
+    expect(res.status).toBe(400);
+    expect(await json(res)).toMatchObject({ error: "INVALID_UPLOAD" });
+  });
+
   it("acima de 20 MB, responde 413", async () => {
     const res = await postMusic(adminCookie, musicData(), audioPart(audioFile([0x49, 0x44, 0x33], MAX_AUDIO_BYTES + 1)));
     expect(res.status).toBe(413);

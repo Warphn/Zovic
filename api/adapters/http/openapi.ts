@@ -1125,7 +1125,7 @@ export const openApiDocument = {
           "201": { description: "A música criada", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminMusic" } } } },
           "400": {
             description:
-              "Campos inválidos (`VALIDATION_ERROR`), `data` que não é JSON (`INVALID_JSON`), arquivo numa parte que não é `audio` ou mais de um arquivo (`INVALID_UPLOAD`), sem áudio ou com um arquivo que não é MP3",
+              "Campos inválidos (`VALIDATION_ERROR`), `data` que não é JSON (`INVALID_JSON`), arquivo numa parte que não é `audio`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`), sem áudio ou com um arquivo que não é MP3",
             content: {
               "application/json": {
                 schema: { oneOf: [{ $ref: "#/components/schemas/FieldValidationError" }, errorResponse("VALIDATION_ERROR", "Audio file must be an MP3")] },
