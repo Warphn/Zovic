@@ -135,7 +135,11 @@ beforeAll(async () => {
   if (address === null || typeof address === "string") throw new Error("Test server has no port");
   baseUrl = `http://127.0.0.1:${address.port}`;
 
-  const { rows } = await pool.query<{ id: number }>("SELECT id FROM musics WHERE deleted_at IS NULL LIMIT 1");
+  // Música própria: o banco do CI não tem o seed de dados de exemplo.
+  const { rows } = await pool.query<{ id: number }>(
+    "INSERT INTO musics (name, duration) VALUES ($1, 180) RETURNING id",
+    ["Música do teste de convites"],
+  );
   musicId = rows[0]!.id;
 });
 
@@ -148,6 +152,7 @@ afterAll(async () => {
   );
   await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
+  await pool.query("DELETE FROM musics WHERE id = $1", [musicId]);
   await pool.end();
 });
 
