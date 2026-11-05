@@ -1,0 +1,28 @@
+meta {
+  name: Login (necessário para as demais)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "email": "ana.andrade@zovic.test",
+    "password": "zovic123"
+  }
+}
+
+tests {
+  test("responde 200 e guarda o cookie de sessão", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

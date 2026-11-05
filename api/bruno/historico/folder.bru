@@ -1,0 +1,18 @@
+meta {
+  name: Histórico
+  seq: 6
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3333
+}
+
+docs {
+  GET /api/history: as músicas que o usuário ouviu, cada uma uma vez, da reprodução mais recente para a mais antiga.
+
+  Rode a pasta na ordem: "Sem cookie de sessão" (401), "Login" (sessão da Ana), "Pegar músicas do catálogo"
+  (guarda `musicA` e `musicB`), as três reproduções (A, B e A de novo) e "Listar histórico".
+
+  Pré-requisitos: `COOKIE_SECURE=false` no `.env` e o banco populado com `bun run db:seed`.
+  Para "Sem cookie de sessão" dar 401, o cookie não pode existir: rode `auth/Logout` antes (ou reinicie o Bruno CLI).
+}

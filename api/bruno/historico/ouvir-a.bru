@@ -1,0 +1,17 @@
+meta {
+  name: Ouvir a música A
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/musics/{{musicA}}/plays
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204 e registra a reprodução", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

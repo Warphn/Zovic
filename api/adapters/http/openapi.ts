@@ -39,6 +39,7 @@ export const openApiDocument = {
     { name: "Autenticação", description: "Cadastro, login, logout e sessão (Better Auth)" },
     { name: "Playlists", description: "Criação e gestão de playlists" },
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
+    { name: "Histórico", description: "Músicas que o usuário ouviu" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Infra", description: "Estado da API" },
   ],
@@ -201,6 +202,29 @@ export const openApiDocument = {
               },
             },
           },
+        },
+      },
+    },
+    "/api/history": {
+      get: {
+        tags: ["Histórico"],
+        summary: "Lista o histórico de reprodução",
+        description:
+          "As músicas que o usuário autenticado ouviu, cada uma uma vez, com a data da última reprodução, da mais recente para a mais antiga. Cada conta tem o próprio histórico, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A reprodução é registrada por `POST /api/musics/{id}/plays`.",
+        operationId: "listMyHistory",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Histórico do usuário (lista vazia se ele nunca ouviu nada)",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/HistoryEntry" } },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
         },
       },
     },
@@ -1219,6 +1243,30 @@ export const openApiDocument = {
             pattern: HEX_COLOR_PATTERN.source,
             description: "Cor no formato #RRGGBB, ou null para apagar a cor.",
             example: "#1DB954",
+          },
+        },
+      },
+      HistoryEntry: {
+        type: "object",
+        required: ["musicId", "name", "duration", "artists", "lastPlayedAt", "isAvailable"],
+        properties: {
+          musicId: { type: "integer", example: 7 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: { id: { type: "integer", example: 3 }, name: { type: "string", example: "Elis Regina" } },
+            },
+          },
+          lastPlayedAt: { type: "string", format: "date-time", example: "2026-10-13T19:25:03.445Z" },
+          isAvailable: {
+            type: "boolean",
+            description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",
+            example: true,
           },
         },
       },

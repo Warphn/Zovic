@@ -65,7 +65,7 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 
 Fora `/api/auth/*`, toda rota exige sessão: sem um cookie válido, a resposta é 401.
 
-As rotas de playlists, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
+As rotas de playlists, histórico, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
 
 ### Planos
 
@@ -123,6 +123,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Só para admins. A mesma música não entra duas vezes (409). |
 | `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Só para admins. |
 | `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só para admins. |
+| `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
 
 **Ordem das músicas.** A ordem é da playlist, então todos os membros veem a mesma. Ela fica em `music_playlist.position`. Para reordenar, o cliente manda a lista inteira. Se faltar ou sobrar uma música (porque outro admin mexeu na playlist depois que a lista foi carregada), a API responde 409 e não muda nada. As rotas que mudam as músicas respondem com a lista atualizada.
