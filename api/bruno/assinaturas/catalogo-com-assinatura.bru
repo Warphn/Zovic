@@ -1,0 +1,17 @@
+meta {
+  name: Catálogo com assinatura
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

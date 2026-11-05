@@ -221,7 +221,7 @@ erDiagram
 |---|---|---|
 | `plan_type` | `id`, `name`, `price`, `user_amount`, `deleted_at`, `created_at` | 1:N com `plan` (todo tipo tem ao menos um plano) |
 | `plan` | `id`, `name`, `type_id`, `deleted_at`, `created_at` | `type_id` → `plan_type.id` |
-| `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário, e todo usuário assina ao menos um plano |
+| `plan_user` | `plan_id`, `user_id`, `is_admin` | Associativa `plan` ↔ `user`; todo plano tem ao menos um usuário. Uma conta nova não tem plano até assinar. A assinatura ativa é um plano sem `deleted_at`, e `is_admin` marca o assinante do individual ou o gestor do familiar |
 | `user` | `id`, `name`, `birthdate`, `email`, `email_verified`, `image`, `deleted_at`, `created_at`, `updated_at` | Também é a tabela de usuário do Better Auth (ver [Autenticação](#autenticação)) |
 | `user_event` | `id`, `user_id`, `event_type` (ENUM), `music_id`, `created_at` | `user_id` → `user.id`; `music_id` → `musics.id`, preenchido só em `music_play` e `music_skip` (CHECK). É a base das estatísticas do painel de admin e das reproduções recentes |
 | `system_data` | `users`, `songs`, `playlists`, `created_at` | Tabela de linha única com contagens agregadas do sistema (sem `id` e sem FK) |

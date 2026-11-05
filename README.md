@@ -144,9 +144,16 @@ A data de nascimento é obrigatória no cadastro e não pode ser trocada depois 
 - **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
 - **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
 
-As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
+As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para quem tem assinatura ativa ou é admin da plataforma: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
 
-**Assinaturas (frontend, simulado).** O catálogo (playlists, busca e player) é só para quem tem assinatura: sem uma, a conta vai para `/planos`. Admins da plataforma passam sem assinatura. Só maiores de 18 anos assinam. O plano Família aceita até 4 pessoas, contando quem assinou; em `/meu-plano`, o titular inclui e remove pessoas pelo email da conta delas, e quem não é titular pode sair do plano. A restrição de conteúdo para menores ainda não existe: as faixas agora vêm da API, que não tem a marcação de conteúdo explícito (fica para o backend das assinaturas). **Ainda não há rotas na API:** as assinaturas ficam no `localStorage` do navegador (`frontend/src/lib/subscription/`), com as mesmas regras que a API vai aplicar. Para demonstrar: entre como `ana.andrade@zovic.test`, assine o Família e inclua `heitor.costa@zovic.test` (menor de idade); depois entre como Heitor no mesmo navegador: ele acessa o catálogo pelo plano da Ana.
+**Assinaturas.** O catálogo (playlists, busca e player) é só para quem tem assinatura ativa, própria ou como membro de um plano familiar. A API verifica isso em cada rota: sem assinatura, responde **403** com `SUBSCRIPTION_REQUIRED`, e o frontend leva a conta para `/planos`. Admins da plataforma passam sem assinatura.
+
+- **Assinar:** só o plano individual, e só maiores de 18 anos. O pagamento é simulado, então a assinatura fica ativa na hora.
+- **Plano Família:** aparece em `/planos` como "Em breve", porque a API ainda não cria planos familiares nem convites. Os planos familiares do seed funcionam: quem é membro acessa o catálogo, e quem gerencia pode cancelar.
+- **Cancelar:** é imediato, em `/meu-plano`. No plano familiar, todos perdem o acesso, mas as contas continuam. Só o assinante do individual ou o gestor do familiar vê a opção.
+- **Ainda não existe:** a restrição de conteúdo para menores, porque a API não tem a marcação de conteúdo explícito.
+
+Para demonstrar, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 
 **Painel de admin.** Para quem tem `role = 'admin'`, o menu da conta (botão laranja no header) mostra **Painel de admin**, em `/admin`, com três abas:
 
@@ -154,7 +161,7 @@ As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stat
 - **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
 - **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
 
-As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
+As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para quem tem assinatura ativa ou é admin da plataforma: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
 
 **No frontend**, as telas `/entrar` e `/cadastro` usam o cliente do Better Auth (`frontend/src/lib/auth/client.ts`), e as áreas logadas (`/playlist`, `/busca`) mandam para `/entrar` quem não tem sessão. O navegador chama a API **direto** (não passa pelo servidor do Next): a API libera a origem do frontend por CORS (`CORS_ORIGIN`) e o cookie é dela, então o JavaScript da página nunca vê a sessão. Para isso funcionar:
 
@@ -176,10 +183,13 @@ Variáveis do `.env`:
 
 ### Rotas da API
 
-Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401). Os detalhes de cada uma (corpo, respostas e exemplos) estão no Swagger UI, em http://localhost:3333/docs, e na coleção do Bruno (`api/bruno/`), com uma pasta por assunto.
+Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401). As rotas de playlists, busca e catálogo também exigem assinatura ativa (sem ela, responde 403 com `SUBSCRIPTION_REQUIRED`); admins da plataforma passam sem assinatura. Os detalhes de cada uma (corpo, respostas e exemplos) estão no Swagger UI, em http://localhost:3333/docs, e na coleção do Bruno (`api/bruno/`), com uma pasta por assunto.
 
 | Método e rota | O que faz |
 | --- | --- |
+| `POST /api/plans` | Assina o plano individual. Menor de idade recebe 403, e quem já tem assinatura ativa recebe 409. |
+| `GET /api/plans/me` | A assinatura ativa da conta, inclusive como membro de um plano familiar, ou `null`. |
+| `DELETE /api/plans/me` | Cancela a assinatura na hora. Só o assinante do individual ou o gestor do familiar (o membro recebe 403). |
 | `GET /api/playlists` | Lista as playlists de que o usuário é membro, da mais nova para a mais antiga. |
 | `POST /api/playlists` | Cria uma playlist; quem cria vira o primeiro membro, como admin. |
 | `GET /api/playlists/:id` | Mostra uma playlist pública a qualquer usuário e uma privada só aos membros. A privada de outra pessoa responde 404, como se não existisse. |

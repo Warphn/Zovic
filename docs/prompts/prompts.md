@@ -83,3 +83,12 @@ O primeiro desenho do papel de admin foi revertido porque a `main` já tinha uma
 | 3 | Verifique o estado do repositório e atualize as documentações. | Seção "Rotas da API" no [`README.md`](../../README.md), [`docs/models.md`](../models.md), [`docs/banco-de-dados.md`](../banco-de-dados.md) e este registro |
 
 A equipe revisou o desenho da busca antes da implementação e fez os merges dos dois PRs.
+
+### 05/11/2026: assinatura individual pela API
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Tenho algumas mudanças não commitadas e gostaria de terminar essa issue. Acha necessário fazer um plano? Perceba que ainda não tenho um banco de dados povoado. | Levantamento do que faltava na issue #85 e plano de implementação. O seed já existente resolveu o banco local |
+| 2 | Decisões da equipe sobre o plano: desativar o plano Família até a #86 e exigir a assinatura também na API. | Middleware [`require-subscription.ts`](../../api/adapters/http/middlewares/require-subscription.ts) nas rotas de playlists, busca e catálogo, e cliente [`subscriptions.ts`](../../frontend/src/lib/api/subscriptions.ts) no lugar do `localStorage` |
+
+A equipe escolheu o escopo e as duas decisões acima antes da implementação.

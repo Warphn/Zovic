@@ -1,0 +1,18 @@
+meta {
+  name: Assinar o plano individual
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/plans
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 201 com a assinatura individual", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()).to.include({ kind: "individual", isManager: true });
+  });
+}

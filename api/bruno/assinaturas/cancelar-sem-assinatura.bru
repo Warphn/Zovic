@@ -1,0 +1,18 @@
+meta {
+  name: Cancelar sem assinatura
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().error).to.equal("NOT_FOUND");
+  });
+}

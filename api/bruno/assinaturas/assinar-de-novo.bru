@@ -1,0 +1,18 @@
+meta {
+  name: Assinar de novo
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/plans
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 409, porque a conta já tem assinatura", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().error).to.equal("BUSINESS_RULE_ERROR");
+  });
+}

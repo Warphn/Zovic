@@ -1,0 +1,18 @@
+meta {
+  name: Catálogo sem assinatura
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 403 com SUBSCRIPTION_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().error).to.equal("SUBSCRIPTION_REQUIRED");
+  });
+}
