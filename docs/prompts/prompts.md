@@ -149,3 +149,11 @@ Forma de trabalho: a mesma da #86. O Claude Opus fez o plano, preparou a tarefa 
 | 2 | Fase 1, API: porta e caso de uso do histórico, consulta no Postgres, rota `GET /api/history`, testes unitários e de integração, `openapi.ts` e requisições do Bruno | [`list-my-history.ts`](../../api/domain/use-cases/list-my-history.ts), [`postgres-play-history.ts`](../../api/adapters/db/postgres-play-history.ts) e [`api/bruno/historico/`](../../api/bruno/historico/) |
 | 3 | Fase 2, front: página `/historico`, item "Histórico" no menu do usuário, estado vazio, música indisponível sem botão de tocar e lista atualizada a cada reprodução registrada | [`frontend/src/app/historico/`](../../frontend/src/app/historico/), [`history.ts`](../../frontend/src/lib/api/history.ts) e [`header.tsx`](../../frontend/src/components/header.tsx) |
 | 4 | Fase 3, documentação: tabela de rotas, demo do README, cliente da API no front e este registro | [`docs/api.md`](../api.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |
+
+### 05/11/2026: planos na landing (#84, HU-01)
+
+O Claude Opus leu a #84, viu que o único critério sem código era a seção de planos na landing e a escreveu direto, sem subagentes. Os critérios da HU-02 já tinham testes de integração em `auth-flow.test.ts`, e todos foram conferidos no navegador com Playwright (13/13).
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Fechar a #84 "até onde dá": seção de planos na landing com preço e número de pessoas, e conferir os critérios de cadastro e entrada | [`plans.tsx`](../../frontend/src/components/plans.tsx), com os planos, o preço formatado e o número de pessoas em [`rules.ts`](../../frontend/src/lib/subscription/rules.ts), usados também por `/planos` e `/meu-plano` |
