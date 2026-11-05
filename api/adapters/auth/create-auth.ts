@@ -4,7 +4,12 @@ import { APIError } from "better-auth/api";
 import { customSession } from "better-auth/plugins";
 import type { Pool } from "pg";
 import Joi from "joi";
+import { DomainError } from "../../domain/errors/domain-error.ts";
 import { calendarDateIn, isAdult } from "../../domain/shared/age.ts";
+import { INVITATION_TOKEN_MAX_LENGTH, normalizeEmail } from "../../domain/shared/plan-invitation.ts";
+import { AcceptInvitation } from "../../domain/use-cases/accept-invitation.ts";
+import { GetInvitation } from "../../domain/use-cases/get-invitation.ts";
+import { PostgresSubscriptionRepository } from "../db/postgres-subscription-repository.ts";
 
 export interface AuthOptions {
   /** Segredo de assinatura/criptografia do Better Auth (mínimo de 32 caracteres). */
@@ -28,6 +33,10 @@ export const CLIENT_IP_HEADER = "x-zovic-client-ip";
 /** Fuso que define "hoje" para a maioridade: o aniversário vale pelo dia do Brasil, não o de UTC. */
 const TIME_ZONE = "America/Sao_Paulo";
 
+const SIGN_UP_PATH = "/sign-up/email";
+/** Campo extra do corpo do cadastro: o token do convite do plano familiar. */
+const INVITATION_TOKEN_FIELD = "invitationToken";
+
 const MINUTE = 60;
 const DAY = 24 * 60 * MINUTE;
 // Limites das colunas user.name e user.email.
@@ -50,7 +59,51 @@ export const birthdateSchema = Joi.string()
     "any.invalid": "birthdate must be a valid date that is not in the future",
   });
 
+/** O token do convite enviado no cadastro: `undefined` se o campo não veio, `null` se veio com tipo ou tamanho inválido. */
+function readInvitationToken(body: unknown): string | null | undefined {
+  if (typeof body !== "object" || body === null || !(INVITATION_TOKEN_FIELD in body)) return undefined;
+  const token = body[INVITATION_TOKEN_FIELD];
+  if (typeof token !== "string" || token === "" || token.length > INVITATION_TOKEN_MAX_LENGTH) return null;
+  return token;
+}
+
+const invalidInvitation = () =>
+  APIError.from("BAD_REQUEST", {
+    code: "INVALID_INVITATION",
+    message: "The invitation is invalid, expired or was sent to another email",
+  });
+
 export function createAuth(pool: Pool, options: AuthOptions) {
+  const subscriptions = new PostgresSubscriptionRepository(pool);
+  const getInvitation = new GetInvitation(subscriptions);
+  const acceptInvitation = new AcceptInvitation(subscriptions);
+
+  /** Com token, ele precisa ser de um convite válido para o mesmo email; sem token, só adulto se cadastra. */
+  async function requireInvitationForMinors(
+    user: { email?: unknown; birthdate?: unknown },
+    body: unknown,
+  ): Promise<void> {
+    const token = readInvitationToken(body);
+    if (token === null) throw invalidInvitation();
+    if (token === undefined) {
+      const birthdate = typeof user.birthdate === "string" ? user.birthdate : null;
+      if (!isAdult(birthdate, calendarDateIn(new Date(), TIME_ZONE))) {
+        throw APIError.from("FORBIDDEN", {
+          code: "MINOR_NEEDS_INVITATION",
+          message: "Minors can only sign up with a family plan invitation",
+        });
+      }
+      return;
+    }
+    try {
+      const invitation = await getInvitation.execute({ token });
+      if (typeof user.email !== "string" || normalizeEmail(user.email) !== invitation.email) throw invalidInvitation();
+    } catch (error) {
+      if (error instanceof DomainError) throw invalidInvitation();
+      throw error;
+    }
+  }
+
   const config = {
     appName: "Zovic",
     database: pool,
@@ -164,7 +217,7 @@ export function createAuth(pool: Pool, options: AuthOptions) {
     databaseHooks: {
       user: {
         create: {
-          before: async (user) => {
+          before: async (user, context) => {
             const name = typeof user.name === "string" ? user.name.trim() : "";
             if (name === "" || name.length > NAME_MAX_LENGTH) {
               throw APIError.from("BAD_REQUEST", {
@@ -178,7 +231,22 @@ export function createAuth(pool: Pool, options: AuthOptions) {
                 message: `email must have at most ${EMAIL_MAX_LENGTH} characters`,
               });
             }
+            if (context?.path === SIGN_UP_PATH) {
+              await requireInvitationForMinors(user, context.body);
+            }
             return { data: { ...user, name } };
+          },
+          // Roda depois do commit do cadastro. Se o convite foi cancelado nesse intervalo, a conta
+          // continua existindo, sem plano, e o cadastro não deve falhar por isso.
+          after: async (user, context) => {
+            if (context?.path !== SIGN_UP_PATH) return;
+            const token = readInvitationToken(context.body);
+            if (typeof token !== "string") return;
+            try {
+              await acceptInvitation.execute({ token, userId: Number(user.id), email: user.email });
+            } catch (error) {
+              if (!(error instanceof DomainError)) throw error;
+            }
           },
         },
       },

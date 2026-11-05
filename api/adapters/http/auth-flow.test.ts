@@ -104,6 +104,16 @@ async function signUp(app: TestApp, email: string, extra: Record<string, unknown
   return { res, cookie: sessionCookie(res) };
 }
 
+/**
+ * Menor não se cadastra sem convite (create-auth.ts), então a conta nasce adulta e a data de
+ * nascimento é trocada direto no banco, como o admin faz ao criar contas.
+ */
+async function signUpMinor(app: TestApp, email: string, birthdate: string) {
+  const account = await signUp(app, email);
+  await pool.query(`UPDATE "user" SET birthdate = $1 WHERE email = $2`, [birthdate, email]);
+  return account;
+}
+
 /** POST /api/playlists é a rota usada para provar a sessão, e ela exige assinatura ativa. */
 async function signUpSubscribed(app: TestApp, email: string) {
   const account = await signUp(app, email);
@@ -413,13 +423,13 @@ describe("autenticação com Better Auth", () => {
       const adult = await signUp(app, uniqueEmail("adulto"));
       expect(await sessionUser(adult.cookie!.header)).toMatchObject({ role: "assinante", isAdult: true });
 
-      const minor = await signUp(app, uniqueEmail("menor"), { birthdate: "2012-01-17" });
+      const minor = await signUpMinor(app, uniqueEmail("menor"), "2012-01-17");
       expect(await sessionUser(minor.cookie!.header)).toMatchObject({ role: "assinante", isAdult: false });
     });
 
     it("cadastro e login também devolvem o papel e a maioridade", async () => {
       const email = uniqueEmail("login-papel");
-      const { res } = await signUp(app, email, { birthdate: "2012-01-17" });
+      const { res } = await signUpMinor(app, email, "2012-01-17");
       expect((await bodyOf(res)).user).toMatchObject({ role: "assinante" });
 
       const login = await signIn(app, email, PASSWORD);
@@ -429,7 +439,7 @@ describe("autenticação com Better Auth", () => {
     it("a maioridade sai da data de nascimento na hora da requisição", async () => {
       // O dia exato (e o 29/02) está nos testes de domain/shared/age.test.ts. Aqui há folga
       // de um dia nas pontas: o servidor usa o dia de São Paulo, o teste o de UTC.
-      const turnsTomorrow = await signUp(app, uniqueEmail("vespera"), { birthdate: birthdateForAge(18, 2) });
+      const turnsTomorrow = await signUpMinor(app, uniqueEmail("vespera"), birthdateForAge(18, 2));
       expect((await sessionUser(turnsTomorrow.cookie!.header)).isAdult).toBe(false);
 
       const turnedYesterday = await signUp(app, uniqueEmail("aniversario"), { birthdate: birthdateForAge(18, -1) });
@@ -456,7 +466,7 @@ describe("autenticação com Better Auth", () => {
     });
 
     it("depois do cadastro, não dá para trocar a data de nascimento nem o papel pela API", async () => {
-      const minor = await signUp(app, uniqueEmail("troca"), { birthdate: "2012-01-17" });
+      const minor = await signUpMinor(app, uniqueEmail("troca"), "2012-01-17");
 
       for (const change of [{ birthdate: "1990-01-01" }, { role: "admin" }, { name: "Outro Nome" }]) {
         const res = await fetch(`${app.url}/api/auth/update-user`, json(change, { Cookie: minor.cookie!.header }));

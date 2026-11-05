@@ -30,7 +30,7 @@ export const openApiDocument = {
     version: "0.1.0",
     description:
       "API do Zovic, streaming de músicas.\n\n" +
-      "**Autenticação.** É feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Fora `/api/auth/*` e `/health`, toda rota exige a sessão e responde 401 sem ela.\n\n" +
+      "**Autenticação.** É feita pelo [Better Auth](https://www.better-auth.com), por sessão em cookie: `POST /api/auth/sign-in/email` (ou `/api/auth/sign-up/email`) define o cookie `zovic.session_token` (httpOnly), que o navegador envia nas próximas requisições. Fora `/api/auth/*`, `/health` e `GET /api/invitations/{token}`, toda rota exige a sessão e responde 401 sem ela.\n\n" +
       "**Testando por esta página.** Rode o `sign-in` em *Try it out*: o navegador guarda o cookie e as próximas chamadas daqui já vão autenticadas. O botão *Authorize* não é necessário (e não funciona com cookie: o navegador não deixa a página definir o cookie). Para isso a API precisa de `COOKIE_SECURE=false` quando roda em `http://`, e esta página deve ser aberta pelo mesmo endereço de `BETTER_AUTH_URL` (padrão `http://localhost:3333`). Com o seed LOCAL, todo usuário entra com `nome.sobrenome@zovic.test` e a senha `zovic123`.\n\n" +
       "**Erros.** As rotas `/api/auth/*` respondem `{ code, message }`; as demais, `{ error, message }`, ou `{ error: \"VALIDATION_ERROR\", fields }` quando a validação aponta campos.",
   },
@@ -38,7 +38,7 @@ export const openApiDocument = {
   tags: [
     { name: "Autenticação", description: "Cadastro, login, logout e sessão (Better Auth)" },
     { name: "Playlists", description: "Criação e gestão de playlists" },
-    { name: "Planos", description: "Assinatura individual: assinar, consultar e cancelar" },
+    { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Infra", description: "Estado da API" },
   ],
@@ -59,7 +59,7 @@ export const openApiDocument = {
         tags: ["Autenticação"],
         summary: "Cria uma conta e já abre a sessão",
         description:
-          "Cadastra o usuário e responde com ele já logado: o cookie de sessão vem no `Set-Cookie`. O email é guardado em minúsculas e deve ser único. Limite: 10 cadastros por hora por IP.",
+          "Cadastra o usuário e responde com ele já logado: o cookie de sessão vem no `Set-Cookie`. O email é guardado em minúsculas e deve ser único. Menor de idade só se cadastra com o `invitationToken` de um convite do plano familiar, enviado para o mesmo email: a conta já nasce como membro do plano. Com o token válido, maior de idade também entra no plano. Limite: 10 cadastros por hora por IP.",
         operationId: "signUpEmail",
         security: [],
         requestBody: {
@@ -84,10 +84,18 @@ export const openApiDocument = {
           },
           "400": {
             description:
-              "Corpo inválido: campo ausente (inclusive `birthdate`), email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou no futuro, ou JSON malformado",
+              "Corpo inválido: campo ausente (inclusive `birthdate`), email inválido, senha fora de 8 a 128 caracteres, nome fora de 1 a 150, data de nascimento inválida ou no futuro, JSON malformado, ou `invitationToken` que não é de um convite válido (inexistente, expirado, usado, cancelado, de plano cancelado ou enviado para outro email), com o código `INVALID_INVITATION`",
             content: {
               "application/json": {
                 schema: authErrorResponse("VALIDATION_ERROR", "[body.email] Invalid email address"),
+              },
+            },
+          },
+          "403": {
+            description: "Menor de idade sem `invitationToken`. A conta não é criada",
+            content: {
+              "application/json": {
+                schema: authErrorResponse("MINOR_NEEDS_INVITATION", "Minors can only sign up with a family plan invitation"),
               },
             },
           },
@@ -513,12 +521,22 @@ export const openApiDocument = {
     "/api/plans": {
       post: {
         tags: ["Planos"],
-        summary: "Assina o plano individual",
+        summary: "Assina o plano individual ou o família",
         description:
-          "Pagamento simulado: a assinatura fica ativa na hora. Só maiores de idade assinam (pela data de nascimento da conta) e cada conta tem no máximo uma assinatura ativa, contando a de membro de um plano familiar. Não recebe corpo.",
-        operationId: "subscribeIndividualPlan",
+          "Pagamento simulado: a assinatura fica ativa na hora. Só maiores de idade assinam (pela data de nascimento da conta) e cada conta tem no máximo uma assinatura ativa, contando a de membro de um plano familiar. O corpo é opcional: sem ele, o plano é o individual. No família, quem assina vira o gestor, com até 4 pessoas.",
+        operationId: "subscribePlan",
         security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/SubscribeRequest" },
+              example: { kind: "family" },
+            },
+          },
+        },
         responses: {
+          "400": { $ref: "#/components/responses/PlanValidationError" },
           "201": {
             description: "Assinatura criada",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } },
@@ -579,6 +597,239 @@ export const openApiDocument = {
           "404": {
             description: "A conta não tem assinatura ativa",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "No active subscription") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me/members": {
+      get: {
+        tags: ["Planos"],
+        summary: "Membros, convites pendentes e vagas do plano familiar",
+        description:
+          "Só o gestor. O limite é de 4 pessoas, contando o gestor; convite pendente (não usado, não cancelado e não expirado) ocupa vaga. Contas removidas pela plataforma não aparecem nem ocupam vaga. O token dos convites nunca aparece aqui.",
+        operationId: "listPlanMembers",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "O plano",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PlanMembers" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é membro, mas não o gestor",
+            content: { "application/json": { schema: errorResponse("FORBIDDEN", "Only the plan manager can list members") } },
+          },
+          "404": {
+            description: "A conta não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "No active subscription") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me/invitations": {
+      post: {
+        tags: ["Planos"],
+        summary: "Convida alguém para o plano familiar",
+        description:
+          "Só o gestor. O convite vale 7 dias, é de uso único e ocupa uma vaga até ser aceito, cancelado ou expirar. O `token` do link aparece só nesta resposta: o banco guarda apenas o hash. Se o link se perder, cancele o convite e crie outro. O email é comparado sem diferenciar maiúsculas.",
+        operationId: "inviteToPlan",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/InviteRequest" },
+              example: { email: "filho@exemplo.com" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Convite criado",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/CreatedInvitation" } } },
+          },
+          "400": { $ref: "#/components/responses/PlanValidationError" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é membro, mas não o gestor",
+            content: { "application/json": { schema: errorResponse("FORBIDDEN", "Only the plan manager can invite") } },
+          },
+          "404": {
+            description: "A conta não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "No active subscription") } },
+          },
+          "409": {
+            description:
+              "O plano é individual, não tem vaga livre, o email já é de um membro ou já tem convite pendente",
+            content: {
+              "application/json": {
+                examples: {
+                  semVaga: { value: { error: "BUSINESS_RULE_ERROR", message: "The plan has no free slots" } },
+                  individual: {
+                    value: { error: "BUSINESS_RULE_ERROR", message: "Only family plans accept invitations" },
+                  },
+                  membro: {
+                    value: { error: "BUSINESS_RULE_ERROR", message: "This email is already a member of the plan" },
+                  },
+                  pendente: {
+                    value: { error: "BUSINESS_RULE_ERROR", message: "This email already has a pending invitation" },
+                  },
+                },
+                schema: errorResponse("BUSINESS_RULE_ERROR", "The plan has no free slots"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me/invitations/{id}": {
+      delete: {
+        tags: ["Planos"],
+        summary: "Cancela um convite pendente",
+        description: "Só o gestor. O link deixa de valer e a vaga volta.",
+        operationId: "cancelPlanInvitation",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Convite cancelado" },
+          "400": { $ref: "#/components/responses/PlanValidationError" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é membro, mas não o gestor",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the plan manager can cancel invitations") },
+            },
+          },
+          "404": {
+            description: "A conta não tem assinatura ativa, ou o convite não existe neste plano ou já não está pendente",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Invitation not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me/members/{userId}": {
+      delete: {
+        tags: ["Planos"],
+        summary: "Remove um membro do plano familiar",
+        description:
+          "Só o gestor. O vínculo some: o membro perde o acesso na próxima requisição e a vaga volta. As playlists e o histórico dele continuam, e ele pode assinar de novo.",
+        operationId: "removePlanMember",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "userId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Membro removido" },
+          "400": { $ref: "#/components/responses/PlanValidationError" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é membro, mas não o gestor",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the plan manager can remove members") },
+            },
+          },
+          "404": {
+            description: "A conta não tem assinatura ativa, ou o usuário não é membro deste plano",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Member not found") } },
+          },
+          "409": {
+            description: "O gestor tentou se remover: ele cancela o plano",
+            content: {
+              "application/json": {
+                schema: errorResponse("BUSINESS_RULE_ERROR", "The manager cannot be removed: cancel the plan instead"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me/membership": {
+      delete: {
+        tags: ["Planos"],
+        summary: "Sai do plano familiar",
+        description:
+          "Para quem é membro, não gestor. O acesso acaba na hora; as playlists e o histórico continuam. O gestor cancela o plano em `DELETE /api/plans/me`.",
+        operationId: "leavePlan",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "A conta saiu do plano" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "404": {
+            description: "A conta não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "No active subscription") } },
+          },
+          "409": {
+            description: "A conta é a gestora do plano",
+            content: {
+              "application/json": {
+                schema: errorResponse("BUSINESS_RULE_ERROR", "The manager cannot leave the plan: cancel it instead"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/invitations/{token}": {
+      get: {
+        tags: ["Planos"],
+        summary: "Consulta um convite pelo link",
+        description:
+          "Pública, para a tela do convite funcionar antes de a pessoa ter conta. Convite usado, expirado, cancelado, de plano cancelado, inexistente ou com token malformado dá sempre o mesmo 404.",
+        operationId: "getInvitation",
+        security: [],
+        parameters: [{ name: "token", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "O convite pendente",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/InvitationInfo" } } },
+          },
+          "404": {
+            description: "Convite inválido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Invitation not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/invitations/{token}/accept": {
+      post: {
+        tags: ["Planos"],
+        summary: "Aceita um convite com a conta logada",
+        description:
+          "Só a conta com o email do convite aceita (sem diferenciar maiúsculas), e só quem não tem assinatura ativa. Menor de idade também aceita. O convite fica usado. Quem ainda não tem conta se cadastra pelo link em `POST /api/auth/sign-up/email`, com o `invitationToken`.",
+        operationId: "acceptInvitation",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "token", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": {
+            description: "A conta virou membro do plano",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "O convite foi enviado para outro email",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "This invitation was sent to another email") },
+            },
+          },
+          "404": {
+            description: "Convite inválido (usado, expirado, cancelado, de plano cancelado, inexistente ou malformado)",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Invitation not found") } },
+          },
+          "409": {
+            description: "A conta já tem uma assinatura ativa. O convite continua valendo",
+            content: {
+              "application/json": {
+                schema: errorResponse(
+                  "BUSINESS_RULE_ERROR",
+                  "Leave or cancel your current plan before accepting an invitation",
+                ),
+              },
+            },
           },
           "500": { $ref: "#/components/responses/InternalError" },
         },
@@ -671,6 +922,10 @@ export const openApiDocument = {
           "application/json": { schema: errorResponse("UNAUTHENTICATED", "Authentication required") },
         },
       },
+      PlanValidationError: {
+        description: "Corpo ou parâmetro inválido (`kind` desconhecido, email inválido, id que não é inteiro positivo)",
+        content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+      },
       InvalidPlaylistId: {
         description: "O id da URL não é um inteiro positivo",
         content: {
@@ -738,6 +993,75 @@ export const openApiDocument = {
           startedAt: { type: "string", format: "date-time" },
         },
       },
+      SubscribeRequest: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["individual", "family"], default: "individual" },
+        },
+      },
+      InviteRequest: {
+        type: "object",
+        required: ["email"],
+        properties: {
+          email: { type: "string", format: "email", maxLength: 254, example: "filho@exemplo.com" },
+        },
+      },
+      CreatedInvitation: {
+        type: "object",
+        required: ["id", "email", "expiresAt", "token"],
+        properties: {
+          id: { type: "integer", example: 12 },
+          email: { type: "string", description: "Em minúsculas.", example: "filho@exemplo.com" },
+          expiresAt: { type: "string", format: "date-time" },
+          token: {
+            type: "string",
+            description: "Vai no link do convite. Só esta resposta o devolve.",
+            example: "K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA",
+          },
+        },
+      },
+      InvitationInfo: {
+        type: "object",
+        required: ["email", "managerName", "expiresAt"],
+        properties: {
+          email: { type: "string", example: "filho@exemplo.com" },
+          managerName: { type: "string", example: "Ana Andrade" },
+          expiresAt: { type: "string", format: "date-time" },
+        },
+      },
+      PlanMembers: {
+        type: "object",
+        required: ["members", "pendingInvitations", "limit", "freeSlots"],
+        properties: {
+          members: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["id", "name", "email", "isManager"],
+              properties: {
+                id: { type: "integer", example: 3 },
+                name: { type: "string", example: "Ana Andrade" },
+                email: { type: ["string", "null"], example: "ana@exemplo.com" },
+                isManager: { type: "boolean" },
+              },
+            },
+          },
+          pendingInvitations: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["id", "email", "expiresAt"],
+              properties: {
+                id: { type: "integer", example: 12 },
+                email: { type: "string", example: "filho@exemplo.com" },
+                expiresAt: { type: "string", format: "date-time" },
+              },
+            },
+          },
+          limit: { type: "integer", example: 4, description: "Máximo de pessoas, contando o gestor." },
+          freeSlots: { type: "integer", example: 2, description: "Limite menos membros e convites pendentes." },
+        },
+      },
       SignUpRequest: {
         type: "object",
         required: ["name", "email", "password", "birthdate"],
@@ -766,6 +1090,12 @@ export const openApiDocument = {
             format: "date",
             description: "Obrigatória, no formato YYYY-MM-DD, uma data que não esteja no futuro. Não pode ser trocada depois.",
             example: "1995-03-12",
+          },
+          invitationToken: {
+            type: "string",
+            description:
+              "Token do link de um convite do plano familiar, enviado para o mesmo email do cadastro. Obrigatório para menor de idade. A conta entra no plano ao ser criada e o campo não é guardado.",
+            example: "K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA",
           },
         },
       },

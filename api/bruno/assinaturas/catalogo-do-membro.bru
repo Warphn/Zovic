@@ -1,0 +1,17 @@
+meta {
+  name: Catálogo do membro
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

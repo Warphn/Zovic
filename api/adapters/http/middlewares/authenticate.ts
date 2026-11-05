@@ -9,6 +9,8 @@ declare global {
   namespace Express {
     interface Locals {
       userId: number;
+      /** Email da conta, como está no banco. */
+      email: string;
       role: PlatformRole;
       /** "AAAA-MM-DD", ou null se a conta não tem data de nascimento. */
       birthdate: string | null;
@@ -36,6 +38,7 @@ export function makeAuthenticate(auth: Auth): RequestHandler {
     }
 
     res.locals.userId = userId;
+    res.locals.email = response.user.email;
     // Qualquer valor desconhecido vale como assinante.
     res.locals.role = response.user.role === "admin" ? "admin" : "assinante";
     res.locals.birthdate = toCalendarDate(response.user.birthdate);

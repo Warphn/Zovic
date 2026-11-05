@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 
 export const INVITATION_VALIDITY_DAYS = 7;
 const INVITATION_TOKEN_BYTES = 32;
+/** O token tem 43 caracteres base64url; o limite só evita processar um valor enorme. */
+export const INVITATION_TOKEN_MAX_LENGTH = 200;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Token em claro do link do convite. Só o hash dele é guardado. */

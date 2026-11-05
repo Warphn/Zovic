@@ -1,0 +1,18 @@
+meta {
+  name: Catálogo após sair
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 403 SUBSCRIPTION_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().error).to.equal("SUBSCRIPTION_REQUIRED");
+  });
+}
