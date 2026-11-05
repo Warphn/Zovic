@@ -8,7 +8,8 @@
     "stop": "bun scripts/env.ts stop",
     "server": "bun scripts/server.ts",
     "admin:promote": "bun run --cwd api admin:promote",
-    "db:member": "bun run --cwd api db:member"
+    "db:member": "bun run --cwd api db:member",
+    "db:connect": "bun scripts/db-connect.ts"
   },
   "devDependencies": {
     "@clack/prompts": "^1.8.1",

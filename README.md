@@ -36,13 +36,15 @@ O `bun start` faz três perguntas:
 
 | Pergunta | Opções |
 | --- | --- |
-| Cê vai fazer o que, Zé? | `frontend`, `backend` ou `full` |
+| Cê vai fazer o que, Zé? | `frontend`, `backend`, `full` ou `banco de produção` (abre o acesso ao banco do servidor, como o `bun db:connect`, e pula as outras perguntas) |
 | É o seu primeiro acesso? | Se sim, cria o `.env`, roda o `bun install` do que for preciso e gera o client do Prisma |
 | Quer popular o banco? | **Não**, **LOCAL** (dados de teste; apaga o banco local antes) ou **PROD** (só os dados reais, sem apagar nada) |
 
 Depois ele sobe o Docker e, se você escolheu um seed, espera as migrations terminarem e popula o banco. No primeiro acesso, a resposta padrão do seed é LOCAL, já que o banco começa vazio.
 
 Para pular as perguntas, passe tudo nos argumentos: `bun start backend`, `bun start backend --first` ou `bun start frontend --seed=local`. Sem `--seed`, nada é populado.
+
+Para consultar o banco de produção (usuário e senha próprios, enviados por quem administra o servidor), `bun db:connect` (ou `bun start banco`) faz o login no Cloudflare Access e deixa o banco em `localhost:15432`. O passo a passo está em [Banco de dados](docs/banco-de-dados.md#banco-de-produção).
 
 As seções abaixo mostram o que o script faz por baixo, para quem preferir rodar à mão.
 
