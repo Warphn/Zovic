@@ -94,7 +94,7 @@ No servidor, a partir do clone com o `.env` de produção e com o servidor no ar
 | `bun db:member remove <nome>` | encerra as conexões e apaga o usuário |
 | `bun db:member list` | lista os usuários da equipe |
 
-Envie a senha a cada pessoa por um canal privado. Ela não é guardada em lugar nenhum.
+Envie a senha a cada pessoa por um canal privado. Ela não é guardada em lugar nenhum. Do lado de cada integrante, `bun db:connect` (na raiz do repositório) faz o login no Access e abre o caminho até o banco em `localhost:15432`.
 
 Na Cloudflare, uma vez:
 

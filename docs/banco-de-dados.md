@@ -179,13 +179,15 @@ O banco de produção roda no servidor da equipe e não fica aberto na internet:
 Você precisa de duas coisas, que quem administra o servidor envia: o seu **usuário e senha do Postgres**, e o seu **e-mail** cadastrado no Access.
 
 1. Instale o `cloudflared` ([downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)). No Windows: `winget install --id Cloudflare.cloudflared`. No macOS: `brew install cloudflared`.
-2. Abra o caminho até o banco e deixe o terminal aberto enquanto usar:
+2. Na raiz do repositório, abra o caminho até o banco e deixe o terminal aberto enquanto usar:
 
    ```bash
-   cloudflared access tcp --hostname db.zovic.com.br --url localhost:15432
+   bun db:connect
    ```
 
-   Na primeira conexão, o navegador abre a página do Access: informe o seu e-mail e o código que chegar nele.
+   Também dá para escolher **banco de produção** no menu do `bun start`. Ele confere se o `cloudflared` está instalado e, se você ainda não tem um login válido no Access, abre o navegador: informe o seu e-mail e o código que chegar nele. O login vale por 24 horas; nesse tempo, o comando conecta direto. Depois, ele mostra os dados de conexão e deixa o banco em `localhost:15432` até você apertar Ctrl+C.
+
+   Sem o repositório, dá para fazer o mesmo à mão: `cloudflared access tcp --hostname db.zovic.com.br --url localhost:15432`. Nesse caso, o navegador abre na primeira vez que o DBeaver tentar conectar; se o DBeaver desistir antes de você terminar o login, conecte de novo.
 3. Conecte o DBeaver, o DataGrip ou o `psql` em `localhost:15432`:
 
    | Campo | Valor |
