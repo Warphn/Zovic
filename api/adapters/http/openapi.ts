@@ -1,3 +1,4 @@
+import { Comment } from "../../domain/entities/comment.ts";
 import { Playlist } from "../../domain/entities/playlist.ts";
 import { HEX_COLOR_PATTERN } from "../../domain/shared/hex-color.ts";
 
@@ -38,6 +39,7 @@ export const openApiDocument = {
   tags: [
     { name: "Autenticação", description: "Cadastro, login, logout e sessão (Better Auth)" },
     { name: "Playlists", description: "Criação e gestão de playlists" },
+    { name: "Comentários", description: "Comentários e denúncias em músicas" },
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Histórico", description: "Músicas que o usuário ouviu" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
@@ -128,12 +130,7 @@ export const openApiDocument = {
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/SignInRequest" },
-              examples: {
-                teste: {
-                  summary: "Usuário do seed local",
-                  value: { email: "ana.andrade@zovic.test", password: "zovic123" },
-                },
-              },
+              example: { email: "ana@exemplo.com", password: "uma-senha-longa" },
             },
           },
         },
@@ -143,8 +140,16 @@ export const openApiDocument = {
             headers: { "Set-Cookie": { $ref: "#/components/headers/SessionCookie" } },
             content: { "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } } },
           },
+          "400": {
+            description: "Corpo inválido ou JSON malformado",
+            content: {
+              "application/json": {
+                schema: authErrorResponse("VALIDATION_ERROR", "[body.password] Expected string, received undefined"),
+              },
+            },
+          },
           "401": {
-            description: "Email ou senha inválidos",
+            description: "Email ou senha incorretos",
             content: {
               "application/json": {
                 schema: authErrorResponse("INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"),
@@ -160,7 +165,7 @@ export const openApiDocument = {
         tags: ["Autenticação"],
         summary: "Encerra a sessão",
         description:
-          "Apaga a sessão no servidor e limpa o cookie. Sem sessão, também responde 200. Como todo POST do Better Auth, exige o header `Origin` quando há cookie.",
+          "Apaga a sessão no banco e limpa o cookie no navegador (Max-Age=0). Funciona mesmo sem sessão ativa (idempotente).",
         operationId: "signOut",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -197,7 +202,7 @@ export const openApiDocument = {
             content: {
               "application/json": {
                 schema: {
-                  oneOf: [{ $ref: "#/components/schemas/SessionResponse" }, { type: "null" }],
+                  anyOf: [{ $ref: "#/components/schemas/SessionResponse" }, { type: "null" }],
                 },
               },
             },
@@ -254,7 +259,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Cria uma playlist",
         description:
-          "Cria a playlist e adiciona o usuário autenticado como primeiro membro, com papel de admin. Nomes repetidos são permitidos. Campos fora do schema são ignorados.",
+          "Cria a playlist e torna o usuário autenticado o primeiro membro dela, com papel de admin. Playlists nascem públicas se `isPrivate` não for enviado.",
         operationId: "createPlaylist",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -288,25 +293,6 @@ export const openApiDocument = {
                     { $ref: "#/components/schemas/FieldValidationError" },
                     { $ref: "#/components/schemas/Error" },
                   ],
-                },
-                examples: {
-                  campos: {
-                    summary: "Campos inválidos (todos de uma vez)",
-                    value: {
-                      error: "VALIDATION_ERROR",
-                      fields: [
-                        { field: "name", message: '"name" is required' },
-                        {
-                          field: "color",
-                          message: '"color" with value "azul" fails to match the required pattern: /^#[0-9A-Fa-f]{6}$/',
-                        },
-                      ],
-                    },
-                  },
-                  json: {
-                    summary: "JSON malformado",
-                    value: { error: "INVALID_JSON", message: "Request body is not valid JSON" },
-                  },
                 },
               },
             },
@@ -394,6 +380,171 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/musics/{musicId}/comments": {
+      get: {
+        tags: ["Comentários"],
+        summary: "Lista os comentários ativos de uma música",
+        description:
+          "Usuários adultos visualizam todos os comentários ativos. Menores de idade ou usuários sem data de nascimento recebem lista vazia.",
+        operationId: "listComments",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          {
+            name: "musicId",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            description: "ID da música",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Lista de comentários da música",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/CommentItem" },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "404": {
+            description: "Usuário autenticado não encontrado",
+            content: {
+              "application/json": { schema: errorResponse("NOT_FOUND", "User not found") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      post: {
+        tags: ["Comentários"],
+        summary: "Cria um comentário para uma música",
+        description:
+          "Permite sincronizar com um segundo específico da faixa ou comentar de forma geral. Menores de idade são impedidos de comentar.",
+        operationId: "createComment",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          {
+            name: "musicId",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            description: "ID da música",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateCommentRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Comentário criado",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/CommentCreated" } },
+            },
+          },
+          "400": {
+            description: "Validação inválida do comentário",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/Error" } },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Usuário menor de idade não pode comentar",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Underage users cannot comment") },
+            },
+          },
+          "404": {
+            description: "Usuário não encontrado",
+            content: {
+              "application/json": { schema: errorResponse("NOT_FOUND", "User not found") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/comments/{commentId}": {
+      delete: {
+        tags: ["Comentários"],
+        summary: "Apaga um comentário próprio (soft delete)",
+        description:
+          "Apenas o autor do comentário pode apagá-lo. Comentários apagados não são listados.",
+        operationId: "deleteComment",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          {
+            name: "commentId",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            description: "ID do comentário",
+          },
+        ],
+        responses: {
+          "204": { description: "Comentário apagado com sucesso" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Tentativa de apagar comentário de outro usuário",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "You can only delete your own comments") },
+            },
+          },
+          "404": {
+            description: "Comentário não encontrado",
+            content: {
+              "application/json": { schema: errorResponse("NOT_FOUND", "Comment not found") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/comments/{commentId}/reports": {
+      post: {
+        tags: ["Comentários"],
+        summary: "Denuncia um comentário",
+        description:
+          "Usuários podem denunciar comentários de terceiros com justificativa de até 280 caracteres. Não é permitido auto-denúncia nem denúncias duplicadas.",
+        operationId: "reportComment",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          {
+            name: "commentId",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            description: "ID do comentário",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ReportCommentRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Denúncia registrada" },
+          "400": { description: "Motivo inválido" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { description: "Menores de idade não podem denunciar" },
+          "404": { description: "Comentário ou usuário não encontrado" },
+          "409": { description: "Auto-denúncia ou denúncia duplicada" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -889,12 +1040,9 @@ export const openApiDocument = {
             content: { "application/json": { schema: { $ref: "#/components/schemas/SearchResults" } } },
           },
           "400": {
-            description: "`q` ausente, vazio ou longo demais, ou `limit` fora de 1 a 50",
+            description: "Termo vazio ou acima de 100 caracteres, limite fora de 1 a 50, ou parâmetros desconhecidos",
             content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/FieldValidationError" },
-                example: { error: "VALIDATION_ERROR", fields: [{ field: "q", message: '"q" is required' }] },
-              },
+              "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } },
             },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
@@ -1284,6 +1432,62 @@ export const openApiDocument = {
             description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
             example: true,
           },
+        },
+      },
+      CreateCommentRequest: {
+        type: "object",
+        required: ["comment"],
+        properties: {
+          comment: {
+            type: "string",
+            minLength: 1,
+            maxLength: Comment.MAX_LENGTH,
+            example: "Esse riff de guitarra aos 45 segundos é sensacional!",
+          },
+          timestamp: {
+            type: ["integer", "null"],
+            minimum: 0,
+            example: 45,
+            description: "Posição em segundos na faixa (opcional).",
+          },
+        },
+      },
+      ReportCommentRequest: {
+        type: "object",
+        required: ["reason"],
+        properties: {
+          reason: {
+            type: "string",
+            minLength: 1,
+            maxLength: 280,
+            example: "Conteúdo ofensivo ou spam.",
+          },
+        },
+      },
+      CommentCreated: {
+        type: "object",
+        required: ["id", "musicId", "userId", "comment", "timestamp", "createdAt"],
+        properties: {
+          id: { type: "integer", example: 101 },
+          musicId: { type: "integer", example: 1 },
+          userId: { type: "integer", example: 5 },
+          comment: { type: "string", example: "Belo arranjo!" },
+          timestamp: { type: ["integer", "null"], example: 45 },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      CommentItem: {
+        type: "object",
+        required: ["id", "musicId", "userId", "authorName", "comment", "timestamp", "createdAt", "isMine"],
+        properties: {
+          id: { type: "integer", example: 101 },
+          musicId: { type: "integer", example: 1 },
+          userId: { type: "integer", example: 5 },
+          authorName: { type: "string", example: "Ana Andrade" },
+          comment: { type: "string", example: "Belo arranjo!" },
+          timestamp: { type: ["integer", "null"], example: 45 },
+          createdAt: { type: "string", format: "date-time" },
+          isMine: { type: "boolean", example: false },
         },
       },
       PlaylistMusicList: {

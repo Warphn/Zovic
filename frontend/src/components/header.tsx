@@ -275,7 +275,7 @@ export default function Header() {
           </div>
 
           {menuMounted && (
-            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses}`}>
+            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses} space-y-4`}>
               {showSearch && <SearchBar className="mb-2" />}
               <nav className="flex flex-col">
                 {isLanding &&
