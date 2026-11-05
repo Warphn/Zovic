@@ -122,10 +122,12 @@ Depois do seed LOCAL, toda conta de teste entra com o email `nome.sobrenome@zovi
 | Conta | Para que serve |
 | --- | --- |
 | `admin@zovic.test`, senha `admin` | Admin padrão, sem plano. Só existe no seed LOCAL. |
-| `elisa.andrade@zovic.test` | Admin com plano |
-| `ana.andrade@zovic.test` | Gestora do plano Família |
-| `bruno.andrade@zovic.test` | Membro do plano Família |
-| `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade |
+| `elisa.andrade@zovic.test` | Admin com plano (Individual Elisa) |
+| `ana.andrade@zovic.test` | Gestora da Família Andrade (plano cheio, 4 pessoas) |
+| `bruno.andrade@zovic.test` | Membro da Família Andrade |
+| `felipe.costa@zovic.test` | Gestor da Família Costa |
+| `gabriela.costa@zovic.test` | Membro da Família Costa |
+| `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade, membros da Família Costa (plano cheio) |
 
 Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três abas:
 
@@ -136,6 +138,16 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
 Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
+
+### Demo do plano Família
+
+1. Cadastre uma conta de maior de idade e, em `/planos`, assine o **Família**. Em `/meu-plano` você é o gestor, com 1 de 4 vagas ocupadas.
+2. Em **Convidar**, informe o email de quem vai entrar. O sistema não envia email: copie o link (`/convite/<token>`) do diálogo. Ele aparece só nessa hora. Se perder, cancele o convite e convide de novo.
+3. Abra o link numa janela anônima. Sem conta, **Criar conta** abre o cadastro com o email do convite já preenchido e sem poder trocá-lo. A conta nasce como membro do plano e abre o catálogo. Quem já tem conta com esse email entra e clica em **Aceitar**.
+4. Para ver a regra dos menores, use uma data de nascimento de menor de 18 anos no cadastro do convite: só assim a conta é criada. Sem convite, o cadastro de um menor é recusado.
+5. De volta ao gestor, **Remover** tira o membro, e o membro pode **Sair do plano**. Nos dois casos o acesso acaba na hora e a vaga volta.
+
+Menor de idade só se cadastra por convite do plano familiar. Quem já tem assinatura ativa não aceita um convite.
 
 ## Documentação
 

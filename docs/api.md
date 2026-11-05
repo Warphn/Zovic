@@ -71,9 +71,44 @@ As rotas de playlists, busca e catálogo também exigem assinatura ativa: sem el
 
 | Rota | O que faz |
 | --- | --- |
-| `POST /api/plans` | Assina o plano individual. Menor de idade recebe 403, e quem já tem assinatura ativa recebe 409. |
+| `POST /api/plans` | Assina um plano. O corpo é opcional: `{ "kind": "individual" }` (o padrão) ou `{ "kind": "family" }`. Quem assina o Família vira o gestor. Menor de idade recebe 403, e quem já tem assinatura ativa recebe 409. |
 | `GET /api/plans/me` | Mostra a assinatura ativa da conta, inclusive como membro de um plano familiar, ou `null` |
 | `DELETE /api/plans/me` | Cancela a assinatura na hora. Só o assinante do individual ou o gestor do familiar (o membro recebe 403). |
+| `GET /api/plans/me/members` | Só o gestor. Devolve os membros, os convites pendentes, o `limit` (4) e as vagas livres (`freeSlots`). |
+| `POST /api/plans/me/invitations` | Só o gestor. Corpo `{ "email" }`. Cria o convite e devolve o `token` do link. |
+| `DELETE /api/plans/me/invitations/:id` | Só o gestor. Cancela um convite pendente: o link deixa de valer e a vaga volta. |
+| `DELETE /api/plans/me/members/:userId` | Só o gestor. Remove um membro. O gestor não remove a si mesmo (409). |
+| `DELETE /api/plans/me/membership` | O membro sai do plano. O gestor recebe 409: ele cancela o plano. |
+| `GET /api/invitations/:token` | **Pública.** Mostra o email, o nome do gestor e a validade do convite, para a tela do link funcionar antes de a pessoa ter conta. |
+| `POST /api/invitations/:token/accept` | A conta logada aceita o convite e vira membro. Devolve a assinatura. |
+
+**Plano familiar.**
+
+- O plano tem até 4 pessoas, contando o gestor. Um convite pendente ocupa uma vaga.
+- Só o gestor convida, cancela convites e remove membros. O membro que tenta recebe 403, e quem não tem assinatura ativa recebe 404. Nenhuma dessas rotas passa pelo `requireSubscription`.
+- O convite vale por 7 dias e é de uso único. Convidar um plano individual, um plano cheio, um email que já é membro ou que já tem convite pendente responde 409.
+- O email do convite é comparado sem diferenciar maiúsculas.
+- **O token aparece só na resposta de criação.** O banco guarda apenas o hash SHA-256, e nem `GET /api/plans/me/members` o devolve. Se o link se perder, o gestor cancela o convite e cria outro.
+- Convite usado, expirado, cancelado, de plano cancelado ou com token inexistente ou malformado dá sempre o mesmo 404 (`Invitation not found`), em `GET /api/invitations/:token` e no aceite.
+- No aceite, só a conta com o email do convite aceita (outra recebe 403), e quem já tem assinatura ativa recebe 409. Menor de idade também aceita.
+- Contas removidas pela plataforma (soft delete) não aparecem na lista de membros nem ocupam vaga.
+- Quem sai ou é removido perde o acesso na próxima requisição e mantém a conta, o histórico e as playlists.
+
+**Cadastro pelo convite.** Quem não tem conta se cadastra em `POST /api/auth/sign-up/email` com o campo extra `invitationToken`, que precisa ser de um convite enviado para o mesmo email do cadastro. A conta já nasce como membro do plano. O campo não é guardado.
+
+- **Menor de idade só se cadastra por convite.** Sem o `invitationToken`, o cadastro responde 403 com `MINOR_NEEDS_INVITATION` e a conta não é criada. A recusa vale só para o cadastro em `/sign-up/email`: as contas criadas pelo admin não passam por ela.
+- Um `invitationToken` que não vale (inexistente, expirado, usado, cancelado, de plano cancelado ou de outro email) responde 400 com `INVALID_INVITATION`, também para maiores de idade.
+- Se o convite for cancelado entre a criação da conta e a entrada no plano, a conta existe, mas sem plano.
+
+Exemplo, com a conta de um gestor que tenha vaga livre (as duas famílias do seed estão cheias):
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
+  -H "Content-Type: application/json" -H "Origin: http://localhost:3000" \
+  -d '{"email":"filho@exemplo.com"}'
+# {"id":12,"email":"filho@exemplo.com","expiresAt":"...","token":"K3o1g8m2..."}
+# o link é http://localhost:3000/convite/<token>
+```
 
 ### Playlists e busca
 
@@ -131,6 +166,7 @@ Remover é sempre soft delete.
 
 - Só quem tem assinatura ativa, própria ou como membro de um plano familiar, acessa o catálogo. A API verifica isso em cada rota, e o front leva a conta sem assinatura para `/planos`. Admins da plataforma não precisam de assinatura.
 - Só maiores de 18 anos assinam. O pagamento é simulado, então a assinatura fica ativa na hora.
-- A API só cria o plano individual. O plano Família aparece como "Em breve" em `/planos`, porque ainda não há planos familiares nem convites. Os planos familiares do seed funcionam: quem é membro acessa o catálogo, e quem gerencia pode cancelar.
+- A API cria os dois planos, Individual e Família (`POST /api/plans`). O Família tem até 4 pessoas e é gerenciado por convites (veja [Planos](#planos)).
 - Cancelar é imediato, em `/meu-plano`. No plano familiar, todos perdem o acesso, mas as contas continuam.
+- Menor de idade só se cadastra por convite do plano familiar.
 - A restrição de conteúdo para menores ainda não existe, porque a API não marca conteúdo explícito.

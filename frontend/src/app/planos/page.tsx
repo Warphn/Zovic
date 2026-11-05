@@ -33,8 +33,9 @@ function PlansContent() {
   const [choosing, setChoosing] = React.useState<PlanType | null>(null)
 
   const confirm = async () => {
+    if (!choosing) return
     try {
-      await subscribe.mutateAsync()
+      await subscribe.mutateAsync(choosing.id)
     } catch {
       return // the dialog shows subscribe.error
     }
@@ -110,11 +111,6 @@ function PlansContent() {
                   >
                     Gerenciar plano
                   </Link>
-                ) : plan.id === "family" ? (
-                  // The API only subscribes to the individual plan until family plans exist (issue #86)
-                  <Button size="lg" className="h-9 w-full text-sm font-semibold" disabled>
-                    Em breve
-                  </Button>
                 ) : (
                   <Button
                     size="lg"

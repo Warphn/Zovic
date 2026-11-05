@@ -1,9 +1,31 @@
 import { DatabaseError, type Pool, type PoolClient } from "pg";
 import { BusinessRuleError, NotFoundError } from "../../domain/errors/domain-error.ts";
-import type { ActiveSubscription, SubscriptionRepository } from "../../domain/ports/subscription-repository.ts";
+import type {
+  AcceptInvitationCommand,
+  ActiveSubscription,
+  InvitationDetails,
+  NewInvitation,
+  PendingInvitation,
+  PlanKind,
+  PlanRoster,
+  SubscriptionRepository,
+} from "../../domain/ports/subscription-repository.ts";
+import {
+  cancelInvitation,
+  createInvitation,
+  findPendingInvitationByTokenHash,
+  findRoster,
+  PLAN_LOCK_NAMESPACE,
+} from "./postgres-plan-invitations.ts";
+import { inTransaction } from "./sql.ts";
 
 const FOREIGN_KEY_VIOLATION = "23503";
 const INDIVIDUAL_TYPE_NAME = "Individual";
+const FAMILY_TYPE_NAME = "Família";
+const TYPE_NAME_BY_KIND: Record<PlanKind, string> = {
+  individual: INDIVIDUAL_TYPE_NAME,
+  family: FAMILY_TYPE_NAME,
+};
 // Primeiro argumento do pg_advisory_xact_lock: separa estes locks de outros usos de advisory lock.
 const SUBSCRIPTION_LOCK_NAMESPACE = 85;
 
@@ -32,7 +54,8 @@ export class PostgresSubscriptionRepository implements SubscriptionRepository {
     return findActive(this.pool, userId);
   }
 
-  async createIndividual(userId: number, startedAt: Date): Promise<ActiveSubscription> {
+  async create(userId: number, kind: PlanKind, startedAt: Date): Promise<ActiveSubscription> {
+    const typeName = TYPE_NAME_BY_KIND[kind];
     const client = await this.pool.connect();
 
     try {
@@ -59,17 +82,17 @@ export class PostgresSubscriptionRepository implements SubscriptionRepository {
            SELECT id, $1, true FROM new_plan
          )
          SELECT id FROM new_plan`,
-        [userId, startedAt, INDIVIDUAL_TYPE_NAME],
+        [userId, startedAt, typeName],
       );
       const created = rows[0];
       if (!created) {
         await assertUserExists(client, userId);
         // Com o usuário existindo, o que falta é o tipo de plano, que vem do seed.
-        throw new Error(`Plan type "${INDIVIDUAL_TYPE_NAME}" not found: run the seed`);
+        throw new Error(`Plan type "${typeName}" not found: run the seed`);
       }
 
       await client.query("COMMIT");
-      return { planId: created.id, kind: "individual", isManager: true, startedAt };
+      return { planId: created.id, kind, isManager: true, startedAt };
     } catch (error) {
       await client.query("ROLLBACK");
       throw translateError(error);
@@ -83,6 +106,67 @@ export class PostgresSubscriptionRepository implements SubscriptionRepository {
       planId,
       canceledAt,
     ]);
+  }
+
+  async findRoster(planId: number, now: Date): Promise<PlanRoster> {
+    return findRoster(this.pool, planId, now);
+  }
+
+  async createInvitation(invitation: NewInvitation): Promise<PendingInvitation> {
+    return createInvitation(this.pool, invitation);
+  }
+
+  async cancelInvitation(planId: number, invitationId: number, now: Date): Promise<boolean> {
+    return cancelInvitation(this.pool, planId, invitationId, now);
+  }
+
+  async findPendingInvitationByTokenHash(tokenHash: string, now: Date): Promise<InvitationDetails | null> {
+    return findPendingInvitationByTokenHash(this.pool, tokenHash, now);
+  }
+
+  async acceptInvitation(command: AcceptInvitationCommand): Promise<ActiveSubscription> {
+    let accepted: ActiveSubscription | null = null;
+
+    await inTransaction(this.pool, async (client) => {
+      // Ordem fixa dos locks (conta, depois plano) para dois aceites cruzados não travarem um ao outro.
+      await client.query("SELECT pg_advisory_xact_lock($1, $2)", [SUBSCRIPTION_LOCK_NAMESPACE, command.userId]);
+      await client.query("SELECT pg_advisory_xact_lock($1, $2)", [PLAN_LOCK_NAMESPACE, command.planId]);
+
+      // Só um aceite consegue marcar o convite: o segundo, já enfileirado no lock, não acha linha.
+      const { rowCount } = await client.query(
+        `UPDATE plan_invitation pi SET accepted_at = $2
+         FROM plan p
+         WHERE pi.id = $1 AND p.id = pi.plan_id AND p.deleted_at IS NULL
+           AND pi.accepted_at IS NULL AND pi.canceled_at IS NULL AND pi.expires_at > $2`,
+        [command.invitationId, command.now],
+      );
+      if (rowCount !== 1) {
+        throw new NotFoundError("Invitation not found");
+      }
+
+      if ((await findActive(client, command.userId)) !== null) {
+        throw new BusinessRuleError("Leave or cancel your current plan before accepting an invitation");
+      }
+
+      await client.query("INSERT INTO plan_user (plan_id, user_id, is_admin) VALUES ($1, $2, false)", [
+        command.planId,
+        command.userId,
+      ]);
+      accepted = await findActive(client, command.userId);
+    });
+
+    if (!accepted) {
+      throw new Error("Could not join the plan");
+    }
+    return accepted;
+  }
+
+  async removeMember(planId: number, userId: number): Promise<boolean> {
+    const { rowCount } = await this.pool.query(
+      "DELETE FROM plan_user WHERE plan_id = $1 AND user_id = $2 AND NOT is_admin",
+      [planId, userId],
+    );
+    return rowCount === 1;
   }
 }
 

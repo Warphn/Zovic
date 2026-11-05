@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261103_163300__Ordena_musicas_da_playlist.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_151000__Adiciona_convites_do_plano.sql`).
 
 ![Diagrama ER do Zovic](assets/modelo-er.png)
 
@@ -13,6 +13,7 @@ erDiagram
     plan_type ||--|{ plan : "classifica"
     plan ||--|{ plan_user : "possui"
     user ||--|{ plan_user : "assina"
+    plan ||--o{ plan_invitation : "convida"
 
     user ||--o{ session : "abre"
     user ||--o{ account : "autentica por"
@@ -62,6 +63,16 @@ erDiagram
         int plan_id PK, FK
         int user_id PK, FK
         boolean is_admin
+    }
+    plan_invitation {
+        serial id PK
+        int plan_id FK
+        varchar email "minúsculo"
+        varchar token_hash UK "SHA-256 em hex"
+        timestamptz expires_at
+        timestamptz accepted_at
+        timestamptz canceled_at
+        timestamptz created_at
     }
     user {
         serial id PK
@@ -223,9 +234,10 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
-| `plan_type` | Os tipos de plano, com preço e limite de pessoas | `price >= 0` e `user_amount > 0` |
+| `plan_type` | Os tipos de plano, com preço e limite de pessoas | `price >= 0` e `user_amount > 0`. O Individual tem limite 1 e o Família, 4. |
 | `plan` | Um plano assinado | Todo plano é de um tipo. A assinatura ativa é um plano sem `deleted_at`. |
-| `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`): o assinante do individual ou o gestor do familiar | Todo plano tem ao menos uma pessoa. Uma conta nova não tem plano até assinar. |
+| `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`): o assinante do individual ou o gestor do familiar | Todo plano tem ao menos uma pessoa. O limite do tipo é conferido pela API, que conta os membros e os convites pendentes. Uma conta nova não tem plano até assinar. Sair ou ser removido apaga a linha. |
+| `plan_invitation` | Os convites do plano familiar: o email convidado, o hash do token e a validade | `email` sempre minúsculo e `token_hash` único. O banco guarda só o hash SHA-256 do token, então não guarda um link utilizável. Um convite está pendente enquanto `accepted_at` e `canceled_at` são nulos e `expires_at` está no futuro, e só vale com o plano ativo (`plan.deleted_at` nulo). Pendente, ele ocupa uma vaga. Apagar o plano apaga os convites. |
 | `user` | Os usuários. É também a tabela de usuário do Better Auth. | `email` é único e sempre minúsculo. `role` é `admin` ou `assinante` (o padrão). O email de uma conta removida continua reservado. |
 | `user_event` | Cadastros, logins, logouts e reproduções (`sign_up`, `login`, `logout`, `music_play` e `music_skip`) | `music_id` só pode ser preenchido em `music_play` e `music_skip`. É a base das estatísticas do painel de admin. |
 | `system_data` | Os totais do sistema: usuários, músicas e playlists | Tem uma linha só: a chave `singleton` só aceita `true`, então um segundo `INSERT` falha. A migration já cria essa linha. |

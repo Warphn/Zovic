@@ -1,0 +1,17 @@
+meta {
+  name: Cancelar o convite
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me/invitations/{{canceledInvitationId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

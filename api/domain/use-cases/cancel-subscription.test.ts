@@ -14,7 +14,7 @@ function setup() {
 describe("CancelSubscription", () => {
   it("o dono cancela o individual na hora, gravando o `now`", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(7, STARTED);
+    await repository.create(7, "individual", STARTED);
 
     await useCase.execute({ userId: 7, now: NOW });
 
@@ -24,7 +24,7 @@ describe("CancelSubscription", () => {
 
   it("sem `now`, usa o instante atual", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(7, STARTED);
+    await repository.create(7, "individual", STARTED);
     const before = Date.now();
 
     await useCase.execute({ userId: 7 });
@@ -67,7 +67,7 @@ describe("CancelSubscription", () => {
 
   it("cancelar de novo dá NotFoundError", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(7, STARTED);
+    await repository.create(7, "individual", STARTED);
     await useCase.execute({ userId: 7, now: NOW });
 
     const error = await useCase.execute({ userId: 7, now: NOW }).catch((e: unknown) => e);
@@ -77,8 +77,8 @@ describe("CancelSubscription", () => {
 
   it("não mexe na assinatura de outra conta", async () => {
     const { repository, useCase } = setup();
-    await repository.createIndividual(1, STARTED);
-    await repository.createIndividual(2, STARTED);
+    await repository.create(1, "individual", STARTED);
+    await repository.create(2, "individual", STARTED);
 
     await useCase.execute({ userId: 1, now: NOW });
 

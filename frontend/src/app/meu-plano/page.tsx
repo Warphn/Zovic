@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import Header from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { FamilyManager } from "@/components/plan/family-manager"
+import { LeavePlan } from "@/components/plan/leave-plan"
 import { Notice } from "@/components/ui/notice"
 import { apiErrorMessage } from "@/lib/api/client"
 import { type Subscription, useCancelSubscription, useSubscription } from "@/lib/api/subscriptions"
@@ -56,12 +58,14 @@ function MyPlan() {
       {subscription && (
         <>
           <PlanSummary subscription={subscription} />
+          {subscription.kind === "family" && subscription.isManager && <FamilyManager />}
           <div className="mt-6 flex flex-wrap gap-2">
             {subscription.isManager && (
               <Button variant="ghost" className="text-destructive" size="lg" onClick={() => setIsConfirming(true)}>
                 Cancelar assinatura
               </Button>
             )}
+            {subscription.kind === "family" && !subscription.isManager && <LeavePlan />}
             <Link href="/planos" className="inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium hover:bg-muted">
               Ver planos
             </Link>

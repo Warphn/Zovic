@@ -27,12 +27,12 @@ interface Account {
 let server: Server;
 let baseUrl: string;
 
-async function signUp(label: string, birthdate = "1995-03-12"): Promise<Account> {
+async function signUp(label: string): Promise<Account> {
   const email = `${label}-${crypto.randomUUID().slice(0, 8)}${EMAIL_DOMAIN}`;
   const res = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: ORIGIN },
-    body: JSON.stringify({ name: `Teste ${label}`, email, password: "uma-senha-longa", birthdate }),
+    body: JSON.stringify({ name: `Teste ${label}`, email, password: "uma-senha-longa", birthdate: "1995-03-12" }),
   });
   const raw = res.headers.getSetCookie().find((cookie) => /session_token=/.test(cookie));
   if (!raw) throw new Error(`Sign-up failed with ${res.status}`);
@@ -63,7 +63,7 @@ async function json<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Plano familiar ativo montado direto no banco (convites ainda não existem). */
+/** Plano familiar ativo montado direto no banco (sem passar pelos convites). */
 async function createFamilyPlan(manager: Account, members: Account[]): Promise<number> {
   const { rows } = await pool.query<{ id: number }>(
     `INSERT INTO plan (name, type_id) SELECT 'Família teste', id FROM plan_type WHERE name = 'Família' RETURNING id`,
@@ -151,8 +151,10 @@ describe("assinatura individual", () => {
   });
 
   it("recusa menor de idade com 403 e não cria assinatura", async () => {
+    // Menor não se cadastra sem convite: a conta nasce adulta e a data muda direto no banco.
     const year = new Date().getFullYear() - 10;
-    const menor = await signUp("menor", `${year}-06-15`);
+    const menor = await signUp("menor");
+    await pool.query('UPDATE "user" SET birthdate = $1 WHERE id = $2', [`${year}-06-15`, menor.id]);
 
     const res = await call("POST", "/plans", menor.cookie);
 

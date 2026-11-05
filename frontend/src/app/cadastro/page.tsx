@@ -4,6 +4,8 @@ import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AuthLink, AuthShell, FormError, FormField, focusFirstInvalid } from "@/components/auth-form"
 import { Button } from "@/components/ui/button"
+import { Notice } from "@/components/ui/notice"
+import { isInvalidInvitation, useInvitation } from "@/lib/api/subscriptions"
 import { authClient, useSession } from "@/lib/auth/client"
 import {
   type FieldErrors,
@@ -15,8 +17,12 @@ import {
 
 function SignUpForm() {
   const router = useRouter()
-  const next = useSearchParams().get("next")
-  const destination = safeRedirectPath(next)
+  const searchParams = useSearchParams()
+  const next = searchParams.get("next")
+  const invitationToken = searchParams.get("convite")
+  // Signing up with an invitation puts the new account in the plan, so it lands on the plan page
+  const destination = invitationToken ? "/meu-plano" : safeRedirectPath(next)
+  const invitation = useInvitation(invitationToken)
   const { data: session } = useSession()
 
   const formRef = React.useRef<HTMLFormElement>(null)
@@ -38,14 +44,15 @@ function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
-    const fieldErrors = validateSignUp(values)
+    const input = { ...values, email }
+    const fieldErrors = validateSignUp(input)
     setErrors(fieldErrors)
     if (Object.keys(fieldErrors).length > 0) {
       focusFirstInvalid(formRef.current)
       return
     }
     setIsSubmitting(true)
-    const { error } = await authClient.signUp.email(values)
+    const { error } = await authClient.signUp.email(input, invitationToken ?? undefined)
     setIsSubmitting(false)
     if (!error) return
     // Errors tied to a field show under that input; anything else goes in the form-level box
@@ -57,7 +64,11 @@ function SignUpForm() {
     }
   }
 
-  const signInHref = next ? `/entrar?next=${encodeURIComponent(next)}` : "/entrar"
+  // The invitation fixes the email: the API only accepts the invited one
+  const email = invitation.data ? invitation.data.email : values.email
+  const canSubmit = !invitationToken || invitation.isSuccess
+  const returnPath = invitationToken ? `/convite/${invitationToken}` : next
+  const signInHref = returnPath ? `/entrar?next=${encodeURIComponent(returnPath)}` : "/entrar"
   // Upper bound for the date picker; computed once per visit
   const [today] = React.useState(() => new Date().toISOString().slice(0, 10))
 
@@ -85,7 +96,8 @@ function SignUpForm() {
           label="Email"
           type="email"
           autoComplete="email"
-          value={values.email}
+          value={email}
+          readOnly={Boolean(invitation.data)}
           onChange={update("email")}
           error={errors.email}
         />
@@ -109,8 +121,20 @@ function SignUpForm() {
           onChange={update("birthdate")}
           error={errors.birthdate}
         />
+        {invitationToken && invitation.isError && (
+          <Notice>
+            {isInvalidInvitation(invitation.error)
+              ? "Este convite é inválido, expirou ou já foi usado. Peça um novo link a quem gerencia o plano."
+              : "Não foi possível verificar o convite. Recarregue a página para tentar de novo."}
+          </Notice>
+        )}
+        {invitation.data && (
+          <Notice tone="info">
+            Você foi convidado por {invitation.data.managerName} para o plano Família. Este cadastro usa o email do convite.
+          </Notice>
+        )}
         <FormError message={formError} />
-        <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full text-sm">
+        <Button type="submit" size="lg" disabled={isSubmitting || !canSubmit} className="h-12 w-full text-sm">
           {isSubmitting ? "Criando conta…" : "Criar conta"}
         </Button>
       </form>

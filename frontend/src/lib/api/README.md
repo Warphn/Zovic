@@ -57,6 +57,17 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 | `search.ts` | `GET /search` |
 | `playlists.ts` | `GET/POST /playlists`, `GET/PATCH/DELETE /playlists/:id` (a API ainda não devolve as músicas da playlist) |
 | `catalog.ts` | `GET /musics`, `GET /artists`, `GET /genres`, `POST /musics/:id/plays` (chamado por `useRecordPlays`, uma vez por audição) |
-| `subscriptions.ts` | `GET /plans/me`, `POST /plans`, `DELETE /plans/me`. O hook `useSubscription` junta a sessão e a assinatura; assinar ou cancelar reinicia todas as consultas, porque a assinatura decide o que a API responde no catálogo |
+| `subscriptions.ts` | `GET /plans/me`, `POST /plans` (com o `kind`: `individual` ou `family`), `DELETE /plans/me`, o plano familiar (`GET /plans/me/members`, `POST /plans/me/invitations`, `DELETE /plans/me/invitations/:id`, `DELETE /plans/me/members/:userId`, `DELETE /plans/me/membership`) e os convites (`GET /invitations/:token`, `POST /invitations/:token/accept`). Veja os hooks abaixo. |
 | `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas e artistas |
 | `lib/auth/client.ts` | `/auth/*` pelo cliente do Better Auth (cadastro, login, logout, sessão) |
+
+### Hooks de `subscriptions.ts`
+
+| Hook | O que faz |
+| --- | --- |
+| `useSubscription` | Junta a sessão e a assinatura: `account`, `subscription`, `isPending` e `isError` |
+| `useSubscribe`, `useCancelSubscription` | Assinar e cancelar. Reiniciam todas as consultas, porque a assinatura decide o que a API responde no catálogo. |
+| `usePlanMembers(enabled)` | Membros, convites pendentes, `limit` e `freeSlots`, só para o gestor. Passe `enabled: false` nos outros planos. |
+| `useInviteToPlan`, `useCancelInvitation`, `useRemoveMember` | Ações do gestor. Só invalidam a lista de membros. `useInviteToPlan` devolve o `token`, que a API não mostra de novo. |
+| `useAcceptInvitation`, `useLeavePlan` | Mudam o acesso de quem está logado, então reiniciam as consultas. Chame com `mutateAsync`: o reinício pode desmontar o componente, e o React Query não roda os callbacks de um componente desmontado. O aceite poupa as consultas de convite, porque o link já usado responderia 404. |
+| `useInvitation(token)` | O convite de um link, público. `isInvalidInvitation(error)` é verdadeiro só para o 404 (inválido, expirado, usado ou cancelado). Uma falha de rede é outra coisa. |

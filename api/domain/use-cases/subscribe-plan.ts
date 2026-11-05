@@ -1,28 +1,29 @@
 import { BusinessRuleError, ForbiddenError } from "../errors/domain-error.ts";
-import type { SubscriptionRepository } from "../ports/subscription-repository.ts";
+import type { PlanKind, SubscriptionRepository } from "../ports/subscription-repository.ts";
 import { calendarDateIn, isAdult } from "../shared/age.ts";
 import { type SubscriptionOutput, toSubscriptionOutput } from "./subscription-output.ts";
 
 /** Mesmo fuso que o projeto usa para decidir a idade (adapters/auth/create-auth.ts). */
 const TIME_ZONE = "America/Sao_Paulo";
 
-export interface SubscribeIndividualPlanInput {
+export interface SubscribePlanInput {
   userId: number;
+  kind: PlanKind;
   birthdate: string | null;
   now?: Date;
 }
 
-export type SubscribeIndividualPlanOutput = SubscriptionOutput;
+export type SubscribePlanOutput = SubscriptionOutput;
 
-export interface SubscribeIndividualPlanUseCase {
-  execute(input: SubscribeIndividualPlanInput): Promise<SubscribeIndividualPlanOutput>;
+export interface SubscribePlanUseCase {
+  execute(input: SubscribePlanInput): Promise<SubscribePlanOutput>;
 }
 
-/** Pagamento simulado: a assinatura fica ativa na hora. Só maiores de idade assinam. */
-export class SubscribeIndividualPlan implements SubscribeIndividualPlanUseCase {
+/** Pagamento simulado: a assinatura fica ativa na hora. Só maiores de idade assinam, no individual ou no familiar. */
+export class SubscribePlan implements SubscribePlanUseCase {
   constructor(private readonly subscriptions: SubscriptionRepository) {}
 
-  async execute(input: SubscribeIndividualPlanInput): Promise<SubscribeIndividualPlanOutput> {
+  async execute(input: SubscribePlanInput): Promise<SubscribePlanOutput> {
     const now = input.now ?? new Date();
 
     // A idade é checada antes de tudo: menor recebe Forbidden mesmo que já tenha assinatura.
@@ -34,7 +35,7 @@ export class SubscribeIndividualPlan implements SubscribeIndividualPlanUseCase {
       throw new BusinessRuleError("Account already has an active subscription");
     }
 
-    const subscription = await this.subscriptions.createIndividual(input.userId, now);
+    const subscription = await this.subscriptions.create(input.userId, input.kind, now);
     return toSubscriptionOutput(subscription);
   }
 }

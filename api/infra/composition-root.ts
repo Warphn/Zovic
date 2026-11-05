@@ -9,9 +9,16 @@ import { PostgresSearchQuery } from "../adapters/db/postgres-search-query.ts";
 import { PostgresSubscriptionRepository } from "../adapters/db/postgres-subscription-repository.ts";
 import type { Auth } from "../adapters/auth/create-auth.ts";
 import { makeSubscriptionController } from "../adapters/http/subscription-controller.ts";
+import { AcceptInvitation } from "../domain/use-cases/accept-invitation.ts";
+import { CancelPlanInvitation } from "../domain/use-cases/cancel-plan-invitation.ts";
+import { GetInvitation } from "../domain/use-cases/get-invitation.ts";
+import { GetPlanMembers } from "../domain/use-cases/get-plan-members.ts";
+import { InviteToPlan } from "../domain/use-cases/invite-to-plan.ts";
+import { LeavePlan } from "../domain/use-cases/leave-plan.ts";
+import { RemovePlanMember } from "../domain/use-cases/remove-plan-member.ts";
 import { CancelSubscription } from "../domain/use-cases/cancel-subscription.ts";
 import { GetMySubscription } from "../domain/use-cases/get-my-subscription.ts";
-import { SubscribeIndividualPlan } from "../domain/use-cases/subscribe-individual-plan.ts";
+import { SubscribePlan } from "../domain/use-cases/subscribe-plan.ts";
 import { makeAdminController, makeCatalogController } from "../adapters/http/admin-controller.ts";
 import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
@@ -64,9 +71,16 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
   const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({
-    subscribeIndividualPlan: new SubscribeIndividualPlan(subscriptionRepository),
+    subscribePlan: new SubscribePlan(subscriptionRepository),
     getMySubscription,
     cancelSubscription: new CancelSubscription(subscriptionRepository),
+    getPlanMembers: new GetPlanMembers(subscriptionRepository),
+    inviteToPlan: new InviteToPlan(subscriptionRepository),
+    cancelPlanInvitation: new CancelPlanInvitation(subscriptionRepository),
+    removePlanMember: new RemovePlanMember(subscriptionRepository),
+    leavePlan: new LeavePlan(subscriptionRepository),
+    getInvitation: new GetInvitation(subscriptionRepository),
+    acceptInvitation: new AcceptInvitation(subscriptionRepository),
   });
 
   const router = makeRouter(

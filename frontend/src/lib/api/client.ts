@@ -37,6 +37,24 @@ const MESSAGES: Record<string, string> = {
   "Only the plan manager can cancel it": "Só quem gerencia o plano pode cancelar a assinatura.",
   "No active subscription": "Você não tem uma assinatura ativa.",
   "Active subscription required": "Para ouvir, você precisa de uma assinatura.",
+  // Family plans and invitations
+  "Only the plan manager can list members": "Só quem gerencia o plano vê os membros.",
+  "Only the plan manager can invite": "Só quem gerencia o plano pode convidar.",
+  "Only the plan manager can cancel invitations": "Só quem gerencia o plano pode cancelar convites.",
+  "Only the plan manager can remove members": "Só quem gerencia o plano pode remover membros.",
+  "This invitation was sent to another email": "Este convite foi enviado para outro email.",
+  "Invitation not found": "Convite inválido, expirado ou já usado.",
+  "Member not found": "Essa pessoa já não está no plano.",
+  "The plan has no free slots": "O plano não tem vagas livres. Remova alguém ou cancele um convite.",
+  "Only family plans accept invitations": "Só o plano Família tem convites.",
+  "This email is already a member of the plan": "Esse email já faz parte do plano.",
+  "This email already has a pending invitation": "Esse email já tem um convite pendente.",
+  "Leave or cancel your current plan before accepting an invitation":
+    "Saia ou cancele o seu plano atual antes de aceitar um convite.",
+  "The manager cannot leave the plan: cancel it instead":
+    "Quem gerencia o plano não pode sair dele. Cancele a assinatura.",
+  "The manager cannot be removed: cancel the plan instead":
+    "Quem gerencia o plano não pode ser removido. Cancele a assinatura.",
 }
 
 /** Message to show for any error thrown by a request (or by anything else). */

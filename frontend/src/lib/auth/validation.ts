@@ -77,3 +77,10 @@ export function safeRedirectPath(next: string | null): string {
   }
   return next
 }
+
+const INVITATION_PATH_PATTERN = /^\/convite\/([A-Za-z0-9_-]+)$/
+
+/** The token of an exact `/convite/<token>` path; null for anything else. */
+export function invitationTokenFromPath(path: string | null): string | null {
+  return path?.match(INVITATION_PATH_PATTERN)?.[1] ?? null
+}

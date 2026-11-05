@@ -115,3 +115,27 @@ A IA conferiu os comandos, os caminhos e as constraints citados contra o código
 | 2 | Decisões da equipe sobre o plano: desativar o plano Família até a #86 e exigir a assinatura também na API. | Middleware [`require-subscription.ts`](../../api/adapters/http/middlewares/require-subscription.ts) nas rotas de playlists, busca e catálogo, e cliente [`subscriptions.ts`](../../frontend/src/lib/api/subscriptions.ts) no lugar do `localStorage` |
 
 A equipe escolheu o escopo e as duas decisões acima antes da implementação.
+
+### 05/11/2026: plano familiar (#86, HU-04 a HU-07)
+
+Forma de trabalho: o Claude Opus fez o plano, preparou a tarefa de cada fase, leu o diff, rodou as verificações e conduziu os testes no navegador. A implementação ficou com subagentes Claude Sonnet, um por fase, em sequência na mesma branch, sem commitar. Cada subagente começou sem contexto e recebeu o plano, as seções do `CLAUDE.md` e os critérios de aceite da fase.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Planejar a #86 a partir da issue e do código da #85: decisões de desenho (token de 32 bytes com só o hash no banco, vagas contando convites pendentes, trava por plano contra convites simultâneos, cadastro pelo convite com `invitationToken`) e as quatro fases | Plano da issue, aprovado pelo Gabriel (responsável pela issue) antes da implementação |
+| 2 | Fase 1, banco e domínio: migração de `plan_invitation` e do limite de 4 no Família, ajuste do seed (Elisa em plano próprio, Gabriela na Família Costa), casos de uso de convidar, cancelar, consultar, aceitar, remover e sair, com testes unitários | [`V261105_151000__Adiciona_convites_do_plano.sql`](../../db/migrations/V261105_151000__Adiciona_convites_do_plano.sql), casos de uso em [`api/domain/use-cases/`](../../api/domain/use-cases/) |
+| 3 | Fase 2, HTTP e cadastro: rotas de plano e de convite, `invitationToken` no cadastro, recusa de menor sem convite, testes de integração, `openapi.ts` e requisições do Bruno | [`subscription-controller.ts`](../../api/adapters/http/subscription-controller.ts), [`create-auth.ts`](../../api/adapters/auth/create-auth.ts) e [`api/bruno/assinaturas/`](../../api/bruno/assinaturas/) |
+| 4 | Fase 3, front: assinar o Família, "Meu plano" do gestor e do membro, tela `/convite/[token]`, cadastro e entrada com convite, mensagens de erro | [`subscriptions.ts`](../../frontend/src/lib/api/subscriptions.ts), [`frontend/src/components/plan/`](../../frontend/src/components/plan/) e [`frontend/src/app/convite/`](../../frontend/src/app/convite/) |
+| 5 | Fase 4, documentação: rotas, tabela `plan_invitation`, demo do README, hooks do cliente da API e este registro | [`docs/api.md`](../api.md), [`docs/modelo-er.md`](../modelo-er.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |
+
+A revisão do Opus e os testes no navegador pegaram quatro erros, que voltaram aos subagentes para correção:
+
+- uma conta removida pela plataforma continuava ocupando vaga no plano;
+- a tela mostrava "convite inválido" logo depois de aceitar, porque a consulta do link, já usado, era refeita e respondia 404;
+- o token do convite se perdia no caminho Entrar, depois Criar conta;
+- um teste de integração novo dependia de uma música do seed LOCAL e quebraria no banco do CI, o que apareceu ao rodar a suíte num banco temporário só com migrações e seed de produção.
+
+No fim, a coleção do Bruno passou 29/29 contra a API real, e o fluxo no navegador passou 34/34 checagens.
+
+A diagramação do `docs/assets/modelo-er.png` não foi refeita: a imagem atual vem do draw.io, e a saída do mermaid ficou menos legível.
+

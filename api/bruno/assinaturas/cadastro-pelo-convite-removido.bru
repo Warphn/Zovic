@@ -1,0 +1,31 @@
+meta {
+  name: Cadastro pelo convite (quem vai ser removido)
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-up/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "name": "Convidado Bruno",
+    "email": "{{removedEmail}}",
+    "password": "senha-do-bruno",
+    "birthdate": "2015-06-15",
+    "invitationToken": "{{removedToken}}"
+  }
+}
+
+tests {
+  test("responde 200 e abre a sessão do convidado, que é menor de idade", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
