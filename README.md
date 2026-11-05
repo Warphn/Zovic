@@ -137,6 +137,8 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
+Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo item **Histórico** do menu da conta. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
+
 Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 
 ### Demo do plano Família

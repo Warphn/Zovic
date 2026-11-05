@@ -139,3 +139,13 @@ No fim, a coleção do Bruno passou 29/29 contra a API real, e o fluxo no navega
 
 A diagramação do `docs/assets/modelo-er.png` não foi refeita: a imagem atual vem do draw.io, e a saída do mermaid ficou menos legível.
 
+### 05/11/2026: histórico de reprodução (#96, HU-24)
+
+Forma de trabalho: a mesma da #86. O Claude Opus fez o plano, preparou a tarefa de cada fase, leu o diff, rodou as verificações, um banco novo como o do CI, a coleção do Bruno e um teste no navegador com Playwright. A implementação ficou com subagentes Claude Sonnet, um por fase (API, front e documentação), em sequência na mesma branch, sem commitar.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Planejar a #96 a partir da issue: lista com cada música uma vez e a última reprodução, música removida pelo admin mantida como indisponível, e o que fica fora (filtro de conteúdo explícito para menores, que depende da coluna da #88, e a aba "Já ouvidas" da #91) | Plano da issue, aprovado pelo Gabriel (responsável pela issue) antes da implementação |
+| 2 | Fase 1, API: porta e caso de uso do histórico, consulta no Postgres, rota `GET /api/history`, testes unitários e de integração, `openapi.ts` e requisições do Bruno | [`list-my-history.ts`](../../api/domain/use-cases/list-my-history.ts), [`postgres-play-history.ts`](../../api/adapters/db/postgres-play-history.ts) e [`api/bruno/historico/`](../../api/bruno/historico/) |
+| 3 | Fase 2, front: página `/historico`, item "Histórico" no menu do usuário, estado vazio, música indisponível sem botão de tocar e lista atualizada a cada reprodução registrada | [`frontend/src/app/historico/`](../../frontend/src/app/historico/), [`history.ts`](../../frontend/src/lib/api/history.ts) e [`header.tsx`](../../frontend/src/components/header.tsx) |
+| 4 | Fase 3, documentação: tabela de rotas, demo do README, cliente da API no front e este registro | [`docs/api.md`](../api.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |

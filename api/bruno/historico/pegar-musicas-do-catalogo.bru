@@ -1,0 +1,24 @@
+meta {
+  name: Pegar músicas do catálogo
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/musics
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const [a, b] = res.getBody();
+  bru.setVar("musicA", a.id);
+  bru.setVar("musicB", b.id);
+}
+
+tests {
+  test("responde 200 com pelo menos duas músicas", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.be.at.least(2);
+  });
+}

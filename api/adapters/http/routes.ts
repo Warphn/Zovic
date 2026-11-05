@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { RequestHandler } from "express";
 import type { AdminController, CatalogController } from "./admin-controller.ts";
 import type { CommentController } from "./comment-controller.ts";
+import type { HistoryController } from "./history-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
 import type { SubscriptionController } from "./subscription-controller.ts";
@@ -30,10 +31,11 @@ export interface Controllers {
   admin: AdminController;
   comments: CommentController;
   subscriptions: SubscriptionController;
+  history: HistoryController;
 }
 
 export function makeRouter(
-  { playlists, search, catalog, admin, comments, subscriptions }: Controllers,
+  { playlists, search, catalog, admin, comments, subscriptions, history }: Controllers,
   authenticate: RequestHandler,
   requireSubscription: RequestHandler,
 ): Router {
@@ -88,6 +90,8 @@ export function makeRouter(
     validateParams(playlistMusicParamsSchema),
     playlists.removeMusic,
   );
+
+  router.get("/history", subscriberOnly, history.list);
 
   router.get("/search", subscriberOnly, validateQuery(searchQuerySchema), search.search);
 

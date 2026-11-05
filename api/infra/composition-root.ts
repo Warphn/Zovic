@@ -4,6 +4,7 @@ import { PostgresArtistRepository } from "../adapters/db/postgres-artist-reposit
 import { PostgresCommentRepository } from "../adapters/db/postgres-comment-repository.ts";
 import { PostgresGenreRepository } from "../adapters/db/postgres-genre-repository.ts";
 import { PostgresMusicRepository } from "../adapters/db/postgres-music-repository.ts";
+import { PostgresPlayHistory } from "../adapters/db/postgres-play-history.ts";
 import { PostgresPlaylistMusics } from "../adapters/db/postgres-playlist-musics.ts";
 import { PostgresPlaylistRepository } from "../adapters/db/postgres-playlist-repository.ts";
 import { PostgresSearchQuery } from "../adapters/db/postgres-search-query.ts";
@@ -26,6 +27,7 @@ import { makeCommentController } from "../adapters/http/comment-controller.ts";
 import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
 import { makeRequireSubscription } from "../adapters/http/middlewares/require-subscription.ts";
+import { makeHistoryController } from "../adapters/http/history-controller.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
@@ -36,6 +38,7 @@ import { DeleteComment } from "../domain/use-cases/delete-comment.ts";
 import { DeletePlaylist } from "../domain/use-cases/delete-playlist.ts";
 import { GetPlaylist } from "../domain/use-cases/get-playlist.ts";
 import { ListMusicComments } from "../domain/use-cases/list-music-comments.ts";
+import { ListMyHistory } from "../domain/use-cases/list-my-history.ts";
 import { ListMyPlaylists } from "../domain/use-cases/list-my-playlists.ts";
 import { ListPlaylistMusics } from "../domain/use-cases/list-playlist-musics.ts";
 import { ManageCatalog } from "../domain/use-cases/manage-catalog.ts";
@@ -98,6 +101,8 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
     acceptInvitation: new AcceptInvitation(subscriptionRepository),
   });
 
+  const historyController = makeHistoryController({ listMyHistory: new ListMyHistory(new PostgresPlayHistory(db)) });
+
   const router = makeRouter(
     {
       playlists: playlistController,
@@ -106,6 +111,7 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
       admin: adminController,
       comments: commentController,
       subscriptions: subscriptionController,
+      history: historyController,
     },
     makeAuthenticate(auth),
     makeRequireSubscription(getMySubscription),

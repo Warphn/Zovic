@@ -8,7 +8,7 @@ import { useSubscription } from "@/lib/api/subscriptions";
 import { planType } from "@/lib/subscription/rules";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, QueueIcon, ShieldIcon, UserIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search/search-bar";
 
 const NAV_LINKS = [
@@ -90,6 +90,8 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
   // --primary: on a playlist page --primary follows the playlist accent, and the admin cue should
   // look the same everywhere.
   const isAdmin = session.user.role === "admin";
+  // The history is part of the catalog, which is only open to subscribers and platform admins
+  const canUseHistory = Boolean(subscription) || isAdmin;
   const adminDot = <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--color-red)]" />;
 
   return (
@@ -135,6 +137,18 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 >
                   <ShieldIcon size={16} className="text-muted-foreground" />
                   Painel de admin
+                </Menu.Item>
+              )}
+              {canUseHistory && (
+                <Menu.Item
+                  onClick={() => {
+                    onNavigate?.();
+                    router.push("/historico");
+                  }}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
+                >
+                  <QueueIcon size={16} className="text-muted-foreground" />
+                  Histórico
                 </Menu.Item>
               )}
               <Menu.Item
