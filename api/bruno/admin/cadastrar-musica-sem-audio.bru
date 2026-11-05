@@ -1,0 +1,26 @@
+meta {
+  name: Cadastrar música sem áudio
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/admin/musics
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:multipart-form {
+  data: {"name": "Faixa muda", "duration": 200, "artistIds": [{{artistId}}]}
+}
+
+tests {
+  test("responde 400 e não cria a música", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("Music must have an audio file");
+  });
+}

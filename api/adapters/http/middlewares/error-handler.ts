@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { MulterError } from "multer";
 import {
   BusinessRuleError,
   DomainError,
@@ -10,6 +11,16 @@ import {
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof DomainError) {
     res.status(statusFor(err)).json({ error: err.code, message: err.message });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    // Acima do teto, o multer corta o upload: é o único erro que não é culpa do formato.
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "AUDIO_TOO_LARGE", message: "Audio file must be at most 20 MB" });
+    } else {
+      res.status(400).json({ error: "INVALID_UPLOAD", message: err.message });
+    }
     return;
   }
 

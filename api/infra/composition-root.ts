@@ -50,11 +50,18 @@ import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musi
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
 import { UpdatePlaylist } from "../domain/use-cases/update-playlist.ts";
+import type { AudioStorage } from "../domain/ports/audio-storage.ts";
 import type { Pool } from "pg";
 import { pool } from "./db/pool.ts";
 import { config } from "./config.ts";
 
-export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: string[] = [], db: Pool = pool) {
+export function composeApp(
+  auth: Auth,
+  trustProxy: number | null,
+  corsOrigins: string[] = [],
+  db: Pool = pool,
+  audioStorage: AudioStorage = new LocalAudioStorage(config.audioDir),
+) {
   const playlistRepository = new PostgresPlaylistRepository(db);
   const playlistMusics = new PostgresPlaylistMusics(db);
   const playlistController = makePlaylistController({
@@ -78,7 +85,7 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
     new PostgresArtistRepository(db),
     new PostgresGenreRepository(db),
     new PostgresAlbumRepository(db),
-    new LocalAudioStorage(config.audioDir),
+    audioStorage,
   );
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);

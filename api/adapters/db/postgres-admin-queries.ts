@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type {
   AdminQueries,
+  AlbumListItem,
   AdminUserItem,
   CatalogQueries,
   MusicListItem,
@@ -23,6 +24,9 @@ interface MusicRow {
   plays: string;
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
+  album: { id: number; name: string; year: number | null } | null;
+  is_explicit: boolean;
+  has_audio: boolean;
   created_at: Date;
   deleted_at: Date | null;
 }
@@ -32,7 +36,11 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
 
   async listMusics({ search, includeDeleted }: { search?: string; includeDeleted: boolean }): Promise<MusicListItem[]> {
     const { rows } = await this.pool.query<MusicRow>(
-      `SELECT m.id, m.name, m.duration, m.streams, m.created_at, m.deleted_at,
+      `SELECT m.id, m.name, m.duration, m.streams, m.is_explicit, m.audio_file IS NOT NULL AS has_audio,
+         m.created_at, m.deleted_at,
+         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year)
+            FROM album_music amu JOIN album al ON al.id = amu.album_id
+            WHERE amu.music_id = m.id AND al.deleted_at IS NULL ORDER BY al.id LIMIT 1) AS album,
          (SELECT count(*) FROM user_event e WHERE e.music_id = m.id AND e.event_type = 'music_play') AS plays,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
             FROM artist_music am JOIN artist a ON a.id = am.artist_id WHERE am.music_id = m.id), '[]') AS artists,
@@ -54,6 +62,9 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
       plays: Number(row.plays),
       artists: row.artists,
       genres: row.genres,
+      album: row.album,
+      isExplicit: row.is_explicit,
+      hasAudio: row.has_audio,
       createdAt: row.created_at.toISOString(),
       deletedAt: iso(row.deleted_at),
     }));
@@ -62,6 +73,18 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
   async listArtists(): Promise<{ id: number; name: string }[]> {
     const { rows } = await this.pool.query<{ id: number; name: string }>(
       "SELECT id, name FROM artist WHERE deleted_at IS NULL ORDER BY name, id",
+    );
+    return rows;
+  }
+
+  async listAlbums(): Promise<AlbumListItem[]> {
+    const { rows } = await this.pool.query<AlbumListItem>(
+      `SELECT al.id, al.name, al.year,
+         COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
+            FROM album_artist aa JOIN artist a ON a.id = aa.artist_id WHERE aa.album_id = al.id), '[]') AS artists
+       FROM album al
+       WHERE al.deleted_at IS NULL
+       ORDER BY al.name, al.id`,
     );
     return rows;
   }

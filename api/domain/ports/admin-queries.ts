@@ -13,15 +13,29 @@ export interface MusicListItem {
   plays: number;
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
+  /** O álbum ativo da música, ou null se ela não está em nenhum. */
+  album: { id: number; name: string; year: number | null } | null;
+  isExplicit: boolean;
+  /** As músicas anteriores ao upload não têm arquivo de áudio. */
+  hasAudio: boolean;
   createdAt: string;
   /** Preenchido só nas removidas, que só admins enxergam. */
   deletedAt: string | null;
+}
+
+export interface AlbumListItem {
+  id: number;
+  name: string;
+  year: number | null;
+  artists: { id: number; name: string }[];
 }
 
 export interface CatalogQueries {
   /** Ativas, por nome; com includeDeleted, também as removidas (só para admins). */
   listMusics(options: { search?: string; includeDeleted: boolean }): Promise<MusicListItem[]>;
   listArtists(): Promise<{ id: number; name: string }[]>;
+  /** Álbuns ativos, por nome. */
+  listAlbums(): Promise<AlbumListItem[]>;
   listGenres(): Promise<{ id: number; name: string; color: string }[]>;
 }
 

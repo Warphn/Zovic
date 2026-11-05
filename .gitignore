@@ -13,6 +13,8 @@ fma_full/
 *.wav
 *.ogg
 *.m4a
+# MP3 mínimo usado pelas requisições de cadastro de música do Bruno
+!api/bruno/fixtures/*.mp3
 
 # ── Python / FastAPI ───────────────────────────────────────────────
 __pycache__/

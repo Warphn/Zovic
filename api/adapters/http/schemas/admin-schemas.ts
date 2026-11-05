@@ -1,9 +1,12 @@
 import Joi from "joi";
+import { Album } from "../../../domain/entities/album.ts";
 import { Artist } from "../../../domain/entities/artist.ts";
 import { Music } from "../../../domain/entities/music.ts";
 import { birthdateSchema, EMAIL_MAX_LENGTH, NAME_MAX_LENGTH } from "../../auth/create-auth.ts";
 
 const ids = Joi.array().items(Joi.number().integer().positive());
+/** null tira a música do álbum. */
+const albumId = Joi.number().integer().positive().allow(null);
 
 export const createUserSchema = Joi.object({
   name: Joi.string().trim().min(1).max(NAME_MAX_LENGTH).required(),
@@ -20,6 +23,8 @@ export const createMusicSchema = Joi.object({
   duration: Joi.number().integer().positive().required(),
   artistIds: ids.min(1).required(),
   genreIds: ids.default([]),
+  albumId: albumId.default(null),
+  isExplicit: Joi.boolean().default(false),
 });
 
 export const updateMusicSchema = Joi.object({
@@ -27,6 +32,23 @@ export const updateMusicSchema = Joi.object({
   duration: Joi.number().integer().positive(),
   artistIds: ids.min(1),
   genreIds: ids,
+  albumId,
+  isExplicit: Joi.boolean(),
+}).min(1);
+
+// O limite superior do ano (o ano atual) fica no domínio, que conhece a data.
+const albumYear = Joi.number().integer().min(Album.MIN_YEAR);
+
+export const createAlbumSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(Album.MAX_NAME_LENGTH).required(),
+  artistIds: ids.min(1).required(),
+  year: albumYear.required(),
+});
+
+export const updateAlbumSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(Album.MAX_NAME_LENGTH),
+  artistIds: ids.min(1),
+  year: albumYear,
 }).min(1);
 
 export const artistSchema = Joi.object({

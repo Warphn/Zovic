@@ -21,6 +21,7 @@ function searchParam(req: Request): string | undefined {
 export interface CatalogController {
   listMusics: RequestHandler;
   listArtists: RequestHandler;
+  listAlbums: RequestHandler;
   listGenres: RequestHandler;
   recordPlay: RequestHandler;
 }
@@ -33,6 +34,9 @@ export function makeCatalogController(queries: CatalogQueries, plays: PlayLog): 
     },
     listArtists: async (_req, res) => {
       res.json(await queries.listArtists());
+    },
+    listAlbums: async (_req, res) => {
+      res.json(await queries.listAlbums());
     },
     listGenres: async (_req, res) => {
       res.json(await queries.listGenres());
@@ -53,6 +57,9 @@ export interface AdminController {
   createMusic: RequestHandler;
   updateMusic: RequestHandler;
   removeMusic: RequestHandler;
+  createAlbum: RequestHandler;
+  updateAlbum: RequestHandler;
+  removeAlbum: RequestHandler;
   createArtist: RequestHandler;
   renameArtist: RequestHandler;
   removeArtist: RequestHandler;
@@ -79,14 +86,24 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
       res.json(plays);
     },
     createMusic: async (req, res) => {
-      // Provisório: o multipart com o áudio entra na Tarefa 6 do plano.
-      res.status(201).json(await catalog.createMusic(req.body, null));
+      // O receiveAudio deixa o arquivo da parte "audio" em req.file; sem ela, o domínio recusa.
+      res.status(201).json(await catalog.createMusic(req.body, req.file?.buffer ?? null));
     },
     updateMusic: async (req, res) => {
       res.json(await catalog.updateMusic(idParam(req), req.body));
     },
     removeMusic: async (req, res) => {
       await catalog.deleteMusic(idParam(req));
+      res.sendStatus(204);
+    },
+    createAlbum: async (req, res) => {
+      res.status(201).json(await catalog.createAlbum(req.body));
+    },
+    updateAlbum: async (req, res) => {
+      res.json(await catalog.updateAlbum(idParam(req), req.body));
+    },
+    removeAlbum: async (req, res) => {
+      await catalog.deleteAlbum(idParam(req));
       res.sendStatus(204);
     },
     createArtist: async (req, res) => {
