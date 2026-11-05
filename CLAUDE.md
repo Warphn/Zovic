@@ -149,7 +149,7 @@ Ao commitar uma task, atualize no mesmo PR a documentação que ela muda. A doc 
 
 | Se a task muda… | Atualize |
 | --- | --- |
-| Uma rota da API (nova, removida, ou com outro corpo, resposta ou erro) | `api/adapters/http/openapi.ts` e a requisição correspondente em `api/bruno/` |
+| Uma rota da API (nova, removida, ou com outro corpo, resposta ou erro) | `api/adapters/http/openapi.ts`, a requisição correspondente em `api/bruno/` e a tabela de rotas em `docs/api.md` |
 | O banco (migração nova em `db/migrations`) | `docs/banco-de-dados.md`, `docs/modelo-er.md` e a imagem `docs/assets/modelo-er.png` |
 | Uma entidade do domínio | `docs/models.md` |
 | Como subir, configurar ou rodar o projeto (variável de ambiente, script, Docker) | `README.md` e `docs/docker.md` |

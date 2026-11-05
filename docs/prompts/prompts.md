@@ -97,3 +97,12 @@ A equipe revisou o desenho da busca antes da implementação e fez os merges dos
 | 7 | Atualize as documentações e o README para a equipe ter onde recorrer em caso de dúvidas. | [`docs/servidor.md`](../servidor.md) e os links no [`README.md`](../../README.md), em [`docs/docker.md`](../docker.md) e em [`docs/banco-de-dados.md`](../banco-de-dados.md) |
 
 A configuração da Cloudflare (domínio, túnel, rotas, Access e redirecionamento do `www`) foi feita no painel, com a IA guiando cada tela. Cada mudança de código foi testada num ambiente descartável do Docker antes do PR, e o servidor foi conferido de fora: a API, o site e o banco atrás do Access. A equipe escolheu servir o front pelo desktop, e não pela Vercel, para front e API ficarem sempre na mesma versão.
+
+### 04/11/2026: reorganização da documentação
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Sinto que as documentações do projeto estão muito verbosas e confusas. Gostaria de algo mais direto, mas explicativo, para a equipe, com os comandos que devemos rodar para tudo funcionar e o que cada um faz. | [`README.md`](../../README.md) reescrito como guia de comandos e [`docs/api.md`](../api.md) com o login, as variáveis e as rotas que estavam no README |
+| 2 | Veja se dá para melhorar as outras documentações também. | Resumo dos comandos em [`docs/banco-de-dados.md`](../banco-de-dados.md), tipos reais e a coluna `role` no [`docs/modelo-er.md`](../modelo-er.md), as portas de consulta em [`docs/models.md`](../models.md), o environment `prod` do Bruno em [`docs/servidor.md`](../servidor.md) e o índice em [`docs/README.md`](../README.md) |
+
+A IA conferiu os comandos, os caminhos e as constraints citados contra o código e as migrations antes de escrever.
