@@ -15,6 +15,7 @@ import { formatDuration } from "@/lib/format-duration"
 import { cn } from "@/lib/utils"
 import { AlbumsSection } from "./albums-section"
 import { ArtistsSection } from "./artists-section"
+import { AudioFileInput } from "./audio-file-input"
 import { ConfirmDialog } from "./confirm-dialog"
 import { NewArtistField, NewGenreField } from "./new-catalog-item"
 import { Picker } from "./picker"
@@ -274,8 +275,8 @@ function MusicForm({
       </Field>
       {!music && (
         <Field label="Arquivo de áudio (MP3, até 20 MB)" id="music-audio">
-          <Input id="music-audio" type="file" required accept="audio/mpeg,.mp3" onChange={(e) => chooseAudio(e.target.files?.[0] ?? null)} />
-          <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+          <AudioFileInput id="music-audio" file={audio} onChange={chooseAudio} describedBy="music-audio-status" />
+          <p id="music-audio-status" className="mt-1 text-xs text-muted-foreground" aria-live="polite">
             {isReadingAudio
               ? "Lendo a duração do arquivo…"
               : audioDuration !== null
