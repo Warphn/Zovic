@@ -104,10 +104,10 @@ Os seeders `ALL` e `PROD` comparam pelo nome e **nunca apagam**: um item tirado 
 
 | Grupo | Ambiente | Conteúdo |
 | --- | --- | --- |
-| Tipos de plano | `ALL` | Os tipos do produto, com preço e limite de pessoas (`plan-types.ts`) |
+| Tipos de plano | `ALL` | Os tipos do produto, com preço e limite de pessoas: Individual com 1 e Família com 4 (`plan-types.ts`) |
 | Gêneros | `ALL` | Os gêneros do produto, com cor (`genres.ts`) |
 | Usuários | `LOCAL` | Usuários fictícios, alguns removidos. Todos entram com `nome.sobrenome@zovic.test` e a senha `zovic123`. |
-| Planos | `LOCAL` | Todo usuário em ao menos um plano, e todo plano com titular e dentro do limite do tipo |
+| Planos | `LOCAL` | Todo usuário em ao menos um plano, e todo plano com titular e dentro do limite do tipo (4 pessoas no Família, 1 no Individual) |
 | Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações e um álbum em parceria (`catalog-data.ts`) |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
 | Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos. `musics.rating` recebe a média das avaliações ativas. |
