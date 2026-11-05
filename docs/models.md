@@ -221,6 +221,19 @@ Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 | `replaceLinks(client, link, ownerId, ids)` | Apaga os vínculos do dono numa tabela associativa e insere os novos. |
 | `translateConstraintError(error, map)` | Troca o erro do Postgres pelo erro de domínio mapeado para a constraint violada. |
 
+## Armazenamento de áudio
+
+A porta `AudioStorage` (`api/domain/ports/audio-storage.ts`) guarda os MP3 das músicas. O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile`.
+
+| Função | O que faz |
+| --- | --- |
+| `save(bytes)` | Grava o arquivo e devolve o nome com que ele foi guardado. |
+| `remove(fileName)` | Apaga o arquivo. Um nome que não existe não é erro. |
+
+A implementação, `LocalAudioStorage` (`api/adapters/storage/local-audio-storage.ts`), grava em `AUDIO_DIR` com o nome `<uuid>.mp3` e descarta o nome enviado pelo admin. A regra do arquivo (MP3, até 20 MB) fica em `api/domain/shared/audio.ts`: `validateAudio(bytes)` confere os primeiros bytes, sem confiar na extensão.
+
+No `ManageCatalog.createMusic`, o arquivo só vai para o disco depois de conferidos os artistas, os gêneros, o álbum e o áudio. Se a música não chegar a ser salva, o arquivo é apagado.
+
 ## Portas de consulta
 
 Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entidades. Quem decide se o usuário pode ver ou editar algo é o caso de uso, antes de chamar a porta.

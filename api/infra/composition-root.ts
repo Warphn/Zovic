@@ -1,5 +1,6 @@
 import { BetterAuthUserAccounts } from "../adapters/auth/better-auth-user-accounts.ts";
 import { PostgresAdminQueries, PostgresCatalogQueries } from "../adapters/db/postgres-admin-queries.ts";
+import { PostgresAlbumRepository } from "../adapters/db/postgres-album-repository.ts";
 import { PostgresArtistRepository } from "../adapters/db/postgres-artist-repository.ts";
 import { PostgresCommentRepository } from "../adapters/db/postgres-comment-repository.ts";
 import { PostgresGenreRepository } from "../adapters/db/postgres-genre-repository.ts";
@@ -31,6 +32,7 @@ import { makeHistoryController } from "../adapters/http/history-controller.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
+import { LocalAudioStorage } from "../adapters/storage/local-audio-storage.ts";
 import { AddMusicToPlaylist } from "../domain/use-cases/add-music-to-playlist.ts";
 import { CreateComment } from "../domain/use-cases/create-comment.ts";
 import { CreatePlaylist } from "../domain/use-cases/create-playlist.ts";
@@ -50,6 +52,7 @@ import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
 import { UpdatePlaylist } from "../domain/use-cases/update-playlist.ts";
 import type { Pool } from "pg";
 import { pool } from "./db/pool.ts";
+import { config } from "./config.ts";
 
 export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: string[] = [], db: Pool = pool) {
   const playlistRepository = new PostgresPlaylistRepository(db);
@@ -74,6 +77,8 @@ export function composeApp(auth: Auth, trustProxy: number | null, corsOrigins: s
     new PostgresMusicRepository(db),
     new PostgresArtistRepository(db),
     new PostgresGenreRepository(db),
+    new PostgresAlbumRepository(db),
+    new LocalAudioStorage(config.audioDir),
   );
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);

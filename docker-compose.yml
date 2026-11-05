@@ -52,6 +52,9 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       # vazio desliga; no servidor, 1 (o cloudflared é o proxy à frente da API)
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # arquivos de áudio das músicas, no volume abaixo (fora do Docker: api/storage/audio)
+      AUDIO_DIR: /data/audio
+    volumes: [audio:/data/audio]
     # só esta máquina alcança a porta; de fora, a API chega pelo túnel
     ports: ["127.0.0.1:3333:3333"]
     networks: [default, tunnel]
@@ -109,3 +112,4 @@ networks:
 
 volumes:
   pgdata:
+  audio:

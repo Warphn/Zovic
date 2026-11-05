@@ -54,6 +54,8 @@ Para pular as perguntas, passe as respostas como argumentos: `bun start backend`
 
 Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
 
+**Arquivos de áudio.** Os MP3 enviados pelo painel de admin ficam em `AUDIO_DIR`. Com `bun dev`, o padrão é `api/storage/audio/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam no volume `audio`, em `/data/audio`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esse volume junto com o banco.
+
 ## Comandos
 
 ### Na raiz

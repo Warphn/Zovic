@@ -24,6 +24,8 @@ Para subir o ambiente, use o `bun start` (veja o [README](../README.md#dia-a-dia
 
 Cada profile acrescenta uma camada à anterior. O `--build` refaz as imagens, para a API e o front no Docker ficarem com o código atual. O `bun stop` roda `docker compose --profile full --profile prod down`, que para os serviços de todos os profiles.
 
+Dois volumes guardam dados entre uma subida e outra: `pgdata`, com o banco, e `audio`, com os MP3 enviados pelo painel de admin (montado em `/data/audio` no serviço `api`, que recebe `AUDIO_DIR=/data/audio`). O `docker compose down -v` apaga os dois.
+
 Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
 
 ## Produção

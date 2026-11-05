@@ -79,7 +79,8 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
       res.json(plays);
     },
     createMusic: async (req, res) => {
-      res.status(201).json(await catalog.createMusic(req.body));
+      // Provisório: o multipart com o áudio entra na Tarefa 6 do plano.
+      res.status(201).json(await catalog.createMusic(req.body, null));
     },
     updateMusic: async (req, res) => {
       res.json(await catalog.updateMusic(idParam(req), req.body));

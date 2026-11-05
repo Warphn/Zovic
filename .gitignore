@@ -35,6 +35,8 @@ build/
 dist/
 .turbo/
 api/generated/
+# Áudios enviados pelo painel quando a API roda fora do Docker (AUDIO_DIR padrão)
+api/storage/
 *.tsbuildinfo
 npm-debug.log*
 yarn-error.log*
