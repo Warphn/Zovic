@@ -2,6 +2,7 @@ import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { adminKeys } from "@/lib/api/admin"
 import { catalogApi, useCatalogMusics } from "@/lib/api/catalog"
+import { historyKeys } from "@/lib/api/history"
 import { musicToTrack, type PlaylistData, type Track } from "./playlist-store"
 
 // What is playing right now, shared by every page (playlist page, search, player).
@@ -159,8 +160,13 @@ export function useRecordPlays() {
     if (next.musicId === null) return
     catalogApi
       .recordPlay(next.musicId)
-      // The panel's stats and per-user plays now have one more
-      .then(() => queryClient.invalidateQueries({ queryKey: adminKeys.all }))
+      // The panel's stats, per-user plays and the account's history now have one more
+      .then(() =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: adminKeys.all }),
+          queryClient.invalidateQueries({ queryKey: historyKeys.all }),
+        ])
+      )
       // A play that could not be counted must not get in the way of listening
       .catch(() => {})
   }, [trackId, isPlaying, queryClient])
