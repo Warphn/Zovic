@@ -111,22 +111,24 @@ model SystemData {
 }
 
 model Music {
-  id        Int             @id @default(autoincrement())
-  name      String          @db.VarChar(255)
-  duration  Int
-  lyricsId  Int?            @map("lyrics_id")
-  streams   Int             @default(0)
-  rating    Float?
-  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
-  albums    AlbumMusic[]
-  artists   ArtistMusic[]
-  comments  Comment[]
-  genres    GenreMusic[]
-  playlists MusicPlaylist[]
-  savedBy   MusicUser[]
-  ratings   Rating[]
-  events    UserEvent[]
+  id         Int             @id @default(autoincrement())
+  name       String          @db.VarChar(255)
+  duration   Int
+  lyricsId   Int?            @map("lyrics_id")
+  streams    Int             @default(0)
+  rating     Float?
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt  DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  audioFile  String?         @map("audio_file") @db.VarChar(255)
+  isExplicit Boolean         @default(false) @map("is_explicit")
+  albums     AlbumMusic[]
+  artists    ArtistMusic[]
+  comments   Comment[]
+  genres     GenreMusic[]
+  playlists  MusicPlaylist[]
+  savedBy    MusicUser[]
+  ratings    Rating[]
+  events     UserEvent[]
 
   @@map("musics")
 }
@@ -159,6 +161,7 @@ model Album {
   name      String        @db.VarChar(255)
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  year      Int?          @db.SmallInt
   artists   AlbumArtist[]
   genres    AlbumGenre[]
   musics    AlbumMusic[]

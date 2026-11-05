@@ -18,6 +18,8 @@ export interface Release {
 
 export interface Album extends Release {
   name: string;
+  /** Ano de lançamento, de 1900 até o ano atual (Album.MIN_YEAR). */
+  year: number;
   tracks: readonly Track[];
 }
 
@@ -39,6 +41,7 @@ export const ARTISTS = [
 export const ALBUMS: readonly Album[] = [
   {
     name: "Ondas de Concreto",
+    year: 2018,
     artists: ["Maré Alta"],
     genres: ["Rock"],
     tracks: [
@@ -51,6 +54,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Varanda",
+    year: 2015,
     artists: ["Lia Moraes"],
     genres: ["MPB"],
     tracks: [
@@ -63,6 +67,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Estrada de Terra",
+    year: 2009,
     artists: ["Trio Cerrado"],
     genres: ["Sertanejo"],
     tracks: [
@@ -75,6 +80,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Frequência Noturna",
+    year: 2021,
     artists: ["DJ Ponto Zero"],
     genres: ["Eletrônica"],
     tracks: [
@@ -87,6 +93,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Concreto e Verso",
+    year: 2017,
     artists: ["Rua Dezesseis"],
     genres: ["Hip-Hop"],
     tracks: [
@@ -99,6 +106,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Cartas ao Vento",
+    year: 2012,
     artists: ["Clara Vento"],
     genres: ["Pop"],
     tracks: [
@@ -111,6 +119,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Bossa de Domingo",
+    year: 1998,
     artists: ["Quarteto Bossa Leve"],
     genres: ["Jazz", "MPB"],
     tracks: [
@@ -123,6 +132,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Baile do Faísca",
+    year: 2022,
     artists: ["MC Faísca"],
     genres: ["Funk"],
     tracks: [
@@ -135,6 +145,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Luz de Garagem",
+    year: 2019,
     artists: ["Os Vagalumes"],
     genres: ["Rock"],
     tracks: [
@@ -147,6 +158,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Solstício",
+    year: 2024,
     artists: ["Nina Sol"],
     genres: ["Pop", "Eletrônica"],
     tracks: [
@@ -159,6 +171,7 @@ export const ALBUMS: readonly Album[] = [
   },
   {
     name: "Quintal do Samba",
+    year: 2005,
     artists: ["Roda de Bamba"],
     genres: ["Samba"],
     tracks: [
@@ -172,6 +185,7 @@ export const ALBUMS: readonly Album[] = [
   {
     // Álbum em parceria: dois artistas em album_artist e em cada faixa.
     name: "Encontros",
+    year: 2023,
     artists: ["Lia Moraes", "Roda de Bamba"],
     genres: ["MPB", "Samba"],
     tracks: [

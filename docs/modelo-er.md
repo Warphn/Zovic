@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_151000__Adiciona_convites_do_plano.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_183723__Adiciona_audio_explicito_e_ano_do_album.sql`).
 
 ![Diagrama ER do Zovic](assets/modelo-er.png)
 
@@ -28,6 +28,8 @@ erDiagram
     musics ||--o{ rating : "recebe"
     user ||--o{ comments : "escreve"
     musics ||--o{ comments : "recebe"
+    comments ||--o{ comment_reports : "recebe denúncias"
+    user ||--o{ comment_reports : "denuncia"
 
     playlists ||--o{ music_playlist : "contém"
     musics ||--o{ music_playlist : "salva em"
@@ -161,6 +163,13 @@ erDiagram
         timestamptz deleted_at
         timestamptz created_at
     }
+    comment_reports {
+        serial id PK
+        int comment_id FK
+        int user_id FK
+        varchar reason
+        timestamptz created_at
+    }
     playlists {
         serial id PK
         varchar name
@@ -182,6 +191,8 @@ erDiagram
         int lyrics_id
         int streams
         float rating
+        varchar audio_file "nome do arquivo, como <uuid>.mp3"
+        boolean is_explicit
         timestamptz created_at
         timestamptz deleted_at
     }
@@ -203,6 +214,7 @@ erDiagram
     album {
         serial id PK
         varchar name
+        smallint year "de 1900 até o ano atual"
         timestamptz created_at
         timestamptz deleted_at
     }
@@ -249,6 +261,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `music_user` | As músicas salvas por cada usuário | |
 | `rating` | As avaliações | Nota de 1 a 5. Cada usuário tem uma avaliação ativa por música. |
 | `comments` | Os comentários | `timestamp` é o segundo da música a que o comentário se refere, opcional e `>= 0` |
+| `comment_reports` | As denúncias de comentários, com o motivo | Cada usuário denuncia um comentário uma vez só (`UNIQUE (comment_id, user_id)`). `reason` tem até 280 caracteres. |
 
 ### Playlists
 
@@ -262,9 +275,9 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
-| `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. |
+| `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. `audio_file` é o nome do MP3 no armazenamento (`AUDIO_DIR`) e fica nulo nas músicas antigas, sem áudio. `is_explicit` marca o conteúdo explícito (padrão `false`). |
 | `genre` | Os gêneros | Nome único entre os gêneros ativos. `color` obrigatória, no formato `#RRGGBB`. |
-| `album` | Os álbuns | |
+| `album` | Os álbuns | `year >= 1900`. O limite "até o ano atual" fica no domínio. O ano é opcional só nos álbuns antigos: todo álbum novo tem ano. |
 | `artist` | Os artistas | |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |

@@ -108,7 +108,7 @@ Os seeders `ALL` e `PROD` comparam pelo nome e **nunca apagam**: um item tirado 
 | Gêneros | `ALL` | Os gêneros do produto, com cor (`genres.ts`) |
 | Usuários | `LOCAL` | Usuários fictícios, alguns removidos. Todos entram com `nome.sobrenome@zovic.test` e a senha `zovic123`. |
 | Planos | `LOCAL` | Todo usuário em ao menos um plano, e todo plano com titular e dentro do limite do tipo (4 pessoas no Família, 1 no Individual) |
-| Catálogo | `LOCAL` | Artistas, álbuns e músicas fictícios, com participações e um álbum em parceria (`catalog-data.ts`) |
+| Catálogo | `LOCAL` | Artistas, álbuns (cada um com o ano) e músicas fictícios, com participações e um álbum em parceria (`catalog-data.ts`). As músicas do seed não têm arquivo de áudio. |
 | Playlists | `LOCAL` | Playlists públicas e privadas, todas com admin |
 | Interações | `LOCAL` | Músicas salvas, avaliações, comentários e eventos. `musics.rating` recebe a média das avaliações ativas. |
 | Admin padrão | `LOCAL` | `admin@zovic.test`, senha `admin`, sem plano. A senha é curta demais para o cadastro e só funciona porque o hash é gravado direto. |
