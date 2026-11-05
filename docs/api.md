@@ -144,9 +144,9 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/musics?q=` | Lista as músicas. As removidas só aparecem para admins, marcadas. |
 | `GET /api/artists` | Lista os artistas |
 | `GET /api/genres` | Lista os gêneros |
-| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1` |
+| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
 
-O player do front ainda é simulado e não chama a rota de reprodução.
+O player do front chama essa rota quando uma música começa a tocar, e a página `/historico` atualiza a lista depois de cada reprodução registrada.
 
 ### Admin
 
