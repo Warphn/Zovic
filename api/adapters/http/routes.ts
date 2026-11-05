@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import type { AdminController, CatalogController } from "./admin-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
+import type { SubscriptionController } from "./subscription-controller.ts";
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { validateBody, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import { artistSchema, createMusicSchema, createUserSchema, updateMusicSchema } from "./schemas/admin-schemas.ts";
@@ -17,10 +18,19 @@ export interface Controllers {
   search: SearchController;
   catalog: CatalogController;
   admin: AdminController;
+  subscriptions: SubscriptionController;
 }
 
-export function makeRouter({ playlists, search, catalog, admin }: Controllers, authenticate: RequestHandler): Router {
+export function makeRouter(
+  { playlists, search, catalog, admin, subscriptions }: Controllers,
+  authenticate: RequestHandler,
+): Router {
   const router = Router();
+
+  router.post("/plans", authenticate, subscriptions.subscribe);
+  router.get("/plans/me", authenticate, subscriptions.getMine);
+  router.delete("/plans/me", authenticate, subscriptions.cancel);
+
   const playlistId = validateParams(playlistIdParamsSchema);
 
   router.get("/playlists", authenticate, playlists.list);

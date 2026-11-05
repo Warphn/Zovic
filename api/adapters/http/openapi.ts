@@ -38,6 +38,7 @@ export const openApiDocument = {
   tags: [
     { name: "Autenticação", description: "Cadastro, login, logout e sessão (Better Auth)" },
     { name: "Playlists", description: "Criação e gestão de playlists" },
+    { name: "Planos", description: "Assinatura individual: assinar, consultar e cancelar" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Infra", description: "Estado da API" },
   ],
@@ -505,6 +506,80 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/plans": {
+      post: {
+        tags: ["Planos"],
+        summary: "Assina o plano individual",
+        description:
+          "Pagamento simulado: a assinatura fica ativa na hora. Só maiores de idade assinam (pela data de nascimento da conta) e cada conta tem no máximo uma assinatura ativa, contando a de membro de um plano familiar. Não recebe corpo.",
+        operationId: "subscribeIndividualPlan",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "201": {
+            description: "Assinatura criada",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é de menor de idade (ou não tem data de nascimento). Nada é criado",
+            content: { "application/json": { schema: errorResponse("FORBIDDEN", "Only adults can subscribe") } },
+          },
+          "409": {
+            description: "A conta já tem uma assinatura ativa",
+            content: {
+              "application/json": {
+                schema: errorResponse("BUSINESS_RULE_ERROR", "Account already has an active subscription"),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/plans/me": {
+      get: {
+        tags: ["Planos"],
+        summary: "Assinatura ativa da conta",
+        description: "Vale também para quem é membro de um plano familiar. Sem assinatura ativa, responde 200 com `null`.",
+        operationId: "getMySubscription",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "A assinatura ativa, ou `null`",
+            content: {
+              "application/json": {
+                schema: { oneOf: [{ $ref: "#/components/schemas/Subscription" }, { type: "null" }] },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Planos"],
+        summary: "Cancela a assinatura",
+        description:
+          "Cancelamento imediato. Só o assinante do individual ou o gestor do familiar cancela; no familiar, o acesso de todos os membros acaba, mas as contas e os dados continuam. Depois a pessoa pode assinar de novo.",
+        operationId: "cancelSubscription",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Assinatura cancelada" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "A conta é membro de um plano familiar, mas não o gestor",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the plan manager can cancel it") },
+            },
+          },
+          "404": {
+            description: "A conta não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "No active subscription") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/search": {
       get: {
         tags: ["Busca"],
@@ -637,6 +712,20 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      Subscription: {
+        type: "object",
+        required: ["planId", "kind", "isManager", "startedAt"],
+        properties: {
+          planId: { type: "integer", example: 7 },
+          kind: { type: "string", enum: ["individual", "family"], example: "individual" },
+          isManager: {
+            type: "boolean",
+            description: "Dono do individual ou gestor do familiar. Só ele cancela.",
+            example: true,
+          },
+          startedAt: { type: "string", format: "date-time" },
+        },
+      },
       SignUpRequest: {
         type: "object",
         required: ["name", "email", "password", "birthdate"],
