@@ -135,7 +135,10 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 - **Visão geral:** usuários, reproduções, as 10 músicas mais tocadas e as reproduções por gênero.
 - **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
-- **Conteúdo:** cria, edita e remove músicas (com o arquivo MP3 de até 20 MB, o álbum e a marca de conteúdo explícito), álbuns (com o ano) e artistas. As músicas do seed não têm áudio e aparecem marcadas como "sem áudio".
+- **Conteúdo:** cria, edita e remove músicas, álbuns e artistas.
+  - **Música:** o cadastro pede o arquivo MP3 (até 20 MB), e a duração é lida do arquivo. Ela também tem álbum (opcional), gêneros e a marca de conteúdo explícito. As músicas do seed não têm áudio e aparecem como "sem áudio".
+  - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
+  - **Álbuns:** aparecem em cards, com a capa gerada pelas iniciais, o ano, os artistas e quantas faixas têm.
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 

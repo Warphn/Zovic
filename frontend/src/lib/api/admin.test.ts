@@ -77,6 +77,7 @@ describe("albumChanges", () => {
       { id: 1, name: "Maré Alta" },
       { id: 9, name: "Removido" },
     ],
+    musicCount: 5,
   }
 
   it("sends only the year when only the year changed", () => {

@@ -18,6 +18,8 @@ export interface Album extends NamedItem {
   /** Null only for albums older than the column. */
   year: number | null
   artists: NamedItem[]
+  /** Active tracks of the album. */
+  musicCount: number
 }
 
 export interface CatalogMusic extends SearchMusic {

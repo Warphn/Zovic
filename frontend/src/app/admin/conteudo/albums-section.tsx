@@ -2,12 +2,15 @@
 
 import * as React from "react"
 import { Field, Loading, Notice, Section } from "@/components/admin/panel"
+import { getContrastTextColor } from "@/components/color-picker"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { albumChanges, useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/lib/api/admin"
 import type { Album, NamedItem } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
+import { albumCover } from "@/lib/album-cover"
+import { cn } from "@/lib/utils"
 import { ConfirmDialog } from "./confirm-dialog"
 import { NewArtistField } from "./new-catalog-item"
 import { Picker } from "./picker"
@@ -46,23 +49,9 @@ export function AlbumsSection({ albums, artists, error }: { albums: Album[] | nu
         ) : visible.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum álbum encontrado.</p>
         ) : (
-          <ul className="grid gap-1 sm:grid-cols-2">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visible.map((album) => (
-              <li key={album.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/20">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">
-                    {album.name}
-                    {album.year && <span className="font-normal text-muted-foreground"> · {album.year}</span>}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">{album.artists.map((artist) => artist.name).join(", ")}</div>
-                </div>
-                <Button variant="ghost" onClick={() => setEditing({ album })}>
-                  Editar
-                </Button>
-                <Button variant="ghost" className="text-destructive" onClick={() => setRemoving(album)}>
-                  Remover
-                </Button>
-              </li>
+              <AlbumCard key={album.id} album={album} onEdit={() => setEditing({ album })} onRemove={() => setRemoving(album)} />
             ))}
           </ul>
         )}
@@ -89,6 +78,49 @@ export function AlbumsSection({ albums, artists, error }: { albums: Album[] | nu
         }}
       />
     </Section>
+  )
+}
+
+function trackCountLabel(count: number): string {
+  if (count === 0) return "Sem faixas"
+  return count === 1 ? "1 faixa" : `${count} faixas`
+}
+
+function AlbumCard({ album, onEdit, onRemove }: { album: Album; onEdit: () => void; onRemove: () => void }) {
+  const cover = albumCover(album)
+  const artistNames = album.artists.map((artist) => artist.name).join(", ")
+
+  return (
+    <li className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface/60 p-3">
+      <div className="flex items-start gap-3">
+        <div
+          aria-hidden="true"
+          className={cn("grid size-14 shrink-0 place-items-center rounded-lg text-lg font-semibold tracking-wide", getContrastTextColor(cover.color))}
+          style={{ background: cover.color }}
+        >
+          {cover.initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium" title={album.name}>
+            {album.name}
+          </div>
+          <div className="truncate text-xs text-muted-foreground" title={artistNames}>
+            {artistNames}
+          </div>
+          <div className="mt-1 text-xs tabular-nums text-muted-foreground">
+            {album.year ?? "Sem ano"} · {trackCountLabel(album.musicCount)}
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-1.5">
+        <Button variant="outline" onClick={onEdit} aria-label={`Editar ${album.name}`}>
+          Editar
+        </Button>
+        <Button variant="ghost" className="text-destructive" onClick={onRemove} aria-label={`Remover ${album.name}`}>
+          Remover
+        </Button>
+      </div>
+    </li>
   )
 }
 
