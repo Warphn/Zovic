@@ -25,6 +25,10 @@ const MESSAGES: Record<string, string> = {
   "Audio file must be at most 20 MB": "O áudio pode ter no máximo 20 MB.",
   "Album not found": "Esse álbum não está mais no catálogo.",
   "A genre with this name already exists": "Já existe um gênero com esse nome.",
+  // Album covers (api/domain/shared/cover-image.ts)
+  "Album must have a cover image": "Escolha a imagem de capa do álbum.",
+  "Cover image must be a JPEG, PNG or WebP": "A capa precisa ser uma imagem JPEG, PNG ou WebP.",
+  "Cover image must be at most 2 MB": "A capa pode ter no máximo 2 MB.",
   // Playlists (api/domain/use-cases): only the playlist's admins can change it
   "Only playlist admins can edit it": "Só quem administra a playlist pode editá-la.",
   "Only playlist admins can delete it": "Só quem administra a playlist pode apagá-la.",
@@ -61,6 +65,11 @@ const MESSAGES: Record<string, string> = {
     "Quem gerencia o plano não pode sair dele. Cancele a assinatura.",
   "The manager cannot be removed: cancel the plan instead":
     "Quem gerencia o plano não pode ser removido. Cancele a assinatura.",
+}
+
+/** A path the API returns, like an album's `coverUrl`, as an address the browser can load (an <img src>). */
+export function apiUrl(path: string): string {
+  return `${API_URL}${path}`
 }
 
 /** Message to show for any error thrown by a request (or by anything else). */

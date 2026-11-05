@@ -2,15 +2,13 @@
 
 import * as React from "react"
 import { Field, Loading, Notice, Section } from "@/components/admin/panel"
-import { getContrastTextColor } from "@/components/color-picker"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { albumChanges, useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/lib/api/admin"
+import { albumChanges, MAX_COVER_BYTES, useChangeAlbumCover, useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/lib/api/admin"
 import type { Album, NamedItem } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
-import { albumCover } from "@/lib/album-cover"
-import { cn } from "@/lib/utils"
+import { AlbumCoverImage, CoverField } from "./album-cover"
 import { ConfirmDialog } from "./confirm-dialog"
 import { NewArtistField } from "./new-catalog-item"
 import { Picker } from "./picker"
@@ -87,19 +85,12 @@ function trackCountLabel(count: number): string {
 }
 
 function AlbumCard({ album, onEdit, onRemove }: { album: Album; onEdit: () => void; onRemove: () => void }) {
-  const cover = albumCover(album)
   const artistNames = album.artists.map((artist) => artist.name).join(", ")
 
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface/60 p-3">
       <div className="flex items-start gap-3">
-        <div
-          aria-hidden="true"
-          className={cn("grid size-14 shrink-0 place-items-center rounded-lg text-lg font-semibold tracking-wide", getContrastTextColor(cover.color))}
-          style={{ background: cover.color }}
-        >
-          {cover.initials}
-        </div>
+        <AlbumCoverImage album={album} className="size-14 shrink-0 text-lg" />
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium" title={album.name}>
             {album.name}
@@ -128,10 +119,13 @@ function AlbumForm({ album, artists, onClose }: { album: Album | null; artists: 
   const [name, setName] = React.useState(album?.name ?? "")
   const [artistIds, setArtistIds] = React.useState<number[]>(album?.artists.map((artist) => artist.id) ?? [])
   const [year, setYear] = React.useState(album?.year ? String(album.year) : "")
+  // Required for a new album; when editing, a file here replaces the current cover
+  const [cover, setCover] = React.useState<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
   const createAlbum = useCreateAlbum()
   const updateAlbum = useUpdateAlbum()
+  const changeAlbumCover = useChangeAlbumCover()
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,14 +135,17 @@ function AlbumForm({ album, artists, onClose }: { album: Album | null; artists: 
     if (!Number.isInteger(parsedYear) || parsedYear < MIN_ALBUM_YEAR || parsedYear > CURRENT_YEAR) {
       return setError(`O ano vai de ${MIN_ALBUM_YEAR} até ${CURRENT_YEAR}.`)
     }
+    if (!album && !cover) return setError("Escolha a imagem de capa do álbum.")
+    if (cover && cover.size > MAX_COVER_BYTES) return setError("A capa pode ter no máximo 2 MB.")
     setSaving(true)
     try {
       const input = { name: name.trim(), artistIds, year: parsedYear }
       if (album) {
         const changes = albumChanges(album, input, artists.map((artist) => artist.id))
         if (Object.keys(changes).length > 0) await updateAlbum.mutateAsync({ id: album.id, input: changes })
-      } else {
-        await createAlbum.mutateAsync(input)
+        if (cover) await changeAlbumCover.mutateAsync({ id: album.id, cover })
+      } else if (cover) {
+        await createAlbum.mutateAsync({ input, cover })
       }
       onClose()
     } catch (err) {
@@ -168,6 +165,13 @@ function AlbumForm({ album, artists, onClose }: { album: Album | null; artists: 
           <Input id="album-year" type="number" required min={MIN_ALBUM_YEAR} max={CURRENT_YEAR} value={year} onChange={(e) => setYear(e.target.value)} />
         </Field>
       </div>
+      <CoverField
+        id="album-cover"
+        file={cover}
+        onChange={setCover}
+        album={album ?? { id: 0, name: name || "?", coverUrl: null }}
+        label={album ? "Trocar a capa (JPEG, PNG ou WebP, até 2 MB)" : "Imagem de capa (JPEG, PNG ou WebP, até 2 MB)"}
+      />
       <Picker label="Artistas" items={artists} selected={artistIds} onChange={setArtistIds} />
       <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       {error && <Notice>{error}</Notice>}

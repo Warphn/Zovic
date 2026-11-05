@@ -70,8 +70,9 @@ export interface AlbumInput {
   year: number
 }
 
-/** The API's limit (api/domain/shared/audio.ts), repeated here only to warn before uploading. */
+/** The API's limits (api/domain/shared/), repeated here only to warn before uploading. */
 export const MAX_AUDIO_BYTES = 20 * 1024 * 1024
+export const MAX_COVER_BYTES = 2 * 1024 * 1024
 
 /** POST /api/admin/musics is multipart: the fields as JSON in "data" and the MP3 in "audio". */
 export function musicFormData({ audio, ...fields }: NewMusicInput): FormData {
@@ -79,6 +80,19 @@ export function musicFormData({ audio, ...fields }: NewMusicInput): FormData {
   form.append("data", JSON.stringify(fields))
   form.append("audio", audio)
   return form
+}
+
+/** POST /api/admin/albums is multipart too: the fields as JSON in "data" and the image in "cover". */
+export function albumFormData(input: AlbumInput, cover: File): FormData {
+  const form = new FormData()
+  form.append("data", JSON.stringify(input))
+  form.append("cover", cover)
+  return form
+}
+
+/** The albums a music can go in: those with at least one of the artists chosen for it. */
+export function albumsOfArtists(albums: Album[], artistIds: number[]): Album[] {
+  return albums.filter((album) => album.artists.some((artist) => artistIds.includes(artist.id)))
 }
 
 const sameIds = (left: number[], right: number[]) =>
@@ -132,7 +146,13 @@ export const adminApi = {
   createMusic: (input: NewMusicInput) => request<unknown>("/admin/musics", { method: "POST", body: musicFormData(input) }),
   updateMusic: (id: number, input: Partial<MusicInput>) => request<unknown>(`/admin/musics/${id}`, json("PATCH", input)),
   removeMusic: (id: number) => request<void>(`/admin/musics/${id}`, { method: "DELETE" }),
-  createAlbum: (input: AlbumInput) => request<unknown>("/admin/albums", json("POST", input)),
+  createAlbum: (input: AlbumInput, cover: File) =>
+    request<{ id: number }>("/admin/albums", { method: "POST", body: albumFormData(input, cover) }),
+  changeAlbumCover: (id: number, cover: File) => {
+    const form = new FormData()
+    form.append("cover", cover)
+    return request<unknown>(`/admin/albums/${id}/cover`, { method: "PUT", body: form })
+  },
   updateAlbum: (id: number, input: Partial<AlbumInput>) => request<unknown>(`/admin/albums/${id}`, json("PATCH", input)),
   removeAlbum: (id: number) => request<void>(`/admin/albums/${id}`, { method: "DELETE" }),
   createGenre: (input: GenreInput) => request<Genre>("/admin/genres", json("POST", input)),
@@ -223,7 +243,18 @@ export function useRemoveMusic() {
 
 export function useCreateAlbum() {
   const invalidate = useInvalidate("catalog")
-  return useMutation({ mutationFn: adminApi.createAlbum, onSuccess: invalidate })
+  return useMutation({
+    mutationFn: ({ input, cover }: { input: AlbumInput; cover: File }) => adminApi.createAlbum(input, cover),
+    onSuccess: invalidate,
+  })
+}
+
+export function useChangeAlbumCover() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({
+    mutationFn: ({ id, cover }: { id: number; cover: File }) => adminApi.changeAlbumCover(id, cover),
+    onSuccess: invalidate,
+  })
 }
 
 export function useUpdateAlbum() {

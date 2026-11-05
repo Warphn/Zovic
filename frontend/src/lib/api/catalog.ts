@@ -20,6 +20,8 @@ export interface Album extends NamedItem {
   artists: NamedItem[]
   /** Active tracks of the album. */
   musicCount: number
+  /** API path of the cover image (load it through `apiUrl`); null for older albums without one. */
+  coverUrl: string | null
 }
 
 export interface CatalogMusic extends SearchMusic {

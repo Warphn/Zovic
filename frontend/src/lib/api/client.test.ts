@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { ApiError, apiErrorMessage, json, queryString, request } from "./client"
+import { ApiError, apiErrorMessage, apiUrl, json, queryString, request } from "./client"
 
 describe("api client helpers", () => {
   it("builds a query string from the set params only", () => {
@@ -42,5 +42,11 @@ describe("request", () => {
     const sent = captureHeaders()
     await request("/x", json("POST", {}))
     expect(sent[0]?.get("Content-Type")).toBe("application/json")
+  })
+})
+
+describe("apiUrl", () => {
+  it("turns a path the API returns (like a coverUrl) into a full address", () => {
+    expect(apiUrl("/api/albums/3/cover?v=abc")).toBe("http://localhost:3333/api/albums/3/cover?v=abc")
   })
 })

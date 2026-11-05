@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { MAX_AUDIO_BYTES, musicChanges, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
+import { albumsOfArtists, MAX_AUDIO_BYTES, musicChanges, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
 import { type Album, type CatalogMusic, type Genre, type NamedItem, useAlbums, useArtists, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { readAudioDuration } from "@/lib/audio-duration"
@@ -15,8 +15,9 @@ import { formatDuration } from "@/lib/format-duration"
 import { cn } from "@/lib/utils"
 import { AlbumsSection } from "./albums-section"
 import { ArtistsSection } from "./artists-section"
-import { AudioFileInput } from "./audio-file-input"
+import { AlbumPicker } from "./album-picker"
 import { ConfirmDialog } from "./confirm-dialog"
+import { FileInput } from "./file-input"
 import { NewArtistField, NewGenreField } from "./new-catalog-item"
 import { Picker } from "./picker"
 
@@ -228,6 +229,12 @@ function MusicForm({
   const [saving, setSaving] = React.useState(false)
   const saveMusic = useSaveMusic()
 
+  // The album must have one of the music's artists: unchecking its artist takes the album out too
+  const changeArtists = (nextArtistIds: number[]) => {
+    setArtistIds(nextArtistIds)
+    if (albumId !== null && !albumsOfArtists(albums, nextArtistIds).some((album) => album.id === albumId)) setAlbumId(null)
+  }
+
   const chooseAudio = async (file: File | null) => {
     latestAudio.current = file
     setAudio(file)
@@ -275,7 +282,7 @@ function MusicForm({
       </Field>
       {!music && (
         <Field label="Arquivo de áudio (MP3, até 20 MB)" id="music-audio">
-          <AudioFileInput id="music-audio" file={audio} onChange={chooseAudio} describedBy="music-audio-status" />
+          <FileInput id="music-audio" file={audio} accept="audio/mpeg,.mp3" onChange={chooseAudio} describedBy="music-audio-status" />
           <p id="music-audio-status" className="mt-1 text-xs text-muted-foreground" aria-live="polite">
             {isReadingAudio
               ? "Lendo a duração do arquivo…"
@@ -285,25 +292,11 @@ function MusicForm({
           </p>
         </Field>
       )}
-      <Picker label="Artistas" items={artists} selected={artistIds} onChange={setArtistIds} />
+      <Picker label="Artistas" items={artists} selected={artistIds} onChange={changeArtists} />
       <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       <Picker label="Gêneros" items={genres} selected={genreIds} onChange={setGenreIds} />
       <NewGenreField onCreated={(genreId) => setGenreIds((selected) => [...selected, genreId])} />
-      <Field label="Álbum" id="music-album">
-        <select
-          id="music-album"
-          value={albumId ?? ""}
-          onChange={(e) => setAlbumId(e.target.value === "" ? null : Number(e.target.value))}
-          className="flex h-9 w-full rounded-md border border-input bg-surface/90 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        >
-          <option value="">Sem álbum</option>
-          {albums.map((album) => (
-            <option key={album.id} value={album.id}>
-              {album.year ? `${album.name} (${album.year})` : album.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <AlbumPicker albums={albums} artistIds={artistIds} selected={albumId} onChange={setAlbumId} />
       <div className="flex items-center justify-between gap-4">
         <span id="music-explicit-label" className="text-sm font-medium">
           Conteúdo explícito

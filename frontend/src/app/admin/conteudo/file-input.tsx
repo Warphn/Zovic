@@ -8,14 +8,17 @@ import { cn } from "@/lib/utils"
  * it stays hidden and this box opens it: "Escolher arquivo" until a file is chosen, then its name.
  * The box is a button with the field's `id`, so the field label names it and it takes the focus.
  */
-export function AudioFileInput({
+export function FileInput({
   id,
   file,
+  accept,
   onChange,
   describedBy,
 }: {
   id: string
   file: File | null
+  /** Same format as the native `accept`, like "audio/mpeg,.mp3". */
+  accept: string
   onChange: (file: File | null) => void
   describedBy?: string
 }) {
@@ -23,13 +26,7 @@ export function AudioFileInput({
 
   return (
     <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="audio/mpeg,.mp3"
-        hidden
-        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-      />
+      <input ref={inputRef} type="file" accept={accept} hidden onChange={(event) => onChange(event.target.files?.[0] ?? null)} />
       <button
         id={id}
         type="button"

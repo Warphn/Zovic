@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { albumChanges, type MusicInput, musicChanges, musicFormData } from "./admin"
+import { albumChanges, albumFormData, albumsOfArtists, type MusicInput, musicChanges, musicFormData } from "./admin"
 import type { Album, CatalogMusic } from "./catalog"
 
 describe("musicFormData", () => {
@@ -78,6 +78,7 @@ describe("albumChanges", () => {
       { id: 9, name: "Removido" },
     ],
     musicCount: 5,
+    coverUrl: null,
   }
 
   it("sends only the year when only the year changed", () => {
@@ -86,5 +87,41 @@ describe("albumChanges", () => {
 
   it("sends the new artists without the removed one", () => {
     expect(albumChanges(album, { name: "Ondas", artistIds: [1, 9, 2], year: 2018 }, ACTIVE_ARTISTS)).toEqual({ artistIds: [1, 2] })
+  })
+})
+
+describe("albumFormData", () => {
+  it("puts the fields as JSON in the data part and the image in the cover part", () => {
+    const cover = new File([new Uint8Array([0x89, 0x50])], "capa.png", { type: "image/png" })
+
+    const form = albumFormData({ name: "Ondas", artistIds: [1], year: 2018 }, cover)
+
+    const data = form.get("data")
+    if (typeof data !== "string") throw new Error("data part should be text")
+    expect(JSON.parse(data)).toEqual({ name: "Ondas", artistIds: [1], year: 2018 })
+    const sentCover = form.get("cover")
+    if (!(sentCover instanceof File)) throw new Error("cover part should be a file")
+    expect(sentCover.name).toBe("capa.png")
+  })
+})
+
+describe("albumsOfArtists", () => {
+  const album = (id: number, artistIds: number[]) => ({
+    id,
+    name: `Álbum ${id}`,
+    year: 2000,
+    artists: artistIds.map((artistId) => ({ id: artistId, name: `Artista ${artistId}` })),
+    musicCount: 0,
+    coverUrl: null,
+  })
+  const albums = [album(1, [1]), album(2, [2]), album(3, [1, 3])]
+
+  it("keeps the albums that have at least one of the chosen artists", () => {
+    expect(albumsOfArtists(albums, [1]).map((item) => item.id)).toEqual([1, 3])
+    expect(albumsOfArtists(albums, [2, 3]).map((item) => item.id)).toEqual([2, 3])
+  })
+
+  it("lists nothing before an artist is chosen", () => {
+    expect(albumsOfArtists(albums, [])).toEqual([])
   })
 })
