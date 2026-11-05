@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { catalogApi, catalogKeys, type NamedItem } from "./catalog"
+import { type Album, type CatalogMusic, catalogApi, catalogKeys, type NamedItem } from "./catalog"
 import { json, queryString, request } from "./client"
 import { searchKeys } from "./search"
 
@@ -73,6 +73,44 @@ export function musicFormData({ audio, ...fields }: NewMusicInput): FormData {
   form.append("data", JSON.stringify(fields))
   form.append("audio", audio)
   return form
+}
+
+const sameIds = (left: number[], right: number[]) =>
+  left.length === right.length && left.every((id) => right.includes(id))
+
+/**
+ * A removed artist still shows in the credits but not in the pickers, so the admin cannot take
+ * it out by hand: when the selection changed, only the active artists go.
+ */
+function changedArtists(original: number[], selected: number[], activeArtistIds: number[]): number[] | undefined {
+  return sameIds(original, selected) ? undefined : selected.filter((id) => activeArtistIds.includes(id))
+}
+
+/**
+ * Only what the admin changed. Sending every field would rewrite the ones they did not touch:
+ * the album of a track whose album was removed (the list shows none, the link stays) and the
+ * removed artists, which the API refuses.
+ */
+export function musicChanges(music: CatalogMusic, input: MusicInput, activeArtistIds: number[]): Partial<MusicInput> {
+  const changes: Partial<MusicInput> = {}
+  if (input.name !== music.name) changes.name = input.name
+  if (input.duration !== music.duration) changes.duration = input.duration
+  if (input.isExplicit !== music.isExplicit) changes.isExplicit = input.isExplicit
+  if (input.albumId !== (music.album?.id ?? null)) changes.albumId = input.albumId
+  if (!sameIds(input.genreIds, music.genres.map((genre) => genre.id))) changes.genreIds = input.genreIds
+  const artistIds = changedArtists(music.artists.map((artist) => artist.id), input.artistIds, activeArtistIds)
+  if (artistIds) changes.artistIds = artistIds
+  return changes
+}
+
+/** Only what the admin changed in the album, for the same reasons as `musicChanges`. */
+export function albumChanges(album: Album, input: AlbumInput, activeArtistIds: number[]): Partial<AlbumInput> {
+  const changes: Partial<AlbumInput> = {}
+  if (input.name !== album.name) changes.name = input.name
+  if (input.year !== album.year) changes.year = input.year
+  const artistIds = changedArtists(album.artists.map((artist) => artist.id), input.artistIds, activeArtistIds)
+  if (artistIds) changes.artistIds = artistIds
+  return changes
 }
 
 const q = (search?: string) => queryString({ q: search?.trim() || undefined })
@@ -165,7 +203,7 @@ export function useRemoveUser() {
 export function useSaveMusic() {
   const invalidate = useInvalidate("catalog")
   return useMutation({
-    mutationFn: (save: { id: null; input: NewMusicInput } | { id: number; input: MusicInput }) =>
+    mutationFn: (save: { id: null; input: NewMusicInput } | { id: number; input: Partial<MusicInput> }) =>
       save.id === null ? adminApi.createMusic(save.input) : adminApi.updateMusic(save.id, save.input),
     onSuccess: invalidate,
   })

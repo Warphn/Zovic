@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { MAX_AUDIO_BYTES, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
+import { MAX_AUDIO_BYTES, musicChanges, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
 import { type Album, type CatalogMusic, type Genre, type NamedItem, useAlbums, useArtists, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { formatDuration, parseDuration } from "@/lib/format-duration"
@@ -234,8 +234,12 @@ function MusicForm({
     setSaving(true)
     try {
       const input = { name: name.trim(), duration: seconds, artistIds, genreIds, albumId, isExplicit }
-      if (music) await saveMusic.mutateAsync({ id: music.id, input })
-      else if (audio) await saveMusic.mutateAsync({ id: null, input: { ...input, audio } })
+      if (music) {
+        const changes = musicChanges(music, input, artists.map((artist) => artist.id))
+        if (Object.keys(changes).length > 0) await saveMusic.mutateAsync({ id: music.id, input: changes })
+      } else if (audio) {
+        await saveMusic.mutateAsync({ id: null, input: { ...input, audio } })
+      }
       onClose()
     } catch (err) {
       setError(apiErrorMessage(err))

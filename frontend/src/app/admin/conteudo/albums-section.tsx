@@ -5,7 +5,7 @@ import { Field, Loading, Notice, Section } from "@/components/admin/panel"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/lib/api/admin"
+import { albumChanges, useCreateAlbum, useRemoveAlbum, useUpdateAlbum } from "@/lib/api/admin"
 import type { Album, NamedItem } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { ConfirmDialog } from "./confirm-dialog"
@@ -111,8 +111,12 @@ function AlbumForm({ album, artists, onClose }: { album: Album | null; artists: 
     setSaving(true)
     try {
       const input = { name: name.trim(), artistIds, year: parsedYear }
-      if (album) await updateAlbum.mutateAsync({ id: album.id, input })
-      else await createAlbum.mutateAsync(input)
+      if (album) {
+        const changes = albumChanges(album, input, artists.map((artist) => artist.id))
+        if (Object.keys(changes).length > 0) await updateAlbum.mutateAsync({ id: album.id, input: changes })
+      } else {
+        await createAlbum.mutateAsync(input)
+      }
       onClose()
     } catch (err) {
       setError(apiErrorMessage(err))
