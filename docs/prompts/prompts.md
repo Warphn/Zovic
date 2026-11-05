@@ -149,3 +149,13 @@ Forma de trabalho: a mesma da #86. O Claude Opus fez o plano, preparou a tarefa 
 | 2 | Fase 1, API: porta e caso de uso do histórico, consulta no Postgres, rota `GET /api/history`, testes unitários e de integração, `openapi.ts` e requisições do Bruno | [`list-my-history.ts`](../../api/domain/use-cases/list-my-history.ts), [`postgres-play-history.ts`](../../api/adapters/db/postgres-play-history.ts) e [`api/bruno/historico/`](../../api/bruno/historico/) |
 | 3 | Fase 2, front: página `/historico`, item "Histórico" no menu do usuário, estado vazio, música indisponível sem botão de tocar e lista atualizada a cada reprodução registrada | [`frontend/src/app/historico/`](../../frontend/src/app/historico/), [`history.ts`](../../frontend/src/lib/api/history.ts) e [`header.tsx`](../../frontend/src/components/header.tsx) |
 | 4 | Fase 3, documentação: tabela de rotas, demo do README, cliente da API no front e este registro | [`docs/api.md`](../api.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |
+
+### 05/11/2026: cadastro de música com áudio pelo painel de admin (HU-28)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Ok, agora precisamos da rota de adição de músicas e que ela seja vinculada, primeiramente, ao portal admin. | Conversa de design: upload do áudio com os campos da HU-28, migração do áudio, do explícito e do ano do álbum nesta entrega, álbum opcional, só MP3 de até 20 MB e envio em multipart com o `multer`. Resultado: a [spec](../superpowers/specs/2026-11-05-cadastro-de-musica-com-audio-design.md) |
+| 2 | Ok agora vamos aplicar a rota de cadastro de música e tudo mais. | O [plano de implementação](../superpowers/plans/2026-11-05-cadastro-de-musica-com-audio.md), em 9 tarefas com os testes antes do código |
+| 3 | Vamos usar Native. Manda bala. | A implementação: a regra do MP3 ([`audio.ts`](../../api/domain/shared/audio.ts)), a migration, `Music` e `Album`, o armazenamento ([`local-audio-storage.ts`](../../api/adapters/storage/local-audio-storage.ts)), o caso de uso, as rotas com multipart, o cliente do front e a tela Conteúdo, com testes de unidade e de integração, o `openapi.ts`, o Bruno ([`api/bruno/admin/`](../../api/bruno/admin/)) e a documentação |
+
+A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e o uso do `multer`, aprovou a spec e o plano antes da implementação, e o time aprovou a dependência nova. A IA conferiu cada passo com os testes, rodou as requisições do Bruno contra a API e o cadastro pelo Docker, com o arquivo no volume `audio`. A tela do painel ainda precisa ser conferida no navegador.
