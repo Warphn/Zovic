@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_183723__Adiciona_audio_explicito_e_ano_do_album.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_213000__Adiciona_capa_do_album.sql`).
 
 ![Diagrama ER do Zovic](assets/modelo-er.png)
 
@@ -215,6 +215,7 @@ erDiagram
         serial id PK
         varchar name
         smallint year "de 1900 até o ano atual"
+        varchar cover_file "nome da imagem, como <uuid>.png"
         timestamptz created_at
         timestamptz deleted_at
     }
@@ -277,7 +278,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | --- | --- | --- |
 | `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. `audio_file` é o nome do MP3 no armazenamento (`AUDIO_DIR`) e fica nulo nas músicas antigas, sem áudio. `is_explicit` marca o conteúdo explícito (padrão `false`). |
 | `genre` | Os gêneros | Nome único entre os gêneros ativos. `color` obrigatória, no formato `#RRGGBB`. |
-| `album` | Os álbuns | `year >= 1900`. O limite "até o ano atual" fica no domínio. O ano é opcional só nos álbuns antigos: todo álbum novo tem ano. |
+| `album` | Os álbuns | `year >= 1900`. O limite "até o ano atual" fica no domínio. `cover_file` é o nome da imagem de capa no armazenamento (`COVER_DIR`). O ano e a capa são opcionais só nos álbuns antigos: todo álbum novo tem os dois. |
 | `artist` | Os artistas | |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |

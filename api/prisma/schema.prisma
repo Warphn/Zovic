@@ -162,6 +162,7 @@ model Album {
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(6)
   year      Int?          @db.SmallInt
+  coverFile String?       @map("cover_file") @db.VarChar(255)
   artists   AlbumArtist[]
   genres    AlbumGenre[]
   musics    AlbumMusic[]
