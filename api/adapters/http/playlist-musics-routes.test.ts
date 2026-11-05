@@ -76,7 +76,7 @@ const ids = async (res: Response) => (await json<PlaylistMusicItem[]>(res)).map(
 async function newMusic(name: string, artistId: number): Promise<number> {
   const id = await musics.nextId();
   created.musics.push(id);
-  await musics.save(Music.create({ id, name, duration: 200, artistIds: [artistId] }));
+  await musics.save(Music.create({ id, name, duration: 200, artistIds: [artistId], audioFile: "teste.mp3" }));
   return id;
 }
 

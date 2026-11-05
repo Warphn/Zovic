@@ -33,7 +33,7 @@ async function artist(name: string, deleted = false): Promise<Artist> {
 async function music(name: string, options: { artistIds?: number[]; deleted?: boolean } = {}): Promise<number> {
   const id = await musics.nextId();
   created.musics.push(id);
-  const entity = Music.create({ id, name, duration: 180, artistIds: options.artistIds ?? [artistId] });
+  const entity = Music.create({ id, name, duration: 180, artistIds: options.artistIds ?? [artistId], audioFile: "teste.mp3" });
   if (options.deleted) entity.delete();
   await musics.save(entity);
   return id;

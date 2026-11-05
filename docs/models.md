@@ -159,7 +159,7 @@ As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.
 
 ### Music
 
-Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `genre_music`
+Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `genre_music`, `album_music`
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |
@@ -171,19 +171,24 @@ Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `g
 | `rating` | `number \| null` | **Só leitura.** Média das avaliações; `null` sem avaliações. |
 | `artistIds` | `number[]` | **Ao menos um.** |
 | `genreIds` | `number[]` | Pode ser vazio. |
+| `audioFile` | `string \| null` | Nome do MP3 no armazenamento (`<uuid>.mp3`). **Obrigatório no `create`.** `null` só nas músicas anteriores ao upload. |
+| `isExplicit` | `boolean` | Conteúdo explícito. Padrão `false`. |
+| `albumId` | `number \| null` | Zero ou um álbum. O repositório de músicas grava esse vínculo no `album_music`. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 `streams` e `rating` são estatísticas calculadas fora da entidade: ela não tem métodos para alterá-las e o repositório **não as sobrescreve** ao salvar.
 
 | Função | O que faz |
 | --- | --- |
-| `create({ id, name, duration, artistIds, genreIds?, lyricsId?, now? })` | Cria a música com as estatísticas zeradas. Recusa lista de artistas vazia. |
+| `create({ id, name, duration, artistIds, audioFile, genreIds?, albumId?, isExplicit?, lyricsId?, now? })` | Cria a música com as estatísticas zeradas. Recusa lista de artistas vazia e `audioFile` vazio. |
 | `restore(dados)` | Reconstrói a partir do banco, com as estatísticas. |
 | `toData()` | Dados da música, com cópia das listas. |
 | `rename(name)` | Troca o nome. |
 | `changeDuration(duration)` | Troca a duração. |
 | `addArtist(artistId)` / `removeArtist(artistId)` | Vincula / desvincula um artista. **Não remove o último.** |
 | `addGenre(genreId)` / `removeGenre(genreId)` | Vincula / desvincula um gênero. |
+| `changeAlbum(albumId)` | Troca o álbum; `null` tira a música do álbum. |
+| `setExplicit(isExplicit)` | Marca ou desmarca o conteúdo explícito. |
 | `delete(now?)` | Soft delete. |
 
 ## Repositórios
@@ -205,7 +210,7 @@ Erros do banco traduzidos para erros de domínio:
 | Playlist | Membro com usuário inexistente | `NotFoundError` |
 | Genre | Nome igual ao de outro gênero ativo | `BusinessRuleError` |
 | Album | Artista ou gênero inexistente | `NotFoundError` |
-| Music | Artista ou gênero inexistente | `NotFoundError` |
+| Music | Artista, gênero ou álbum inexistente | `NotFoundError` |
 
 Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 

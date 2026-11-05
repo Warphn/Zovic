@@ -39,7 +39,7 @@ async function newArtist(name: string): Promise<Artist> {
 async function newMusic(name: string, artistIds: number[], genreIds: number[] = []): Promise<Music> {
   const id = await musics.nextId();
   created.musics.push(id);
-  return Music.create({ id, name, duration: 200, artistIds, genreIds });
+  return Music.create({ id, name, duration: 200, artistIds, genreIds, audioFile: `${name}.mp3` });
 }
 
 async function newAlbum(artistIds: number[]): Promise<Album> {
@@ -147,6 +147,42 @@ describe("PostgresMusicRepository", () => {
     const found = await musics.findById(music.id);
     expect(found?.streams).toBe(10);
     expect(found?.rating).toBe(4);
+  });
+
+  it("grava o áudio, a marca de explícito e o álbum", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const music = await newMusic("Completa", [artistId]);
+    music.setExplicit(true);
+    music.changeAlbum(album.id);
+
+    await musics.save(music);
+
+    expect((await musics.findById(music.id))?.toData()).toMatchObject({
+      audioFile: "Completa.mp3",
+      isExplicit: true,
+      albumId: album.id,
+    });
+  });
+
+  it("tira o álbum da música", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const music = await newMusic("Sem álbum", [artistId]);
+    music.changeAlbum(album.id);
+    await musics.save(music);
+    music.changeAlbum(null);
+
+    await musics.save(music);
+
+    expect((await musics.findById(music.id))?.albumId).toBeNull();
+  });
+
+  it("traduz álbum inexistente em NotFoundError", async () => {
+    const music = await newMusic("Álbum fantasma", [artistId]);
+    music.changeAlbum(MISSING_ID);
+    const error = await musics.save(music).catch((e: unknown) => e);
+    expect(error).toEqual(new NotFoundError("Album not found"));
   });
 
   it("findByIds devolve na ordem pedida e ignora inexistentes", async () => {

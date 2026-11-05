@@ -52,7 +52,8 @@ export class ManageCatalog {
   async createMusic(input: CreateMusicInput): Promise<MusicOutput> {
     await this.ensureArtistsExist(input.artistIds);
     await this.ensureGenresExist(input.genreIds ?? []);
-    const music = Music.create({ id: await this.musics.nextId(), ...input });
+    // Provisório: o upload do áudio entra no próximo passo do plano (Tarefa 5).
+    const music = Music.create({ id: await this.musics.nextId(), ...input, audioFile: "pendente.mp3" });
     await this.musics.save(music);
     return toMusicOutput(music);
   }
