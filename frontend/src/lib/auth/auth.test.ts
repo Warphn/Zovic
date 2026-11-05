@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { NETWORK_ERROR, toAuthError } from "./errors"
-import { safeRedirectPath, validateSignIn, validateSignUp } from "./validation"
+import { invitationTokenFromPath, safeRedirectPath, validateSignIn, validateSignUp } from "./validation"
 
 const TODAY = new Date("2026-10-20T12:00:00Z")
 
@@ -45,6 +45,20 @@ describe("auth validation", () => {
     expect(safeRedirectPath("https://evil.example")).toBe("/playlist")
     expect(safeRedirectPath("//evil.example")).toBe("/playlist")
     expect(safeRedirectPath("/\\evil.example")).toBe("/playlist")
+    expect(safeRedirectPath("/convite/K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA")).toBe(
+      "/convite/K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA"
+    )
+  })
+})
+
+describe("invitation links", () => {
+  it("extracts the token only from an exact invitation path", () => {
+    expect(invitationTokenFromPath("/convite/abc_-123")).toBe("abc_-123")
+    expect(invitationTokenFromPath(null)).toBeNull()
+    expect(invitationTokenFromPath("/convite/a/b")).toBeNull()
+    expect(invitationTokenFromPath("/convite/")).toBeNull()
+    expect(invitationTokenFromPath("/playlist")).toBeNull()
+    expect(invitationTokenFromPath("https://evil.example/convite/abc")).toBeNull()
   })
 })
 
@@ -72,6 +86,15 @@ describe("API errors shown to the user", () => {
       toAuthError({ status: 400, code: "VALIDATION_ERROR", message: "birthdate must be a valid date that is not in the future" })
         .field
     ).toBe("birthdate")
+  })
+
+  it("explains the invitation rules of the sign up", () => {
+    expect(
+      toAuthError({ status: 403, code: "MINOR_NEEDS_INVITATION", message: "Minors can only sign up with a family plan invitation" })
+    ).toEqual({ message: "Menores só entram por convite de um plano familiar.", field: "birthdate" })
+    const invalid = toAuthError({ status: 400, code: "INVALID_INVITATION", message: "Invalid invitation" })
+    expect(invalid.message).toContain("convite")
+    expect(invalid.field).toBeUndefined()
   })
 
   it("explains the rate limit", () => {

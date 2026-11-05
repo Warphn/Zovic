@@ -3,7 +3,7 @@
 #   docker compose up                            → banco + migrations
 #   docker compose --profile frontend up --build → + API (para quem trabalha no frontend)
 #   docker compose --profile full up --build     → + frontend (sistema inteiro)
-#   docker compose --profile prod up -d --build  → servidor: API + túnel da Cloudflare, sem frontend
+#   docker compose --profile prod up -d --build  → servidor: API, frontend e túnel da Cloudflare
 
 services:
   db:
@@ -14,7 +14,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports: ["127.0.0.1:5432:5432"]
+    # na rede do túnel para a equipe chegar ao banco de produção, atrás do Cloudflare Access
+    networks: [default, tunnel]
     volumes: [pgdata:/var/lib/postgresql/data]
+    # teto do container: sem ele, um pico disputa CPU e memória com o resto da máquina
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 2g, pids: 512 }
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -49,6 +55,9 @@ services:
     # só esta máquina alcança a porta; de fora, a API chega pelo túnel
     ports: ["127.0.0.1:3333:3333"]
     networks: [default, tunnel]
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 1g, pids: 256 }
     healthcheck:
       # a imagem oven/bun não garante ter curl
       test: ["CMD", "bun", "-e", "fetch('http://localhost:3333/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
@@ -59,9 +68,23 @@ services:
       flyway: { condition: service_completed_successfully }
 
   web:
-    profiles: [full]
-    build: ./frontend
-    ports: ["3000:3000"]
+    profiles: [full, prod]
+    build:
+      context: ./frontend
+      # o Next embute o endereço da API no build: trocar o valor exige refazer a imagem (--build)
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3333}
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:3000"]
+    # o navegador é quem chama a API: o web só precisa ser alcançado pelo túnel, sem ver a api nem o banco
+    networks: [site]
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 512m, pids: 128 }
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      retries: 10
     depends_on: [api]
 
   cloudflared:
@@ -72,13 +95,17 @@ services:
     environment:
       # token do túnel: só no .env do servidor, nunca versionado
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
-    # só na rede do túnel: alcança a api, não o banco
-    networks: [tunnel]
+    # alcança a api, o banco (rede tunnel) e o web (rede site); cada rota pública é cadastrada na Cloudflare
+    networks: [tunnel, site]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 256m, pids: 128 }
     depends_on:
       api: { condition: service_healthy }
 
 networks:
   tunnel:
+  site:
 
 volumes:
   pgdata:

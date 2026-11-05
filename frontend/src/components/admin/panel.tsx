@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { AlertIcon } from "@/components/icons"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-// Building blocks shared by the admin pages: section cards, stat tiles, ranked bars, notices.
+// Building blocks shared by the admin pages: section cards, stat tiles, ranked bars.
+// Notice and Field live in components/ui; re-exported here for the admin pages.
+export { Field } from "@/components/ui/field"
+export { Notice } from "@/components/ui/notice"
 
 export function Section({
   title,
@@ -110,30 +111,6 @@ export function RankedBars({ items, unit, empty }: { items: RankedItem[]; unit: 
   )
 }
 
-export function Notice({ children, tone = "error" }: { children: React.ReactNode; tone?: "error" | "info" }) {
-  return (
-    <div
-      role={tone === "error" ? "alert" : "status"}
-      className={cn(
-        "flex items-start gap-2 rounded-xl border px-3 py-2 text-sm",
-        tone === "error" ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-border bg-muted/20"
-      )}
-    >
-      {tone === "error" && <AlertIcon size={16} className="mt-0.5" />}
-      <span>{children}</span>
-    </div>
-  )
-}
-
 export function Loading() {
   return <p className="text-sm text-muted-foreground">Carregando…</p>
-}
-
-export function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-    </div>
-  )
 }

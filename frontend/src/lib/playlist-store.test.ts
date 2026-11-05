@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import {
+  DEFAULT_PLAYLIST_COLOR,
   INITIAL_PLAYLISTS,
   DEFAULT_TRACKS,
   getPlaylistInitials,
-  isPlaylistDataArray,
-  persistPlaylists,
+  musicToTrack,
+  playlistChanges,
+  toPlaylistData,
 } from "./playlist-store"
 
 describe("playlist-store", () => {
@@ -21,26 +23,70 @@ describe("playlist-store", () => {
     expect(getPlaylistInitials("Solo")).toBe("SO")
   })
 
-  it("validates playlist data array correctly", () => {
-    expect(isPlaylistDataArray(INITIAL_PLAYLISTS)).toBe(true)
-    expect(isPlaylistDataArray([])).toBe(true)
-    expect(isPlaylistDataArray(null)).toBe(false)
-    expect(isPlaylistDataArray([{ name: "test" }])).toBe(false)
-    expect(
-      isPlaylistDataArray([
-        {
-          id: "1",
-          name: "Test",
-          color: "#000",
-          isPrivate: false,
-          createdAt: "today",
-          tracks: [],
-        },
-      ])
-    ).toBe(true)
+  it("turns an API playlist into what the pages draw, with the default color when it has none", () => {
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: false }
+    expect(toPlaylistData({ ...playlist, color: "#F2A541" })).toEqual({
+      id: "4",
+      name: "Churrasco",
+      color: "#F2A541",
+      isPrivate: false,
+      createdAt: "2026-01-02T12:00:00.000Z",
+      tracks: [],
+      canEdit: false,
+    })
+    expect(toPlaylistData({ ...playlist, color: null }).color).toBe(DEFAULT_PLAYLIST_COLOR)
   })
 
-  it("safely handles persistPlaylists in non-browser environments", () => {
-    expect(() => persistPlaylists(INITIAL_PLAYLISTS)).not.toThrow()
+  it("turns a playlist's musics into tracks, in the playlist's order", () => {
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true }
+    const musics = [
+      { id: 9, name: "Pedra na Água", duration: 201, artists: [{ id: 3, name: "Tomás Lago" }], album: null, addedAt: "2026-01-03T00:00:00.000Z" },
+      {
+        id: 2,
+        name: "Asfalto Molhado",
+        duration: 247,
+        artists: [
+          { id: 1, name: "Maré Alta" },
+          { id: 5, name: "Nina Sol" },
+        ],
+        album: { id: 1, name: "Ondas de Concreto" },
+        addedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]
+
+    const data = toPlaylistData(playlist, musics)
+
+    expect(data.tracks.map((t) => t.id)).toEqual(["9", "2"])
+    expect(data.tracks[1]).toEqual({
+      id: "2",
+      title: "Asfalto Molhado",
+      artist: "Maré Alta, Nina Sol",
+      album: "Ondas de Concreto",
+      duration: "4:07",
+      durationSec: 247,
+      year: "",
+    })
+    // No album: the field stays empty and the covers fall back to the title
+    expect(musicToTrack({ ...musics[1], album: null }).album).toBe("")
+  })
+})
+
+describe("playlistChanges", () => {
+  const current = { name: "Para correr", isPrivate: false, color: "#E4572E" }
+
+  it("sends only the fields that changed, with the name trimmed", () => {
+    expect(playlistChanges(current, { ...current, name: "  Treino  " })).toEqual({ name: "Treino" })
+    expect(playlistChanges(current, { ...current, isPrivate: true, color: "#1e7f82" })).toEqual({
+      isPrivate: true,
+      color: "#1e7f82",
+    })
+  })
+
+  it("is null when nothing changed, even if the color differs only in case or the name only in spaces", () => {
+    expect(playlistChanges(current, { ...current, name: " Para correr ", color: "#e4572e" })).toBeNull()
+  })
+
+  it("is null for a blank name, which the API refuses", () => {
+    expect(playlistChanges(current, { ...current, name: "   ", isPrivate: true })).toBeNull()
   })
 })

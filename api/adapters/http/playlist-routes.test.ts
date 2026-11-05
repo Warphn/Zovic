@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { Pool } from "pg";
 import { createAuth } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 
 // Rotas de playlist pela app Express real (composeApp), com sessão do Better Auth e o banco de verdade.
 // Pool próprio: o singleton de infra/db/pool.ts é encerrado pelo auth-flow.test.ts, que roda no mesmo processo.
@@ -38,7 +39,9 @@ async function signUp(label: string): Promise<string> {
   });
   const raw = res.headers.getSetCookie().find((cookie) => /session_token=/.test(cookie));
   if (!raw) throw new Error(`Sign-up failed with ${res.status}`);
-  return raw.split(";")[0]!;
+  const sessionCookie = raw.split(";")[0]!;
+  await subscribeAccount(baseUrl, sessionCookie);
+  return sessionCookie;
 }
 
 function call(method: string, path: string, cookie: string | null, body?: unknown) {
@@ -88,6 +91,7 @@ afterAll(async () => {
        SELECT pu.playlist_id FROM playlist_user pu JOIN "user" u ON u.id = pu.user_id WHERE u.email LIKE $1)`,
     [`%${EMAIL_DOMAIN}`],
   );
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
   await pool.end();
 });
@@ -133,7 +137,8 @@ describe("rotas de playlist", () => {
     for (const id of ["abc", "0", "-1", "1.5", "01", "99999999999"]) {
       const res = await call("GET", `/playlists/${id}`, ana);
       expect(res.status).toBe(400);
-      expect((await json<{ fields: { field: string }[] }>(res)).fields[0]?.field).toBe("id");
+      // Um erro só por id: "abc" não pode vir também como "is too large".
+      expect((await json<{ fields: { field: string }[] }>(res)).fields.map((f) => f.field)).toEqual(["id"]);
     }
   });
 

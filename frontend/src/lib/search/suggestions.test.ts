@@ -1,81 +1,85 @@
 import { describe, expect, it } from "bun:test"
-import type { PlaylistData, Track } from "@/lib/playlist-store"
-import { getSuggestions, normalize } from "./suggestions"
+import { type SearchMusic, type SearchResults, searchApi } from "@/lib/api/search"
+import { DEFAULT_PLAYLIST_COLOR, musicToTrack } from "@/lib/playlist-store"
+import { normalize, toSuggestions } from "./suggestions"
 
-const track = (id: string, title: string, artist: string): Track => ({
-  id,
-  title,
-  artist,
-  album: "Álbum",
-  duration: "3:00",
-  durationSec: 180,
-  year: "1972",
-})
+const CLUBE: SearchMusic = {
+  id: 3,
+  name: "Clube da Esquina Nº 2",
+  duration: 218,
+  artists: [
+    { id: 7, name: "Lô Borges" },
+    { id: 8, name: "Milton Nascimento" },
+  ],
+}
 
-const PLAYLISTS: PlaylistData[] = [
-  {
-    id: "pl-1",
-    name: "MPB dos Anos Dourados",
-    color: "#d33a2c",
-    isPrivate: false,
-    createdAt: "Hoje",
-    tracks: [
-      track("t1", "Construção", "Chico Buarque"),
-      track("t2", "Águas de Março", "Elis Regina, Tom Jobim"),
-      track("t3", "Clube da Esquina Nº 2", "Milton Nascimento, Lô Borges"),
-    ],
-  },
-  {
-    id: "pl-2",
-    name: "Clube do Vinil",
-    color: "#4f46e5",
-    isPrivate: false,
-    createdAt: "Hoje",
-    tracks: [track("t2", "Águas de Março", "Elis Regina, Tom Jobim"), track("t4", "Tudo o Que Você Podia Ser", "Lô Borges")],
-  },
-]
+const RESULTS: SearchResults = {
+  musics: [
+    CLUBE,
+    { id: 9, name: "O Trem Azul", duration: 245, artists: [{ id: 7, name: "Lô Borges" }] },
+  ],
+  artists: [{ id: 7, name: "Lô Borges", musicCount: 2 }],
+  playlists: [
+    { id: 12, name: "Clube do Vinil", isPrivate: false, color: "#4f46e5", musicCount: 4 },
+    { id: 13, name: "Clube", isPrivate: true, color: null, musicCount: 1 },
+  ],
+}
 
-describe("search suggestions", () => {
-  it("ignores case and accents", () => {
+describe("search suggestions from the API", () => {
+  it("ignores case and accents when comparing text", () => {
     expect(normalize("Águas de MARÇO")).toBe("aguas de marco")
-    const kinds = getSuggestions("aguas", PLAYLISTS).map((s) => s.kind)
-    expect(kinds).toContain("track")
   })
 
-  it("returns nothing for an empty query", () => {
-    expect(getSuggestions("   ", PLAYLISTS)).toEqual([])
+  it("returns nothing for a blank query", () => {
+    expect(toSuggestions(RESULTS, "   ")).toEqual([])
   })
 
-  it("groups text completions, tracks, artists and playlists, in that order", () => {
-    const suggestions = getSuggestions("clube", PLAYLISTS)
-    const kinds = suggestions.map((s) => s.kind)
-    expect(kinds).toEqual(["query", "query", "track", "playlist"])
-    expect(suggestions.slice(0, 2)).toEqual([
+  it("keeps the API order: text completions, then tracks, artists and playlists", () => {
+    const kinds = toSuggestions(RESULTS, "clube").map((s) => s.kind)
+    expect(kinds).toEqual(["query", "query", "track", "track", "artist", "playlist", "playlist"])
+  })
+
+  it("completes only names that start with the query and are not the query itself", () => {
+    const queries = toSuggestions(RESULTS, "CLUBE").filter((s) => s.kind === "query")
+    expect(queries).toEqual([
       { kind: "query", text: "Clube da Esquina Nº 2" },
       { kind: "query", text: "Clube do Vinil" },
     ])
+    expect(toSuggestions(RESULTS, "clube", 1).filter((s) => s.kind === "query")).toHaveLength(1)
+    expect(toSuggestions(RESULTS, "clube", 0).some((s) => s.kind === "query")).toBe(false)
   })
 
-  it("lists each track once, linking to the first playlist that has it", () => {
-    const tracks = getSuggestions("marco", PLAYLISTS).filter((s) => s.kind === "track")
-    expect(tracks).toHaveLength(1)
-    expect(tracks[0]).toMatchObject({ id: "t2", playlistId: "pl-1" })
+  it("turns a music into a track the player can queue", () => {
+    expect(musicToTrack(CLUBE)).toEqual({
+      id: "3",
+      title: "Clube da Esquina Nº 2",
+      artist: "Lô Borges, Milton Nascimento",
+      album: "",
+      duration: "3:38",
+      durationSec: 218,
+      year: "",
+    })
+    // The second music, whatever the query: filtering is the API's job
+    const track = toSuggestions(RESULTS, "trem").filter((s) => s.kind === "track")[1]
+    expect(track).toMatchObject({ id: "9", title: "O Trem Azul", artist: "Lô Borges", track: { id: "9" } })
   })
 
-  it("splits multi-artist credits into separate artists", () => {
-    const artists = getSuggestions("lo bor", PLAYLISTS).filter((s) => s.kind === "artist")
-    expect(artists).toEqual([{ kind: "artist", name: "Lô Borges", trackCount: 2 }])
+  it("maps artist and playlist counts, with a default cover color", () => {
+    const suggestions = toSuggestions(RESULTS, "lo")
+    expect(suggestions).toContainEqual({ kind: "artist", name: "Lô Borges", trackCount: 2 })
+    expect(suggestions).toContainEqual({
+      kind: "playlist",
+      id: "13",
+      name: "Clube",
+      color: DEFAULT_PLAYLIST_COLOR,
+      trackCount: 1,
+    })
   })
+})
 
-  it("ranks word-prefix matches before matches in the middle of a word", () => {
-    const tracks = getSuggestions("o", PLAYLISTS, { tracks: 10 }).filter((s) => s.kind === "track")
-    // "Tudo o Que..." has a word starting with "o"; "Construção" only contains it
-    expect(tracks[0]).toMatchObject({ id: "t4" })
-  })
-
-  it("caps every group", () => {
-    const suggestions = getSuggestions("a", PLAYLISTS, { queries: 1, tracks: 1, artists: 1, playlists: 1 })
-    const count = (kind: string) => suggestions.filter((s) => s.kind === kind).length
-    expect([count("query"), count("track"), count("artist"), count("playlist")]).toEqual([1, 1, 1, 1])
+describe("search request", () => {
+  it("encodes the trimmed term and the optional limit", () => {
+    expect(searchApi.path("  águas de março ")).toBe("/search?q=%C3%A1guas+de+mar%C3%A7o")
+    expect(searchApi.path("rock & roll", 50)).toBe("/search?q=rock+%26+roll&limit=50")
   })
 })

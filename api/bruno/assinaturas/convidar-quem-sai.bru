@@ -1,0 +1,33 @@
+meta {
+  name: Convidar (quem vai sair)
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/plans/me/invitations
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{leaverEmail}}"
+  }
+}
+
+script:pre-request {
+  bru.setVar("leaverEmail", `saiu+${Date.now()}@zovic.test`);
+}
+
+script:post-response {
+  bru.setVar("leaverToken", res.getBody().token);
+  bru.setVar("leaverInvitationId", res.getBody().id);
+}
+
+tests {
+  test("responde 201 com o token do link", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().token).to.be.a("string");
+  });
+}

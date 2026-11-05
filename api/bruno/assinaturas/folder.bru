@@ -1,0 +1,15 @@
+meta {
+  name: Assinaturas
+  seq: 5
+}
+
+docs {
+  POST /api/plans, GET /api/plans/me e DELETE /api/plans/me, o bloqueio do catálogo para quem não tem assinatura e,
+  da requisição 11 em diante, o plano Família: convidar, consultar o link, cadastrar pelo convite, sair e remover.
+
+  Rode a pasta na ordem. "Cadastro" cria uma conta nova, porque todo usuário do seed já tem plano, e deixa a sessão
+  dela aberta. Por usar cadastro, e não login, esta pasta gasta só 1 login do limite de 5 da coleção: o de "Entrar como
+  gestor", porque os cadastros pelo convite trocam a sessão.
+
+  Pré-requisitos: `COOKIE_SECURE=false` no `.env` e os tipos de plano no banco, criados por `bun run db:seed`.
+}

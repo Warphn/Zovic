@@ -6,21 +6,25 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { type AdminUser, adminApi, ApiError, formatDateTime, type NewUser } from "@/lib/admin/api"
-import { useResource } from "@/lib/admin/use-resource"
+import {
+  type AdminUser,
+  type NewUser,
+  useAdminUsers,
+  useCreateUser,
+  useRecentPlays,
+  useRemoveUser,
+} from "@/lib/api/admin"
+import { apiErrorMessage } from "@/lib/api/client"
 import { useSession } from "@/lib/auth/client"
+import { formatDateTime } from "@/lib/format-date-time"
 
 const EMPTY_USER: NewUser = { name: "", email: "", password: "", birthdate: "", role: "assinante" }
-
-function messageOf(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Algo deu errado. Tente de novo."
-}
 
 export default function AdminUsersPage() {
   const { data: session } = useSession()
   const [search, setSearch] = React.useState("")
   const [query, setQuery] = React.useState("")
-  const users = useResource(() => adminApi.listUsers(query), [query])
+  const users = useAdminUsers(query)
   const [creating, setCreating] = React.useState(false)
   const [removing, setRemoving] = React.useState<AdminUser | null>(null)
   const [playsOf, setPlaysOf] = React.useState<AdminUser | null>(null)
@@ -54,8 +58,8 @@ export default function AdminUsersPage() {
           className="max-w-sm"
         />
         {notice && <Notice tone="info">{notice}</Notice>}
-        {users.error && <Notice>{users.error}</Notice>}
-        {users.loading && !users.data ? (
+        {users.isError && <Notice>{apiErrorMessage(users.error)}</Notice>}
+        {users.isPending ? (
           <Loading />
         ) : users.data && users.data.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma conta encontrada.</p>
@@ -123,7 +127,6 @@ export default function AdminUsersPage() {
         onOpenChange={setCreating}
         onCreated={(user) => {
           setNotice(`Conta de ${user.name} criada. A pessoa já pode entrar com o email e a senha definidos.`)
-          users.reload()
         }}
       />
       <RemoveUserDialog
@@ -131,7 +134,6 @@ export default function AdminUsersPage() {
         onClose={() => setRemoving(null)}
         onRemoved={(user) => {
           setNotice(`Conta de ${user.name} removida.`)
-          users.reload()
         }}
       />
       <RecentPlaysDialog user={playsOf} onClose={() => setPlaysOf(null)} />
@@ -151,6 +153,7 @@ function CreateUserDialog({
   const [form, setForm] = React.useState<NewUser>(EMPTY_USER)
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
+  const createUser = useCreateUser()
 
   const set = (field: keyof NewUser) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((current) => ({ ...current, [field]: e.target.value }))
@@ -171,11 +174,11 @@ function CreateUserDialog({
     }
     setSaving(true)
     try {
-      const user = await adminApi.createUser(form)
+      const user = await createUser.mutateAsync(form)
       onCreated(user)
       close(false)
     } catch (err) {
-      setError(messageOf(err))
+      setError(apiErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -240,6 +243,7 @@ function RemoveUserDialog({
 }) {
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
+  const removeUser = useRemoveUser()
 
   const close = () => {
     setError(null)
@@ -250,11 +254,11 @@ function RemoveUserDialog({
     if (!user) return
     setSaving(true)
     try {
-      await adminApi.removeUser(user.id)
+      await removeUser.mutateAsync(user.id)
       onRemoved(user)
       close()
     } catch (err) {
-      setError(messageOf(err))
+      setError(apiErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -284,8 +288,7 @@ function RemoveUserDialog({
 }
 
 function RecentPlaysDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
-  const userId = user?.id
-  const plays = useResource(() => (userId ? adminApi.recentPlays(userId) : Promise.resolve([])), [userId])
+  const plays = useRecentPlays(user?.id ?? null)
 
   return (
     <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
@@ -294,9 +297,9 @@ function RecentPlaysDialog({ user, onClose }: { user: AdminUser | null; onClose:
           <DialogTitle>Reproduções recentes</DialogTitle>
           <DialogDescription>{user?.name}: as últimas 50, da mais recente para a mais antiga.</DialogDescription>
         </DialogHeader>
-        {plays.error ? (
-          <Notice>{plays.error}</Notice>
-        ) : plays.loading ? (
+        {plays.isError ? (
+          <Notice>{apiErrorMessage(plays.error)}</Notice>
+        ) : plays.isPending ? (
           <Loading />
         ) : plays.data?.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma reprodução registrada.</p>

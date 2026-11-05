@@ -83,3 +83,59 @@ O primeiro desenho do papel de admin foi revertido porque a `main` já tinha uma
 | 3 | Verifique o estado do repositório e atualize as documentações. | Seção "Rotas da API" no [`README.md`](../../README.md), [`docs/models.md`](../models.md), [`docs/banco-de-dados.md`](../banco-de-dados.md) e este registro |
 
 A equipe revisou o desenho da busca antes da implementação e fez os merges dos dois PRs.
+
+### 26/10 a 04/11/2026: servidor de produção
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Preciso fazer o setup do servidor do projeto no meu desktop: leia a seção de setup do mapa de implementação e me dê o passo a passo. | Roteiro guiado: WSL2 e Docker Desktop, repositório em `~/zovic`, domínio `zovic.com.br` na Cloudflare, túnel `zovic-desktop` e `.env` de produção |
+| 2 | Implemente as mudanças no compose para o servidor de produção. | Profile `prod`, healthcheck da API, porta em `127.0.0.1` e serviço `cloudflared` numa rede só com a API, em [`docker-compose.yml`](../../docker-compose.yml) (PR #57) |
+| 3 | Escreva um script simples, como o `bun start`, para subir e derrubar o servidor quando eu quiser. | [`scripts/server.ts`](../../scripts/server.ts) (`bun server`), que recusa subir sem o `.env` de produção (PR #60) |
+| 4 | Deixe o servidor funcional para usuários autenticados e admins, diga o hardware reservado para cada container e crie perfis para os outros integrantes consultarem o banco de produção. | Limites de CPU, memória e processos no compose e [`api/scripts/db-member.ts`](../../api/scripts/db-member.ts) (`bun db:member`), com um usuário do Postgres por integrante atrás do Cloudflare Access (PR #74) |
+| 5 | Crie um script para facilitar o login na Cloudflare e o acesso ao banco, e coloque-o no menu do `bun start`. | [`scripts/db-connect.ts`](../../scripts/db-connect.ts) (`bun db:connect` e a opção "banco de produção" do `bun start`) (PR #108) |
+| 6 | Quero acessar o front pelo meu domínio, servido pelo próprio servidor. | Serviço `web` no profile `prod`, com a URL da API no build e uma rede só com o `cloudflared` (PR #109) |
+| 7 | Atualize as documentações e o README para a equipe ter onde recorrer em caso de dúvidas. | [`docs/servidor.md`](../servidor.md) e os links no [`README.md`](../../README.md), em [`docs/docker.md`](../docker.md) e em [`docs/banco-de-dados.md`](../banco-de-dados.md) |
+
+A configuração da Cloudflare (domínio, túnel, rotas, Access e redirecionamento do `www`) foi feita no painel, com a IA guiando cada tela. Cada mudança de código foi testada num ambiente descartável do Docker antes do PR, e o servidor foi conferido de fora: a API, o site e o banco atrás do Access. A equipe escolheu servir o front pelo desktop, e não pela Vercel, para front e API ficarem sempre na mesma versão.
+
+### 04/11/2026: reorganização da documentação
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Sinto que as documentações do projeto estão muito verbosas e confusas. Gostaria de algo mais direto, mas explicativo, para a equipe, com os comandos que devemos rodar para tudo funcionar e o que cada um faz. | [`README.md`](../../README.md) reescrito como guia de comandos e [`docs/api.md`](../api.md) com o login, as variáveis e as rotas que estavam no README |
+| 2 | Veja se dá para melhorar as outras documentações também. | Resumo dos comandos em [`docs/banco-de-dados.md`](../banco-de-dados.md), tipos reais e a coluna `role` no [`docs/modelo-er.md`](../modelo-er.md), as portas de consulta em [`docs/models.md`](../models.md), o environment `prod` do Bruno em [`docs/servidor.md`](../servidor.md) e o índice em [`docs/README.md`](../README.md) |
+
+A IA conferiu os comandos, os caminhos e as constraints citados contra o código e as migrations antes de escrever.
+
+### 05/11/2026: assinatura individual pela API
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Tenho algumas mudanças não commitadas e gostaria de terminar essa issue. Acha necessário fazer um plano? Perceba que ainda não tenho um banco de dados povoado. | Levantamento do que faltava na issue #85 e plano de implementação. O seed já existente resolveu o banco local |
+| 2 | Decisões da equipe sobre o plano: desativar o plano Família até a #86 e exigir a assinatura também na API. | Middleware [`require-subscription.ts`](../../api/adapters/http/middlewares/require-subscription.ts) nas rotas de playlists, busca e catálogo, e cliente [`subscriptions.ts`](../../frontend/src/lib/api/subscriptions.ts) no lugar do `localStorage` |
+
+A equipe escolheu o escopo e as duas decisões acima antes da implementação.
+
+### 05/11/2026: plano familiar (#86, HU-04 a HU-07)
+
+Forma de trabalho: o Claude Opus fez o plano, preparou a tarefa de cada fase, leu o diff, rodou as verificações e conduziu os testes no navegador. A implementação ficou com subagentes Claude Sonnet, um por fase, em sequência na mesma branch, sem commitar. Cada subagente começou sem contexto e recebeu o plano, as seções do `CLAUDE.md` e os critérios de aceite da fase.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Planejar a #86 a partir da issue e do código da #85: decisões de desenho (token de 32 bytes com só o hash no banco, vagas contando convites pendentes, trava por plano contra convites simultâneos, cadastro pelo convite com `invitationToken`) e as quatro fases | Plano da issue, aprovado pelo Gabriel (responsável pela issue) antes da implementação |
+| 2 | Fase 1, banco e domínio: migração de `plan_invitation` e do limite de 4 no Família, ajuste do seed (Elisa em plano próprio, Gabriela na Família Costa), casos de uso de convidar, cancelar, consultar, aceitar, remover e sair, com testes unitários | [`V261105_151000__Adiciona_convites_do_plano.sql`](../../db/migrations/V261105_151000__Adiciona_convites_do_plano.sql), casos de uso em [`api/domain/use-cases/`](../../api/domain/use-cases/) |
+| 3 | Fase 2, HTTP e cadastro: rotas de plano e de convite, `invitationToken` no cadastro, recusa de menor sem convite, testes de integração, `openapi.ts` e requisições do Bruno | [`subscription-controller.ts`](../../api/adapters/http/subscription-controller.ts), [`create-auth.ts`](../../api/adapters/auth/create-auth.ts) e [`api/bruno/assinaturas/`](../../api/bruno/assinaturas/) |
+| 4 | Fase 3, front: assinar o Família, "Meu plano" do gestor e do membro, tela `/convite/[token]`, cadastro e entrada com convite, mensagens de erro | [`subscriptions.ts`](../../frontend/src/lib/api/subscriptions.ts), [`frontend/src/components/plan/`](../../frontend/src/components/plan/) e [`frontend/src/app/convite/`](../../frontend/src/app/convite/) |
+| 5 | Fase 4, documentação: rotas, tabela `plan_invitation`, demo do README, hooks do cliente da API e este registro | [`docs/api.md`](../api.md), [`docs/modelo-er.md`](../modelo-er.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |
+
+A revisão do Opus e os testes no navegador pegaram quatro erros, que voltaram aos subagentes para correção:
+
+- uma conta removida pela plataforma continuava ocupando vaga no plano;
+- a tela mostrava "convite inválido" logo depois de aceitar, porque a consulta do link, já usado, era refeita e respondia 404;
+- o token do convite se perdia no caminho Entrar, depois Criar conta;
+- um teste de integração novo dependia de uma música do seed LOCAL e quebraria no banco do CI, o que apareceu ao rodar a suíte num banco temporário só com migrações e seed de produção.
+
+No fim, a coleção do Bruno passou 29/29 contra a API real, e o fluxo no navegador passou 34/34 checagens.
+
+A diagramação do `docs/assets/modelo-er.png` não foi refeita: a imagem atual vem do draw.io, e a saída do mermaid ficou menos legível.
+

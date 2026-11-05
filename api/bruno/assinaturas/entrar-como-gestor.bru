@@ -1,0 +1,28 @@
+meta {
+  name: Entrar como gestor
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "email": "{{uniqueEmail}}",
+    "password": "senha-do-bruno"
+  }
+}
+
+tests {
+  test("responde 200 e volta para a sessão do gestor", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

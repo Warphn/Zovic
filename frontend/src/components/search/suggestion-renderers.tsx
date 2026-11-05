@@ -13,7 +13,12 @@ import { cn } from "@/lib/utils"
 type RendererProps<K extends SuggestionKind> = {
   suggestion: Extract<SearchSuggestion, { kind: K }>
   query: string
+  /** Start the subtitle with the kind ("Música · …"); off where a group heading already says it. */
+  showKind: boolean
 }
+
+// "Música · Maré Alta", or just "Maré Alta" under a heading that already names the kind
+const subtitleOf = (kind: string, text: string, showKind: boolean) => (showKind ? `${kind} · ${text}` : text)
 
 export type SuggestionRenderers = { [K in SuggestionKind]: React.ComponentType<RendererProps<K>> }
 
@@ -26,7 +31,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <strong className="font-bold text-foreground">{text.slice(index, index + q.length)}</strong>
+      <strong className="font-medium text-foreground">{text.slice(index, index + q.length)}</strong>
       {text.slice(index + q.length)}
     </>
   )
@@ -37,23 +42,32 @@ function Row({ media, title, subtitle }: { media: React.ReactNode; title: React.
     <span className="flex items-center gap-3 min-w-0">
       {media}
       <span className="min-w-0">
-        <span className="block truncate text-sm text-foreground/90">{title}</span>
+        <span className="block truncate text-sm text-foreground/80">{title}</span>
         {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
       </span>
     </span>
   )
 }
 
+// A small sleeve, like the playlist page's: the cover color with the sleeve's printed frame
+// (a round one for artists, who have no sleeve)
 function Cover({ label, color, round }: { label: string; color: string; round?: boolean }) {
   return (
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center text-xs font-black border border-black/10",
+        "relative flex size-9 shrink-0 items-center justify-center border border-black/10 text-[11px] font-medium",
         round ? "rounded-full" : "rounded-md",
         getContrastTextColor(color)
       )}
       style={{ backgroundColor: color }}
     >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-[2px] border border-current opacity-25",
+          round ? "rounded-full" : "rounded-[4px]"
+        )}
+      />
       {label}
     </span>
   )
@@ -70,34 +84,43 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
       title={<Highlight text={suggestion.text} query={query} />}
     />
   ),
-  track: ({ suggestion, query }) => (
+  track: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.title)} color="#171512" />}
       title={<Highlight text={suggestion.title} query={query} />}
-      subtitle={`Música • ${suggestion.artist}`}
+      subtitle={subtitleOf("Música", suggestion.artist, showKind)}
     />
   ),
-  artist: ({ suggestion, query }) => (
+  artist: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Artista • ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`}
+      subtitle={subtitleOf("Artista", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`, showKind)}
     />
   ),
-  playlist: ({ suggestion, query }) => (
+  playlist: ({ suggestion, query, showKind }) => (
     <Row
       media={<Cover label={getPlaylistInitials(suggestion.name)} color={suggestion.color} />}
       title={<Highlight text={suggestion.name} query={query} />}
-      subtitle={`Playlist • ${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`}
+      subtitle={subtitleOf("Playlist", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`, showKind)}
     />
   ),
 }
 
-export function SuggestionView({ suggestion, query }: { suggestion: SearchSuggestion; query: string }) {
+export function SuggestionView({
+  suggestion,
+  query,
+  showKind = true,
+}: {
+  suggestion: SearchSuggestion
+  query: string
+  showKind?: boolean
+}) {
   // The registry is keyed by kind, so this lookup always matches the suggestion's type
   const Renderer = SUGGESTION_RENDERERS[suggestion.kind] as React.ComponentType<{
     suggestion: SearchSuggestion
     query: string
+    showKind: boolean
   }>
-  return <Renderer suggestion={suggestion} query={query} />
+  return <Renderer suggestion={suggestion} query={query} showKind={showKind} />
 }

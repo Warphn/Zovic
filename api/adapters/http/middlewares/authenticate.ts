@@ -9,7 +9,11 @@ declare global {
   namespace Express {
     interface Locals {
       userId: number;
+      /** Email da conta, como está no banco. */
+      email: string;
       role: PlatformRole;
+      /** "AAAA-MM-DD", ou null se a conta não tem data de nascimento. */
+      birthdate: string | null;
     }
   }
 }
@@ -34,8 +38,22 @@ export function makeAuthenticate(auth: Auth): RequestHandler {
     }
 
     res.locals.userId = userId;
+    res.locals.email = response.user.email;
     // Qualquer valor desconhecido vale como assinante.
     res.locals.role = response.user.role === "admin" ? "admin" : "assinante";
+    res.locals.birthdate = toCalendarDate(response.user.birthdate);
     next();
   };
+}
+
+// O pool de produção já devolve colunas `date` como texto; um pool com o parser padrão do pg
+// devolveria um Date à meia-noite do fuso do servidor, então lemos o dia pelos campos locais.
+function toCalendarDate(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${String(value.getFullYear()).padStart(4, "0")}-${month}-${day}`;
+  }
+  return null;
 }

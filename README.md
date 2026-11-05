@@ -1,214 +1,161 @@
 # Zovic
 
-O projeto consiste em um site para streaming de músicas.
+Plataforma de streaming de música. API em Bun + Express + PostgreSQL e front em Next.js.
 
-## Tecnologias
+O repositório tem dois projetos, `api/` e `frontend/`. A raiz guarda o que é comum aos dois: o `docker-compose.yml`, o `.env` e os scripts `bun start` e `bun stop`.
 
-- **Backend:** TypeScript, Express, Joi
-- **Frontend:** TypeScript, Next.js
-- **Banco de dados:** PostgreSQL
-- **Migrations:** Flyway
-- **ORM:** Prisma (só o client; a estrutura do banco é do Flyway)
-- **Ferramentas:** Bun (runtime e pacotes), Docker, Oxlint
+## Pré-requisitos
 
-## Rodando o projeto
+- [Bun](https://bun.sh), na versão do campo `packageManager` do `package.json`.
+- Um runtime de Docker aberto: Docker Desktop, OrbStack ou Colima.
 
-Pré-requisitos: [Bun](https://bun.sh) e um runtime de Docker (OrbStack, Docker Desktop ou Colima).
+## Primeira vez
 
-O repositório tem dois projetos independentes, `api/` e `frontend/`. O `docker compose` roda sempre **na raiz**; o `bun dev` roda **dentro da pasta** do projeto.
-
-### Jeito rápido
-
-Logo depois de clonar, na raiz, uma vez só:
+Na raiz, logo depois de clonar:
 
 ```bash
-bun install    # hooks de git e o menu do bun start
+bun install          # instala os hooks de git e o menu do bun start
+bun start            # responda "Sim" em "É o seu primeiro acesso?"
 ```
 
-Depois, sempre que for trabalhar, também na raiz:
+No primeiro acesso, o `bun start` cria o `.env` a partir do `.env.example`, roda o `bun install` em `api/` e `frontend/`, gera o client do Prisma, sobe o Docker e popula o banco com dados de teste.
+
+## Dia a dia
 
 ```bash
-bun start      # pergunta o ambiente, se é o primeiro acesso e se quer popular o banco
-bun stop       # para todos os containers (o banco continua salvo)
+bun start            # sobe o ambiente
+bun stop             # para todos os containers (o banco continua salvo)
 ```
 
-O `bun start` faz três perguntas:
+O `bun start` pergunta três coisas:
 
-| Pergunta | Opções |
-| --- | --- |
-| Cê vai fazer o que, Zé? | `frontend`, `backend` ou `full` |
-| É o seu primeiro acesso? | Se sim, cria o `.env`, roda o `bun install` do que for preciso e gera o client do Prisma |
-| Quer popular o banco? | **Não**, **LOCAL** (dados de teste; apaga o banco local antes) ou **PROD** (só os dados reais, sem apagar nada) |
+1. **O que você vai fazer?** Escolha o que vai editar. Isso roda na sua máquina, e o resto roda no Docker:
 
-Depois ele sobe o Docker e, se você escolheu um seed, espera as migrations terminarem e popula o banco. No primeiro acesso, a resposta padrão do seed é LOCAL, já que o banco começa vazio.
+   | Opção | O Docker sobe | Você roda depois |
+   | --- | --- | --- |
+   | `backend` | banco e migrations | `cd api && bun dev` |
+   | `frontend` | banco, migrations e API | `cd frontend && bun dev` |
+   | `full` | o sistema inteiro | nada, é só abrir o site |
+   | `banco de produção` | nada: abre o acesso ao banco do servidor (o mesmo que `bun db:connect`) | o DBeaver ou o `psql` |
 
-Para pular as perguntas, passe tudo nos argumentos: `bun start backend`, `bun start backend --first` ou `bun start frontend --seed=local`. Sem `--seed`, nada é populado.
+2. **É o seu primeiro acesso?** "Sim" cria o `.env` (se ainda não existir), roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não".
+3. **Quer popular o banco?** **Não** mantém os dados. **LOCAL** apaga o banco local e insere os dados de teste. **PROD** insere só os dados reais (tipos de plano e gêneros), sem apagar nada.
 
-As seções abaixo mostram o que o script faz por baixo, para quem preferir rodar à mão.
-
-### Primeira vez
-
-```bash
-cp .env.example .env
-bun install                      # na raiz: hooks de git e o menu do bun start
-```
-
-### Backend
-
-```bash
-cd api && bun install            # 1ª vez e quando o api/bun.lock mudar
-bun run db:generate              # em api/: gera o client do Prisma (1ª vez e quando o schema mudar)
-```
-
-```bash
-docker compose up                # terminal 1, na raiz: banco + migrations
-bun run db:seed                  # terminal 2, em api/ (opcional): popula o banco com dados de teste
-bun dev                          # terminal 2, em api/: API com reload
-```
-
-### Frontend
-
-```bash
-cd frontend && bun install       # 1ª vez e quando o frontend/bun.lock mudar
-```
-
-```bash
-docker compose --profile frontend up --build   # terminal 1, na raiz: banco + migrations + API
-bun dev                                        # terminal 2, em frontend/: Next com hot reload
-```
-
-Para ter dados no banco, popule pela `api/`. Isso exige instalar as dependências dela uma vez:
-
-```bash
-cd api && bun install && bun run db:generate && bun run db:seed
-```
-
-O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
+Para pular as perguntas, passe as respostas como argumentos: `bun start backend`, `bun start frontend --seed=local` ou `bun start full --first`.
 
 ### Endereços
 
-| Serviço  | URL                     |
-| -------- | ----------------------- |
-| Frontend | http://localhost:3000   |
-| API      | http://localhost:3333   |
-| Postgres | localhost:5432          |
-
-Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/docker.md).
-
-Migrations, Prisma, seed e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
-
-### Autenticação
-
-A autenticação é feita pelo [Better Auth](https://www.better-auth.com), com email e senha e sessão guardada no banco. O login define o cookie `zovic.session_token` (httpOnly, SameSite=Lax); o navegador o envia nas próximas requisições. As rotas ficam em `/api/auth/*`: `sign-up/email`, `sign-in/email`, `sign-out` e `get-session`. A documentação OpenAPI (Swagger UI) está em http://localhost:3333/docs e a coleção do Bruno (`api/bruno/`) tem exemplos prontos.
-
-Depois de `bun run db:seed` (LOCAL), todo usuário de teste entra com a senha `zovic123` e o email `nome.sobrenome@zovic.test`, minúsculo e sem acentos. Por exemplo:
-
-```bash
-curl -i -c cookies.txt -X POST http://localhost:3333/api/auth/sign-in/email \
-  -H "Content-Type: application/json" \
-  -d '{"email":"ana.andrade@zovic.test","password":"zovic123"}'
-curl -b cookies.txt http://localhost:3333/api/auth/get-session
-curl -b cookies.txt -X POST http://localhost:3333/api/auth/sign-out \
-  -H "Content-Type: application/json" -H "Origin: http://localhost:3000" -d '{}'
-```
-
-O `sign-out` (e qualquer POST feito com cookie) precisa do header `Origin`, que o navegador já manda; a origem tem de estar em `CORS_ORIGIN`. Os usuários que existiam antes do Better Auth não têm email nem senha e não conseguem entrar. O seed PROD não cria credenciais.
-
-Segurança: a senha tem de 8 a 128 caracteres e é guardada com hash scrypt (do Better Auth); a sessão dura 30 dias, renovada a cada 15 dias de uso; o login permite 5 tentativas por 15 minutos por IP e o cadastro 10 por hora. Usuário com soft delete (`deleted_at`) não loga e perde as sessões que tinha. O token da sessão só circula no cookie: a API o tira do corpo de todas as respostas de `/api/auth/*` (`api/adapters/http/hide-session-tokens.ts`), para o JavaScript da página nunca lê-lo. Esqueci minha senha, confirmação de email e login social ainda não estão ligados, mas o schema já tem as tabelas `account` e `verification`.
-
-> **Atenção: diferença em relação à spec.** O Better Auth guarda o **token de sessão em texto puro** no banco (coluna `token` da tabela de sessões). A spec ([docs/superpowers/specs/2026-10-20-autenticacao-design.md](docs/superpowers/specs/2026-10-20-autenticacao-design.md)) tinha isso como anti-objetivo, e a implementação própria anterior guardava só o hash SHA-256 do token. Na prática, quem conseguir ler o banco consegue usar as sessões abertas. A senha também passou a usar o hash **scrypt**, padrão do Better Auth, no lugar do **Argon2id**. Isso é o comportamento padrão da biblioteca. Dá para mitigar depois, por exemplo com armazenamento secundário de sessões ou criptografia do token. A implementação própria, que atende à spec, está guardada na branch local `auth-propria`.
-
-**Papel e maioridade** (issue #1). Toda conta tem um papel em `user.role`: `assinante` (padrão) ou `admin`; visitante é quem não tem conta. **Nenhuma rota da API muda o papel**: o cadastro ignora o campo e a rota `update-user` do Better Auth está desligada. Para promover alguém, use o script, que grava direto no banco do `DATABASE_URL` do `.env` (roda da raiz ou de `api/`):
-
-```bash
-bun run admin:promote pessoa@exemplo.com
-```
-
-```bash
-bun run admin:promote pessoa@exemplo.com --revoke
-```
-
-O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
-
-O `--revoke` volta a pessoa a `assinante`. O script recusa email inexistente, usuário com soft delete e a retirada do último admin ativo. A mudança vale na próxima requisição, sem precisar entrar de novo.
-
-A data de nascimento é obrigatória no cadastro e não pode ser trocada depois (senão um menor viraria maior de idade). O `get-session` devolve `user.role` e `user.isAdult`: maior de idade é quem já completou 18 anos, pelo dia de São Paulo, calculado a cada requisição a partir de `birthdate` (`api/domain/shared/age.ts`). Sem data de nascimento (usuários antigos), `isAdult` é `false`. No seed LOCAL, `elisa.andrade@zovic.test` é admin, há um **admin padrão `admin@zovic.test` com senha `admin`** (só no seed LOCAL: a senha é curta demais para o cadastro e nunca vai para produção) e `heitor.costa@zovic.test` e `isabela.costa@zovic.test` são menores. O frontend mostra o papel e a faixa etária no menu da conta; quem garante as regras é a API.
-
-**Painel de admin.** Para quem tem `role = 'admin'`, o menu da conta (botão laranja no header) mostra **Painel de admin**, em `/admin`, com três abas:
-
-- **Visão geral**: usuários ativos, admins, contas removidas, reproduções e catálogo; acessos por conteúdo (as 10 músicas mais tocadas) e por categoria (reproduções por gênero).
-- **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
-- **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
-
-As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
-
-**Painel de admin.** Para quem tem `role = 'admin'`, o menu da conta (botão laranja no header) mostra **Painel de admin**, em `/admin`, com três abas:
-
-- **Visão geral**: usuários ativos, admins, contas removidas, reproduções e catálogo; acessos por conteúdo (as 10 músicas mais tocadas) e por categoria (reproduções por gênero).
-- **Usuários**: todas as contas, inclusive as removidas. O admin cria contas (com email, senha, data de nascimento e papel), remove contas (soft delete, que também derruba as sessões abertas) e vê as últimas 50 reproduções de cada uma. Ninguém remove a própria conta nem o último admin ativo.
-- **Conteúdo**: cria, edita (nome, duração, artistas, gêneros) e remove músicas; cria, renomeia e remove artistas. Remover é soft delete. As músicas removidas aparecem para o admin, marcadas, e somem para os demais usuários em `GET /api/musics`.
-
-As rotas ficam em `/api/admin/*` (sem sessão: 401; sem o papel: 403): `GET stats`, `GET|POST users`, `DELETE users/:id`, `GET users/:id/plays`, `POST musics`, `PATCH|DELETE musics/:id`, `POST artists`, `PATCH|DELETE artists/:id`. Para qualquer usuário logado: `GET /api/musics?q=`, `GET /api/artists`, `GET /api/genres` e `POST /api/musics/:id/plays`, que registra uma reprodução (o evento em `user_event`, com a música, e `streams + 1`). As estatísticas contam esses eventos; o player do frontend ainda é simulado e não chama essa rota.
-
-**No frontend**, as telas `/entrar` e `/cadastro` usam o cliente do Better Auth (`frontend/src/lib/auth/client.ts`), e as áreas logadas (`/playlist`, `/busca`) mandam para `/entrar` quem não tem sessão. O navegador chama a API **direto** (não passa pelo servidor do Next): a API libera a origem do frontend por CORS (`CORS_ORIGIN`) e o cookie é dela, então o JavaScript da página nunca vê a sessão. Para isso funcionar:
-
-- a origem do frontend (ex.: `http://localhost:3000`) precisa estar em `CORS_ORIGIN`;
-- frontend e API precisam estar no **mesmo site** (mesmo domínio, portas e subdomínios podem mudar: `localhost:3000` + `localhost:3333`, ou `zovic.com` + `api.zovic.com`), senão o navegador não envia o cookie `SameSite=Lax`;
-- o endereço da API vem de `NEXT_PUBLIC_API_URL` (padrão `http://localhost:3333`), lido **no build** do Next. Para mudar, crie `frontend/.env.local` ou passe `--build-arg NEXT_PUBLIC_API_URL=...` na imagem.
-
-O redirecionamento para `/entrar` é só de interface: quem protege os dados é a API, que confere o cookie em toda requisição.
-
-Variáveis do `.env`:
-
-| Variável | Para que serve |
+| Serviço | Endereço |
 | --- | --- |
-| `BETTER_AUTH_SECRET` | **Obrigatória.** Segredo (32+ caracteres) que assina o cookie de sessão. O `.env.example` traz um valor só para desenvolvimento; em produção gere um segredo forte (`openssl rand -base64 32`). **Quem já tem um `.env` precisa acrescentar essa linha.** |
-| `BETTER_AUTH_URL` | URL pública da API, sem o `/api/auth`. Padrão: `http://localhost:<PORT>`. |
-| `CORS_ORIGIN` | Origens do frontend (separadas por vírgula, exatas) liberadas no CORS da API e aceitas pelo Better Auth nas requisições com cookie. Vazia, nenhuma origem é liberada. |
-| `COOKIE_SECURE` | Se a variável faltar, a API (fora do docker compose) emite o cookie com `Secure` (e o nome ganha o prefixo `__Secure-`), e o navegador (ou o curl) não o guarda em `http://`. Em desenvolvimento use `COOKIE_SECURE=false`; o docker compose já assume `false` quando ela falta. Em produção, com HTTPS, deixe ligado. |
-| `TRUST_PROXY` | Opcional. Número de proxies confiáveis (inteiro >= 1) para quando a API roda atrás de um proxy reverso com TLS: sem isso o rate limit vê o IP do proxy, não o do cliente. Deixe vazio se a API for exposta direto. |
+| Frontend | http://localhost:3000 |
+| API | http://localhost:3333 |
+| Swagger (documentação das rotas) | http://localhost:3333/docs |
+| Postgres | `localhost:5432` (usuário, senha e banco: `zovic`) |
 
-### Rotas da API
+Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
 
-Fora `/api/auth/*`, toda rota exige a sessão (sem cookie válido, responde 401). Os detalhes de cada uma (corpo, respostas e exemplos) estão no Swagger UI, em http://localhost:3333/docs, e na coleção do Bruno (`api/bruno/`), com uma pasta por assunto.
+## Comandos
 
-| Método e rota | O que faz |
+### Na raiz
+
+| Comando | O que faz |
 | --- | --- |
-| `GET /api/playlists` | Lista as playlists de que o usuário é membro, da mais nova para a mais antiga. |
-| `POST /api/playlists` | Cria uma playlist; quem cria vira o primeiro membro, como admin. |
-| `GET /api/playlists/:id` | Mostra uma playlist pública a qualquer usuário e uma privada só aos membros. A privada de outra pessoa responde 404, como se não existisse. |
-| `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só admins da playlist (os outros recebem 403). |
-| `DELETE /api/playlists/:id` | Apaga com soft delete. Só admins da playlist. |
-| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists no catálogo inteiro, até `limit` itens por grupo (de 1 a 50, padrão 5). |
+| `bun start` | Sobe o ambiente de desenvolvimento (veja [Dia a dia](#dia-a-dia)) |
+| `bun stop` | Para todos os containers. Os dados do banco continuam salvos. |
+| `bun admin:promote <email>` | Torna um usuário admin. Com `--revoke`, volta a ser assinante. Grava no banco do `.env`. |
+| `bun db:connect` | Abre o acesso ao banco de produção em `localhost:15432` (veja [Banco de produção](docs/banco-de-dados.md#banco-de-produção)) |
+| `bun server` | Opera o servidor de produção. Só faz sentido no servidor (veja [Servidor de produção](docs/servidor.md)). |
+| `bun db:member` | Cria e remove os usuários da equipe no banco de produção. Também só roda no servidor. |
 
-**Como a busca funciona.**
-- **Acentos e maiúsculas:** a busca não diferencia nenhum dos dois, então `agua` acha `Águas`. A comparação usa a extensão `unaccent` do Postgres.
-- **Ordem em cada grupo:**
-  1. os nomes que começam com o termo;
-  2. depois, os que têm uma palavra começando com ele;
-  3. por último, os que só o contêm.
-  Empates ficam em ordem alfabética. É a mesma regra das sugestões do frontend.
-- **Músicas** também são encontradas pelo nome dos artistas.
-- **Playlists:** aparecem as públicas de qualquer pessoa e as privadas de que o usuário é membro.
-- **Nada apagado aparece.**
-- **`%` e `_`** contam como texto, não como curinga.
-- **Sem índice, por enquanto:** com o catálogo atual, ler a tabela inteira é instantâneo. O caminho previsto para quando ele crescer está no comentário da migration `V261103_151718__Ativa_unaccent_para_busca.sql`.
+### Em `api/`
 
-### Lint
+| Comando | O que faz | Quando rodar |
+| --- | --- | --- |
+| `bun dev` | Sobe a API em http://localhost:3333 e reinicia a cada mudança | Para trabalhar no backend |
+| `bun install` | Instala as dependências | Depois de um `git pull` que muda o `api/bun.lock` |
+| `bun run db:sync` | Lê o banco, atualiza o `schema.prisma` e gera o client do Prisma | Depois de criar ou receber uma migration |
+| `bun run db:generate` | Só gera o client do Prisma, sem consultar o banco | Depois do `bun install` |
+| `bun run db:seed` | Apaga o banco local e insere os dados de teste | Para ter dados para testar ou para voltar a um estado limpo |
+| `bun run test` | Testes do domínio, sem banco | Antes de commitar |
+| `bun run test:integration` | Testes das rotas e dos repositórios, no Postgres (precisa do banco no ar e do seed, LOCAL ou PROD) | Antes de commitar uma mudança no banco ou nas rotas |
+| `bun run typecheck` | Confere os tipos do TypeScript | Antes de commitar |
+| `bun run lint` | Procura problemas no código. `lint:fix` corrige o que for automático. | Antes de commitar |
 
-Os dois projetos usam [Oxlint](https://oxc.rs), configurado no `.oxlintrc.json` de cada pasta. Ele roda sozinho no pre-commit, só nos arquivos do commit, e bloqueia o commit se houver erro.
+### Em `frontend/`
 
-```bash
-bun run lint       # em api/ ou frontend/
-bun run lint:fix   # corrige o que for automático
-```
+| Comando | O que faz | Quando rodar |
+| --- | --- | --- |
+| `bun dev` | Sobe o Next em http://localhost:3000, com hot reload | Para trabalhar no front |
+| `bun install` | Instala as dependências | Depois de um `git pull` que muda o `frontend/bun.lock` |
+| `bun run test` | Testes do front | Antes de commitar |
+| `bun run lint` | Procura problemas no código. `lint:fix` corrige o que for automático. | Antes de commitar |
 
-### Testes
+### Docker (na raiz)
 
-```bash
-bun run test               # em api/ ou frontend/: testes rápidos, sem banco
-bun run test:integration   # em api/: repositórios e rotas HTTP no Postgres (precisa do banco no ar)
-bun run typecheck          # em api/
-```
+O `bun start` e o `bun stop` já chamam o Docker por você. Estes comandos servem para investigar algum problema:
 
-Antes de todo `git push`, o hook `.husky/pre-push` roda o typecheck e os testes da API e os testes do frontend, e **cancela o push se algo falhar**. Os testes de integração só rodam se o container `db` estiver no ar; senão, o hook avisa e segue. Numa emergência, `git push --no-verify` pula o hook.
+| Comando | O que faz |
+| --- | --- |
+| `docker compose ps` | Mostra o que está rodando |
+| `docker compose logs -f api` | Acompanha os logs de um serviço (`db`, `flyway`, `api` ou `web`) |
+| `docker compose up flyway` | Aplica as migrations novas no banco local |
+| `docker compose down -v` | Para tudo e **apaga o banco local**. O próximo `bun start` recria o banco do zero. |
+
+## Situações comuns
+
+**Fiz `git pull` e algo parou de funcionar.** Rode `bun install` na pasta cujo `bun.lock` mudou. Se chegou uma migration nova, rode `bun start`, que a aplica no banco, e depois `bun run db:generate` em `api/`, para o client do Prisma acompanhar o `schema.prisma` novo. Se a mudança foi no backend e você usa o `frontend`, rode `bun start frontend` de novo, porque ele refaz a imagem da API.
+
+**Quero o banco limpo, com os dados de teste.** Rode `bun start` e escolha **LOCAL**. Se o banco estiver quebrado (uma migration que falhou pela metade, por exemplo), rode `docker compose down -v` antes.
+
+**Criei uma migration.** Crie o arquivo em `db/migrations/` com o nome no padrão, rode `docker compose up flyway` e depois `bun run db:sync` em `api/`. As regras estão em [Banco de dados](docs/banco-de-dados.md#migrations-flyway).
+
+**Vou adicionar uma biblioteca.** Na pasta do projeto, `bun add nome-da-lib`, e commite o `package.json` e o `bun.lock` juntos. Combine a dependência nova com o time antes.
+
+**O `git push` foi cancelado.** Antes de todo push, o hook roda o typecheck e os testes. Os testes de integração só rodam se o banco estiver no ar. Corrija o que falhou e tente de novo. O `git push --no-verify` pula o hook, mas é só para emergências.
+
+**O commit foi bloqueado.** O pre-commit roda o lint nos arquivos do commit. Rode `bun run lint:fix` na pasta do projeto e corrija o resto à mão.
+
+## Contas de teste e fluxo do admin
+
+Depois do seed LOCAL, toda conta de teste entra com o email `nome.sobrenome@zovic.test`, em minúsculas e sem acentos, e a senha `zovic123`.
+
+| Conta | Para que serve |
+| --- | --- |
+| `admin@zovic.test`, senha `admin` | Admin padrão, sem plano. Só existe no seed LOCAL. |
+| `elisa.andrade@zovic.test` | Admin com plano (Individual Elisa) |
+| `ana.andrade@zovic.test` | Gestora da Família Andrade (plano cheio, 4 pessoas) |
+| `bruno.andrade@zovic.test` | Membro da Família Andrade |
+| `felipe.costa@zovic.test` | Gestor da Família Costa |
+| `gabriela.costa@zovic.test` | Membro da Família Costa |
+| `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade, membros da Família Costa (plano cheio) |
+
+Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três abas:
+
+- **Visão geral:** usuários, reproduções, as 10 músicas mais tocadas e as reproduções por gênero.
+- **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
+- **Conteúdo:** cria, edita e remove músicas e artistas.
+
+Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
+
+Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
+
+### Demo do plano Família
+
+1. Cadastre uma conta de maior de idade e, em `/planos`, assine o **Família**. Em `/meu-plano` você é o gestor, com 1 de 4 vagas ocupadas.
+2. Em **Convidar**, informe o email de quem vai entrar. O sistema não envia email: copie o link (`/convite/<token>`) do diálogo. Ele aparece só nessa hora. Se perder, cancele o convite e convide de novo.
+3. Abra o link numa janela anônima. Sem conta, **Criar conta** abre o cadastro com o email do convite já preenchido e sem poder trocá-lo. A conta nasce como membro do plano e abre o catálogo. Quem já tem conta com esse email entra e clica em **Aceitar**.
+4. Para ver a regra dos menores, use uma data de nascimento de menor de 18 anos no cadastro do convite: só assim a conta é criada. Sem convite, o cadastro de um menor é recusado.
+5. De volta ao gestor, **Remover** tira o membro, e o membro pode **Sair do plano**. Nos dois casos o acesso acaba na hora e a vaga volta.
+
+Menor de idade só se cadastra por convite do plano familiar. Quem já tem assinatura ativa não aceita um convite.
+
+## Documentação
+
+| Documento | O que tem |
+| --- | --- |
+| [API](docs/api.md) | Login, variáveis do `.env`, rotas e regras da busca e das playlists |
+| [Banco de dados](docs/banco-de-dados.md) | Migrations, Prisma, seed e como acessar o banco local e o de produção |
+| [Ambiente com Docker](docs/docker.md) | Como adicionar uma biblioteca, uma variável de ambiente ou um serviço |
+| [Servidor de produção](docs/servidor.md) | Como o servidor funciona e como operá-lo |
+| [Modelo ER](docs/modelo-er.md) e [Models](docs/models.md) | O modelo de dados e as entidades do domínio |
+| [CLAUDE.md](CLAUDE.md) | Padrões de código, commits, branches, PRs e o board |

@@ -11,8 +11,9 @@ import { USERS } from "./users.ts";
 import { byName, day, idOf, type Seeder } from "./support.ts";
 
 const PLANS = [
-  { name: "Família Andrade", type: "Família", admins: ["Ana Andrade"], members: ["Bruno Andrade", "Carla Andrade", "Diego Andrade", "Elisa Andrade"] },
-  { name: "Família Costa", type: "Família", admins: ["Felipe Costa", "Gabriela Costa"], members: ["Heitor Costa", "Isabela Costa"] },
+  { name: "Família Andrade", type: "Família", admins: ["Ana Andrade"], members: ["Bruno Andrade", "Carla Andrade", "Diego Andrade"] },
+  { name: "Família Costa", type: "Família", admins: ["Felipe Costa"], members: ["Gabriela Costa", "Heitor Costa", "Isabela Costa"] },
+  { name: "Individual Elisa", type: "Individual", admins: ["Elisa Andrade"], members: [] },
   { name: "Individual João", type: "Individual", admins: ["João Lima"], members: [] },
   { name: "Individual Karina", type: "Individual", admins: ["Karina Rocha"], members: [] },
   { name: "Individual Lucas", type: "Individual", admins: ["Lucas Ferraz"], members: [] },

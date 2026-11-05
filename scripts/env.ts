@@ -3,6 +3,7 @@
  *
  *   bun start                                   → pergunta o ambiente, se é o primeiro acesso e o seed
  *   bun start backend [--first] [--seed=local]  → pula as perguntas (--seed=local ou --seed=prod)
+ *   bun start banco                             → abre o acesso ao banco de produção (mesmo que bun db:connect)
  *   bun stop                                    → derruba todos os containers (o banco continua salvo)
  */
 import * as p from "@clack/prompts";
@@ -10,8 +11,12 @@ import { $, type ShellPromise } from "bun";
 import { copyFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import pkg from "../package.json";
+import { openProductionDb } from "./db-connect.ts";
 
 type Env = "backend" | "frontend" | "full";
+
+/** "banco" não sobe ambiente: abre o acesso ao banco de produção, e as outras perguntas não se aplicam. */
+type Choice = Env | "banco";
 
 /** Seed do banco: nenhum, LOCAL (dados de teste) ou PROD (só os dados reais). Ver docs/banco-de-dados.md. */
 type Seed = "none" | "local" | "prod";
@@ -146,19 +151,27 @@ function seedFromArgs(args: string[]): Seed | undefined {
 async function start(args: string[]) {
   p.intro("Zovic · dev bros");
 
-  const fromArgs = args.find((a): a is Env => a in PLANS);
+  const fromArgs = args.find((a): a is Choice => a in PLANS || a === "banco");
 
-  const env = fromArgs ?? orExit(
-    await p.select<Env>({
+  const choice = fromArgs ?? orExit(
+    await p.select<Choice>({
       message: "Cê vai fazer o que, Zé?",
       showInstructions: false,
       options: [
         { value: "frontend", label: "frontend", hint: "Docker: banco + migrations + API" },
         { value: "backend", label: "backend", hint: "Docker: banco + migrations" },
         { value: "full", label: "full", hint: "Docker: o sistema inteiro" },
+        { value: "banco", label: "banco de produção", hint: "consulta o banco do servidor pelo Cloudflare Access" },
       ],
     }),
   );
+
+  if (choice === "banco") {
+    await openProductionDb();
+    p.outro("Caminho até o banco fechado.");
+    return;
+  }
+  const env = choice;
 
   const isFirst = fromArgs
     ? args.includes("--first")

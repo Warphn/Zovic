@@ -90,6 +90,15 @@ export const ShieldIcon = svg(
 export const SkipBackIcon = glyph("⏮")
 export const SkipForwardIcon = glyph("⏭")
 
+export const PencilIcon = svg(
+  <>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    <path d="m15 5 4 4" />
+  </>
+)
+export const ListPlusIcon = svg(<path d="M11 12H3M16 6H3M16 18H3M18 9v6M21 12h-6" />)
+export const ListMinusIcon = svg(<path d="M11 12H3M16 6H3M16 18H3M21 12h-6" />)
+
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const char = level === "muted" ? "🔇" : level === "low" ? "🔉" : "🔊"
   return glyph(char)({ size, className })

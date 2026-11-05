@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AuthLink, AuthShell, FormError, FormField, focusFirstInvalid } from "@/components/auth-form"
 import { Button } from "@/components/ui/button"
 import { authClient, useSession } from "@/lib/auth/client"
-import { type FieldErrors, type SignInInput, safeRedirectPath, validateSignIn } from "@/lib/auth/validation"
+import { type FieldErrors, type SignInInput, invitationTokenFromPath, safeRedirectPath, validateSignIn } from "@/lib/auth/validation"
 
 function SignInForm() {
   const router = useRouter()
@@ -51,12 +51,16 @@ function SignInForm() {
     }
   }
 
-  const signUpHref = next ? `/cadastro?next=${encodeURIComponent(next)}` : "/cadastro"
+  // Coming from an invitation link, sign up through it: a minor can only join with the token
+  const invitationToken = invitationTokenFromPath(next)
+  const signUpHref = invitationToken
+    ? `/cadastro?convite=${encodeURIComponent(invitationToken)}`
+    : next ? `/cadastro?next=${encodeURIComponent(next)}` : "/cadastro"
 
   return (
     <AuthShell
       title="Entrar"
-      description="Acesse suas playlists e continue ouvindo de onde parou."
+      description="Acesse suas playlists e continue ouvindo de onde parou"
       footer={
         <>
           Não tem conta? <AuthLink href={signUpHref}>Criar conta</AuthLink>
@@ -83,7 +87,7 @@ function SignInForm() {
           error={errors.password}
         />
         <FormError message={formError} />
-        <Button type="submit" size="lg" disabled={isSubmitting} className="h-10 w-full text-sm font-semibold">
+        <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full text-sm">
           {isSubmitting ? "Entrando…" : "Entrar"}
         </Button>
       </form>

@@ -6,6 +6,7 @@ import type { SearchResults } from "../../domain/ports/search-query.ts";
 import { createAuth } from "../auth/create-auth.ts";
 import { PostgresArtistRepository } from "../db/postgres-artist-repository.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 
 // GET /api/search pela app Express real. As regras de busca (acentos, ordem, visibilidade)
 // estão em postgres-search-query.test.ts; aqui ficam sessão, validação e formato da resposta.
@@ -35,7 +36,9 @@ async function signUp(): Promise<string> {
   });
   const raw = res.headers.getSetCookie().find((value) => /session_token=/.test(value));
   if (!raw) throw new Error(`Sign-up failed with ${res.status}`);
-  return raw.split(";")[0]!;
+  const sessionCookie = raw.split(";")[0]!;
+  await subscribeAccount(baseUrl, sessionCookie);
+  return sessionCookie;
 }
 
 function get(query: string, withSession = true) {
@@ -71,6 +74,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await pool.query("DELETE FROM artist WHERE id = ANY($1::integer[])", [artistIds]);
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
   await pool.end();
 });

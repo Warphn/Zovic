@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { createAuth } from "../auth/create-auth.ts";
 import type { AuthOptions } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
+import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 import { pool } from "../../infra/db/pool.ts";
 
 // Fluxo de autenticação pela app Express real (composeApp), com o Better Auth e o banco de verdade.
@@ -103,6 +104,23 @@ async function signUp(app: TestApp, email: string, extra: Record<string, unknown
   return { res, cookie: sessionCookie(res) };
 }
 
+/**
+ * Menor não se cadastra sem convite (create-auth.ts), então a conta nasce adulta e a data de
+ * nascimento é trocada direto no banco, como o admin faz ao criar contas.
+ */
+async function signUpMinor(app: TestApp, email: string, birthdate: string) {
+  const account = await signUp(app, email);
+  await pool.query(`UPDATE "user" SET birthdate = $1 WHERE email = $2`, [birthdate, email]);
+  return account;
+}
+
+/** POST /api/playlists é a rota usada para provar a sessão, e ela exige assinatura ativa. */
+async function signUpSubscribed(app: TestApp, email: string) {
+  const account = await signUp(app, email);
+  await subscribeAccount(app.url, account.cookie!.header);
+  return account;
+}
+
 async function signIn(app: TestApp, email: string, password: string, headers: Record<string, string> = {}) {
   return fetch(`${app.url}/api/auth/sign-in/email`, json({ email, password }, headers));
 }
@@ -113,6 +131,7 @@ async function cleanup(): Promise<void> {
        SELECT pu.playlist_id FROM playlist_user pu JOIN "user" u ON u.id = pu.user_id WHERE u.email LIKE $1)`,
     [`%${EMAIL_DOMAIN}`],
   );
+  await deletePlansOfAccounts(pool, `%${EMAIL_DOMAIN}`);
   // session e account saem junto, por ON DELETE CASCADE.
   await pool.query(`DELETE FROM "user" WHERE email LIKE $1`, [`%${EMAIL_DOMAIN}`]);
 }
@@ -208,7 +227,7 @@ describe("autenticação com Better Auth", () => {
 
   describe("sessão", () => {
     it("o cookie válido dá acesso a POST /api/playlists", async () => {
-      const { cookie } = await signUp(app, uniqueEmail("sessao"));
+      const { cookie } = await signUpSubscribed(app, uniqueEmail("sessao"));
 
       const res = await playlistsWith(app, cookie!.header);
 
@@ -218,7 +237,7 @@ describe("autenticação com Better Auth", () => {
 
     it("a playlist fica ligada ao usuário da sessão", async () => {
       const email = uniqueEmail("dono");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       const playlist = await bodyOf(await playlistsWith(app, cookie!.header));
 
       const { rows } = await pool.query(
@@ -255,7 +274,7 @@ describe("autenticação com Better Auth", () => {
 
     it("renova a sessão na segunda metade da validade e reenvia o cookie", async () => {
       const email = uniqueEmail("renovacao");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       await pool.query(
         `UPDATE session SET expires_at = now() + interval '10 days'
           WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`,
@@ -325,7 +344,7 @@ describe("autenticação com Better Auth", () => {
 
     it("o Better Auth continua usando o token por dentro (revogar as outras sessões)", async () => {
       const email = uniqueEmail("revoga");
-      const first = await signUp(app, email);
+      const first = await signUpSubscribed(app, email);
       const second = sessionCookie(await signIn(app, email, PASSWORD))!;
 
       const revoke = await fetch(`${app.url}/api/auth/revoke-other-sessions`, json({}, { Cookie: second.header }));
@@ -338,7 +357,7 @@ describe("autenticação com Better Auth", () => {
 
   describe("logout", () => {
     it("invalida a sessão no servidor, inclusive para quem guardou o cookie", async () => {
-      const { cookie } = await signUp(app, uniqueEmail("logout"));
+      const { cookie } = await signUpSubscribed(app, uniqueEmail("logout"));
       expect((await playlistsWith(app, cookie!.header)).status).toBe(201);
 
       const out = await fetch(`${app.url}/api/auth/sign-out`, json({}, { Cookie: cookie!.header }));
@@ -352,7 +371,7 @@ describe("autenticação com Better Auth", () => {
   describe("login", () => {
     it("com a senha certa abre uma sessão nova", async () => {
       const email = uniqueEmail("login");
-      await signUp(app, email);
+      await signUpSubscribed(app, email);
 
       const res = await signIn(app, email.toUpperCase(), PASSWORD);
 
@@ -404,13 +423,13 @@ describe("autenticação com Better Auth", () => {
       const adult = await signUp(app, uniqueEmail("adulto"));
       expect(await sessionUser(adult.cookie!.header)).toMatchObject({ role: "assinante", isAdult: true });
 
-      const minor = await signUp(app, uniqueEmail("menor"), { birthdate: "2012-01-17" });
+      const minor = await signUpMinor(app, uniqueEmail("menor"), "2012-01-17");
       expect(await sessionUser(minor.cookie!.header)).toMatchObject({ role: "assinante", isAdult: false });
     });
 
     it("cadastro e login também devolvem o papel e a maioridade", async () => {
       const email = uniqueEmail("login-papel");
-      const { res } = await signUp(app, email, { birthdate: "2012-01-17" });
+      const { res } = await signUpMinor(app, email, "2012-01-17");
       expect((await bodyOf(res)).user).toMatchObject({ role: "assinante" });
 
       const login = await signIn(app, email, PASSWORD);
@@ -420,7 +439,7 @@ describe("autenticação com Better Auth", () => {
     it("a maioridade sai da data de nascimento na hora da requisição", async () => {
       // O dia exato (e o 29/02) está nos testes de domain/shared/age.test.ts. Aqui há folga
       // de um dia nas pontas: o servidor usa o dia de São Paulo, o teste o de UTC.
-      const turnsTomorrow = await signUp(app, uniqueEmail("vespera"), { birthdate: birthdateForAge(18, 2) });
+      const turnsTomorrow = await signUpMinor(app, uniqueEmail("vespera"), birthdateForAge(18, 2));
       expect((await sessionUser(turnsTomorrow.cookie!.header)).isAdult).toBe(false);
 
       const turnedYesterday = await signUp(app, uniqueEmail("aniversario"), { birthdate: birthdateForAge(18, -1) });
@@ -447,7 +466,7 @@ describe("autenticação com Better Auth", () => {
     });
 
     it("depois do cadastro, não dá para trocar a data de nascimento nem o papel pela API", async () => {
-      const minor = await signUp(app, uniqueEmail("troca"), { birthdate: "2012-01-17" });
+      const minor = await signUpMinor(app, uniqueEmail("troca"), "2012-01-17");
 
       for (const change of [{ birthdate: "1990-01-01" }, { role: "admin" }, { name: "Outro Nome" }]) {
         const res = await fetch(`${app.url}/api/auth/update-user`, json(change, { Cookie: minor.cookie!.header }));
@@ -498,7 +517,7 @@ describe("autenticação com Better Auth", () => {
 
     it("perde também a sessão que já estava aberta", async () => {
       const email = uniqueEmail("removido-logado");
-      const { cookie } = await signUp(app, email);
+      const { cookie } = await signUpSubscribed(app, email);
       expect((await playlistsWith(app, cookie!.header)).status).toBe(201);
 
       await pool.query(`UPDATE "user" SET deleted_at = now() WHERE email = $1`, [email]);

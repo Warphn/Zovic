@@ -1,0 +1,18 @@
+meta {
+  name: Gestor não sai do plano
+  type: http
+  seq: 29
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me/membership
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 409, porque o gestor cancela o plano", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().error).to.equal("BUSINESS_RULE_ERROR");
+  });
+}

@@ -1,0 +1,17 @@
+meta {
+  name: Remover o membro
+  type: http
+  seq: 28
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me/members/{{removedUserId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

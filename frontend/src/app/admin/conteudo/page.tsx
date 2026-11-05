@@ -7,20 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
-  adminApi,
-  ApiError,
-  type CatalogMusic,
-  formatDuration,
-  type Genre,
-  type NamedItem,
-  parseDuration,
-} from "@/lib/admin/api"
-import { useResource } from "@/lib/admin/use-resource"
+  useAdminMusics,
+  useCreateArtist,
+  useRemoveArtist,
+  useRemoveMusic,
+  useRenameArtist,
+  useSaveMusic,
+} from "@/lib/api/admin"
+import { type CatalogMusic, type Genre, type NamedItem, useArtists, useGenres } from "@/lib/api/catalog"
+import { apiErrorMessage } from "@/lib/api/client"
+import { formatDuration, parseDuration } from "@/lib/format-duration"
 import { cn } from "@/lib/utils"
-
-function messageOf(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Algo deu errado. Tente de novo."
-}
 
 // "Nova música" (null id) or the music being edited
 type MusicDraft = { music: CatalogMusic | null }
@@ -28,9 +25,10 @@ type MusicDraft = { music: CatalogMusic | null }
 export default function AdminContentPage() {
   const [search, setSearch] = React.useState("")
   const [query, setQuery] = React.useState("")
-  const musics = useResource(() => adminApi.listMusics(query), [query])
-  const artists = useResource(() => adminApi.listArtists(), [])
-  const genres = useResource(() => adminApi.listGenres(), [])
+  const musics = useAdminMusics(query)
+  const artists = useArtists()
+  const genres = useGenres()
+  const removeMusic = useRemoveMusic()
   const [editing, setEditing] = React.useState<MusicDraft | null>(null)
   const [removing, setRemoving] = React.useState<CatalogMusic | null>(null)
 
@@ -59,8 +57,8 @@ export default function AdminContentPage() {
             aria-label="Buscar músicas"
             className="max-w-sm"
           />
-          {musics.error && <Notice>{musics.error}</Notice>}
-          {musics.loading && !musics.data ? (
+          {musics.isError && <Notice>{apiErrorMessage(musics.error)}</Notice>}
+          {musics.isPending ? (
             <Loading />
           ) : musics.data && musics.data.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma música encontrada.</p>
@@ -135,17 +133,13 @@ export default function AdminContentPage() {
         </div>
       </Section>
 
-      <ArtistsSection artists={artists.data} error={artists.error} reload={() => {
-        artists.reload()
-        musics.reload()
-      }} />
+      <ArtistsSection artists={artists.data ?? null} error={artists.isError ? apiErrorMessage(artists.error) : null} />
 
       <MusicDialog
         draft={editing}
         artists={artists.data ?? []}
         genres={genres.data ?? []}
         onClose={() => setEditing(null)}
-        onSaved={musics.reload}
       />
       <ConfirmDialog
         title={`Remover “${removing?.name}”?`}
@@ -154,8 +148,7 @@ export default function AdminContentPage() {
         open={removing !== null}
         onClose={() => setRemoving(null)}
         onConfirm={async () => {
-          if (removing) await adminApi.removeMusic(removing.id)
-          musics.reload()
+          if (removing) await removeMusic.mutateAsync(removing.id)
         }}
       />
     </div>
@@ -167,13 +160,11 @@ function MusicDialog({
   artists,
   genres,
   onClose,
-  onSaved,
 }: {
   draft: MusicDraft | null
   artists: NamedItem[]
   genres: Genre[]
   onClose: () => void
-  onSaved: () => void
 }) {
   return (
     <Dialog open={draft !== null} onOpenChange={(open) => !open && onClose()}>
@@ -183,7 +174,7 @@ function MusicDialog({
           <DialogDescription>Os artistas e gêneros escolhidos substituem os anteriores.</DialogDescription>
         </DialogHeader>
         {/* DialogContent unmounts while closed, so the form starts from the music on every open */}
-        {draft && <MusicForm music={draft.music} artists={artists} genres={genres} onClose={onClose} onSaved={onSaved} />}
+        {draft && <MusicForm music={draft.music} artists={artists} genres={genres} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   )
@@ -194,13 +185,11 @@ function MusicForm({
   artists,
   genres,
   onClose,
-  onSaved,
 }: {
   music: CatalogMusic | null
   artists: NamedItem[]
   genres: Genre[]
   onClose: () => void
-  onSaved: () => void
 }) {
   const [name, setName] = React.useState(music?.name ?? "")
   const [duration, setDuration] = React.useState(music ? formatDuration(music.duration) : "")
@@ -208,6 +197,7 @@ function MusicForm({
   const [genreIds, setGenreIds] = React.useState<number[]>(music?.genres.map((g) => g.id) ?? [])
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
+  const saveMusic = useSaveMusic()
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -218,11 +208,10 @@ function MusicForm({
     setSaving(true)
     try {
       const input = { name: name.trim(), duration: seconds, artistIds, genreIds }
-      await (music ? adminApi.updateMusic(music.id, input) : adminApi.createMusic(input))
-      onSaved()
+      await saveMusic.mutateAsync({ id: music?.id ?? null, input })
       onClose()
     } catch (err) {
-      setError(messageOf(err))
+      setError(apiErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -301,7 +290,11 @@ function Picker({
   )
 }
 
-function ArtistsSection({ artists, error, reload }: { artists: NamedItem[] | null; error: string | null; reload: () => void }) {
+// Every change here refreshes the artist list and the musics (their credits) on its own
+function ArtistsSection({ artists, error }: { artists: NamedItem[] | null; error: string | null }) {
+  const createArtist = useCreateArtist()
+  const renameArtist = useRenameArtist()
+  const removeArtist = useRemoveArtist()
   const [newName, setNewName] = React.useState("")
   const [editing, setEditing] = React.useState<{ id: number; name: string } | null>(null)
   const [removing, setRemoving] = React.useState<NamedItem | null>(null)
@@ -312,10 +305,9 @@ function ArtistsSection({ artists, error, reload }: { artists: NamedItem[] | nul
     setActionError(null)
     try {
       await action()
-      reload()
       return true
     } catch (err) {
-      setActionError(messageOf(err))
+      setActionError(apiErrorMessage(err))
       return false
     }
   }
@@ -329,7 +321,7 @@ function ArtistsSection({ artists, error, reload }: { artists: NamedItem[] | nul
           className="flex flex-wrap gap-2"
           onSubmit={async (e) => {
             e.preventDefault()
-            if (newName.trim() && (await run(() => adminApi.createArtist(newName.trim())))) setNewName("")
+            if (newName.trim() && (await run(() => createArtist.mutateAsync(newName.trim())))) setNewName("")
           }}
         >
           <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome do novo artista" aria-label="Nome do novo artista" maxLength={255} className="max-w-xs" />
@@ -350,7 +342,7 @@ function ArtistsSection({ artists, error, reload }: { artists: NamedItem[] | nul
                     className="flex flex-1 gap-1.5"
                     onSubmit={async (e) => {
                       e.preventDefault()
-                      if (editing.name.trim() && (await run(() => adminApi.renameArtist(artist.id, editing.name.trim())))) setEditing(null)
+                      if (editing.name.trim() && (await run(() => renameArtist.mutateAsync({ id: artist.id, name: editing.name.trim() })))) setEditing(null)
                     }}
                   >
                     <Input value={editing.name} onChange={(e) => setEditing({ id: artist.id, name: e.target.value })} aria-label={`Novo nome de ${artist.name}`} maxLength={255} />
@@ -382,8 +374,7 @@ function ArtistsSection({ artists, error, reload }: { artists: NamedItem[] | nul
         open={removing !== null}
         onClose={() => setRemoving(null)}
         onConfirm={async () => {
-          if (removing) await adminApi.removeArtist(removing.id)
-          reload()
+          if (removing) await removeArtist.mutateAsync(removing.id)
         }}
       />
     </Section>
@@ -435,7 +426,7 @@ function ConfirmDialog({
                 await onConfirm()
                 close()
               } catch (err) {
-                setError(messageOf(err))
+                setError(apiErrorMessage(err))
               } finally {
                 setSaving(false)
               }
