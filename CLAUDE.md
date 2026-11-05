@@ -153,6 +153,7 @@ Ao commitar uma task, atualize no mesmo PR a documentação que ela muda. A doc 
 | O banco (migração nova em `db/migrations`) | `docs/banco-de-dados.md`, `docs/modelo-er.md` e a imagem `docs/assets/modelo-er.png` |
 | Uma entidade do domínio | `docs/models.md` |
 | Como subir, configurar ou rodar o projeto (variável de ambiente, script, Docker) | `README.md` e `docs/docker.md` |
+| O servidor de produção (profile `prod`, Cloudflare, `bun server`, `db:member`, `db:connect`) | `docs/servidor.md` |
 | O fluxo do admin ou as contas de teste do seed | A seção do fluxo do admin no `README.md` |
 | O cliente da API no front | `frontend/src/lib/api/README.md` |
 | Uma regra de negócio ou um critério de aceite | A história na issue da funcionalidade |
