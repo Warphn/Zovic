@@ -13,7 +13,7 @@ export interface ExistingMusicData {
   rating: number | null;
   artistIds: number[];
   genreIds: number[];
-  /** Nome do arquivo no armazenamento (AudioStorage); null só nas músicas anteriores ao upload. */
+  /** Nome do arquivo no armazenamento (FileStorage); null só nas músicas anteriores ao upload. */
   audioFile: string | null;
   isExplicit: boolean;
   /** Zero ou um álbum (album_music). */

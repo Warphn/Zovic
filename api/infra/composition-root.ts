@@ -32,7 +32,7 @@ import { makeHistoryController } from "../adapters/http/history-controller.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
-import { LocalAudioStorage } from "../adapters/storage/local-audio-storage.ts";
+import { LocalFileStorage } from "../adapters/storage/local-file-storage.ts";
 import { AddMusicToPlaylist } from "../domain/use-cases/add-music-to-playlist.ts";
 import { CreateComment } from "../domain/use-cases/create-comment.ts";
 import { CreatePlaylist } from "../domain/use-cases/create-playlist.ts";
@@ -50,7 +50,7 @@ import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musi
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
 import { UpdatePlaylist } from "../domain/use-cases/update-playlist.ts";
-import type { AudioStorage } from "../domain/ports/audio-storage.ts";
+import type { FileStorage } from "../domain/ports/file-storage.ts";
 import type { Pool } from "pg";
 import { pool } from "./db/pool.ts";
 import { config } from "./config.ts";
@@ -60,7 +60,7 @@ export function composeApp(
   trustProxy: number | null,
   corsOrigins: string[] = [],
   db: Pool = pool,
-  audioStorage: AudioStorage = new LocalAudioStorage(config.audioDir),
+  audioStorage: FileStorage = new LocalFileStorage(config.audioDir),
 ) {
   const playlistRepository = new PostgresPlaylistRepository(db);
   const playlistMusics = new PostgresPlaylistMusics(db);

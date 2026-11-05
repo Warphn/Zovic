@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { MAX_AUDIO_BYTES } from "../../domain/shared/audio.ts";
 import { createAuth } from "../auth/create-auth.ts";
-import { LocalAudioStorage } from "../storage/local-audio-storage.ts";
+import { LocalFileStorage } from "../storage/local-file-storage.ts";
 import { composeApp } from "../../infra/composition-root.ts";
 import { deletePlansOfAccounts, subscribeAccount } from "./testing/subscriptions.ts";
 import { pool } from "../../infra/db/pool.ts";
@@ -94,7 +94,7 @@ beforeAll(async () => {
     rateLimit: false,
   });
   audioDir = await mkdtemp(join(tmpdir(), "zovic-admin-flow-"));
-  server = composeApp(auth, null, [ORIGIN], pool, new LocalAudioStorage(audioDir)).listen(0);
+  server = composeApp(auth, null, [ORIGIN], pool, new LocalFileStorage(audioDir)).listen(0);
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("Test server has no port");
   url = `http://127.0.0.1:${address.port}`;

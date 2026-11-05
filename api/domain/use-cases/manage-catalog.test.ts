@@ -6,7 +6,7 @@ import { Music } from "../entities/music.ts";
 import { BusinessRuleError, NotFoundError, ValidationError } from "../errors/domain-error.ts";
 import type { AlbumRepository } from "../ports/album-repository.ts";
 import type { ArtistRepository } from "../ports/artist-repository.ts";
-import type { AudioStorage } from "../ports/audio-storage.ts";
+import type { FileStorage } from "../ports/file-storage.ts";
 import type { GenreRepository } from "../ports/genre-repository.ts";
 import type { MusicRepository } from "../ports/music-repository.ts";
 import { ManageCatalog } from "./manage-catalog.ts";
@@ -52,12 +52,12 @@ class InMemoryGenres extends InMemory<Genre> implements GenreRepository {}
 class InMemoryAlbums extends InMemory<Album> implements AlbumRepository {}
 
 /** Guarda em memória o que foi gravado e o que foi removido, sem tocar no disco. */
-class FakeAudioStorage implements AudioStorage {
+class FakeFileStorage implements FileStorage {
   readonly saved = new Map<string, Uint8Array>();
   readonly removed: string[] = [];
 
-  async save(bytes: Uint8Array): Promise<string> {
-    const fileName = `audio-${this.saved.size + 1}.mp3`;
+  async save(bytes: Uint8Array, extension: string): Promise<string> {
+    const fileName = `file-${this.saved.size + 1}${extension}`;
     this.saved.set(fileName, bytes);
     return fileName;
   }
@@ -75,7 +75,7 @@ let musics: InMemoryMusics;
 let artists: InMemoryArtists;
 let genres: InMemoryGenres;
 let albums: InMemoryAlbums;
-let audioStorage: FakeAudioStorage;
+let audioStorage: FakeFileStorage;
 let catalog: ManageCatalog;
 
 beforeEach(async () => {
@@ -83,7 +83,7 @@ beforeEach(async () => {
   artists = new InMemoryArtists();
   genres = new InMemoryGenres();
   albums = new InMemoryAlbums();
-  audioStorage = new FakeAudioStorage();
+  audioStorage = new FakeFileStorage();
   catalog = new ManageCatalog(musics, artists, genres, albums, audioStorage);
   for (const name of ["Chico Buarque", "Elis Regina", "Tom Jobim"]) {
     await artists.save(Artist.create({ id: await artists.nextId(), name }));
@@ -151,8 +151,8 @@ describe("ManageCatalog: áudio, álbum e explícito", () => {
     const music = await catalog.createMusic({ name: "Cotidiano", duration: 170, artistIds: [1], albumId: 1, isExplicit: true }, MP3);
 
     expect(music).toMatchObject({ albumId: 1, isExplicit: true, hasAudio: true });
-    expect([...audioStorage.saved.keys()]).toEqual(["audio-1.mp3"]);
-    expect(musics.items.get(music.id)?.audioFile).toBe("audio-1.mp3");
+    expect([...audioStorage.saved.keys()]).toEqual(["file-1.mp3"]);
+    expect(musics.items.get(music.id)?.audioFile).toBe("file-1.mp3");
   });
 
   it("não cria a música sem áudio e não grava nada", async () => {
@@ -186,7 +186,7 @@ describe("ManageCatalog: áudio, álbum e explícito", () => {
     };
 
     expect(await rejection(catalog.createMusic({ name: "Perdida", duration: 10, artistIds: [1] }, MP3))).toBe(failure);
-    expect(audioStorage.removed).toEqual(["audio-1.mp3"]);
+    expect(audioStorage.removed).toEqual(["file-1.mp3"]);
   });
 
   it("edita uma música antiga, sem áudio, sem exigir arquivo", async () => {

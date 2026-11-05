@@ -7,9 +7,12 @@ import { validateAudio } from "../shared/audio.ts";
 import { normalizeIds } from "../shared/ids.ts";
 import type { AlbumRepository } from "../ports/album-repository.ts";
 import type { ArtistRepository } from "../ports/artist-repository.ts";
-import type { AudioStorage } from "../ports/audio-storage.ts";
+import type { FileStorage } from "../ports/file-storage.ts";
 import type { GenreRepository } from "../ports/genre-repository.ts";
 import type { MusicRepository } from "../ports/music-repository.ts";
+
+/** Os áudios são sempre MP3 (validateAudio). */
+const AUDIO_EXTENSION = ".mp3";
 
 export interface CreateMusicInput {
   name: string;
@@ -94,7 +97,7 @@ export class ManageCatalog {
     private readonly artists: ArtistRepository,
     private readonly genres: GenreRepository,
     private readonly albums: AlbumRepository,
-    private readonly audioStorage: AudioStorage,
+    private readonly audioStorage: FileStorage,
   ) {}
 
   /**
@@ -108,7 +111,7 @@ export class ManageCatalog {
     if (albumId !== null) await this.findAlbum(albumId);
     validateAudio(audio);
 
-    const audioFile = await this.audioStorage.save(audio);
+    const audioFile = await this.audioStorage.save(audio, AUDIO_EXTENSION);
     try {
       const music = Music.create({ id: await this.musics.nextId(), ...input, audioFile });
       await this.musics.save(music);

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { LocalAudioStorage } from "./local-audio-storage.ts";
+import { LocalFileStorage } from "./local-file-storage.ts";
 
 const MP3 = new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x2a]);
 
@@ -17,25 +17,25 @@ afterAll(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-describe("LocalAudioStorage", () => {
+describe("LocalFileStorage", () => {
   it("grava o arquivo com um nome novo e os mesmos bytes", async () => {
-    const storage = new LocalAudioStorage(directory);
+    const storage = new LocalFileStorage(directory);
 
-    const fileName = await storage.save(MP3);
+    const fileName = await storage.save(MP3, ".mp3");
 
     expect(fileName).toMatch(/^[0-9a-f-]{36}\.mp3$/);
     expect(new Uint8Array(await readFile(join(directory, fileName)))).toEqual(MP3);
   });
 
   it("dá nomes diferentes a dois arquivos iguais", async () => {
-    const storage = new LocalAudioStorage(directory);
+    const storage = new LocalFileStorage(directory);
 
-    expect(await storage.save(MP3)).not.toBe(await storage.save(MP3));
+    expect(await storage.save(MP3, ".mp3")).not.toBe(await storage.save(MP3, ".mp3"));
   });
 
   it("remove o arquivo", async () => {
-    const storage = new LocalAudioStorage(directory);
-    const fileName = await storage.save(MP3);
+    const storage = new LocalFileStorage(directory);
+    const fileName = await storage.save(MP3, ".mp3");
 
     await storage.remove(fileName);
 
@@ -43,15 +43,15 @@ describe("LocalAudioStorage", () => {
   });
 
   it("não reclama ao remover um arquivo que não existe", async () => {
-    const storage = new LocalAudioStorage(directory);
+    const storage = new LocalFileStorage(directory);
 
     expect(storage.remove("nao-existe.mp3")).resolves.toBeUndefined();
   });
 
   it("cria o diretório se ele ainda não existir", async () => {
-    const storage = new LocalAudioStorage(join(directory, "novo", "audio"));
+    const storage = new LocalFileStorage(join(directory, "novo", "audio"));
 
-    const fileName = await storage.save(MP3);
+    const fileName = await storage.save(MP3, ".mp3");
 
     expect(existsSync(join(directory, "novo", "audio", fileName))).toBe(true);
   });
