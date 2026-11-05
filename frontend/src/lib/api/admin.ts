@@ -50,6 +50,29 @@ export interface MusicInput {
   duration: number
   artistIds: number[]
   genreIds: number[]
+  /** Null leaves (or takes) the music out of any album. */
+  albumId: number | null
+  isExplicit: boolean
+}
+
+/** A new music also carries its MP3; editing doesn't change the audio. */
+export type NewMusicInput = MusicInput & { audio: File }
+
+export interface AlbumInput {
+  name: string
+  artistIds: number[]
+  year: number
+}
+
+/** The API's limit (api/domain/shared/audio.ts), repeated here only to warn before uploading. */
+export const MAX_AUDIO_BYTES = 20 * 1024 * 1024
+
+/** POST /api/admin/musics is multipart: the fields as JSON in "data" and the MP3 in "audio". */
+export function musicFormData({ audio, ...fields }: NewMusicInput): FormData {
+  const form = new FormData()
+  form.append("data", JSON.stringify(fields))
+  form.append("audio", audio)
+  return form
 }
 
 const q = (search?: string) => queryString({ q: search?.trim() || undefined })
@@ -62,9 +85,12 @@ export const adminApi = {
   removeUser: (id: number) => request<void>(`/admin/users/${id}`, { method: "DELETE" }),
   recentPlays: (id: number, signal?: AbortSignal) => request<RecentPlay[]>(`/admin/users/${id}/plays`, { signal }),
 
-  createMusic: (input: MusicInput) => request<unknown>("/admin/musics", json("POST", input)),
+  createMusic: (input: NewMusicInput) => request<unknown>("/admin/musics", { method: "POST", body: musicFormData(input) }),
   updateMusic: (id: number, input: Partial<MusicInput>) => request<unknown>(`/admin/musics/${id}`, json("PATCH", input)),
   removeMusic: (id: number) => request<void>(`/admin/musics/${id}`, { method: "DELETE" }),
+  createAlbum: (input: AlbumInput) => request<unknown>("/admin/albums", json("POST", input)),
+  updateAlbum: (id: number, input: Partial<AlbumInput>) => request<unknown>(`/admin/albums/${id}`, json("PATCH", input)),
+  removeAlbum: (id: number) => request<void>(`/admin/albums/${id}`, { method: "DELETE" }),
   createArtist: (name: string) => request<NamedItem>("/admin/artists", json("POST", { name })),
   renameArtist: (id: number, name: string) => request<NamedItem>(`/admin/artists/${id}`, json("PATCH", { name })),
   removeArtist: (id: number) => request<void>(`/admin/artists/${id}`, { method: "DELETE" }),
@@ -135,12 +161,12 @@ export function useRemoveUser() {
   return useMutation({ mutationFn: adminApi.removeUser, onSuccess: invalidate })
 }
 
-/** Creates the music when `id` is null, otherwise updates it. */
+/** Creates the music (with its MP3) or updates an existing one, which keeps its audio. */
 export function useSaveMusic() {
   const invalidate = useInvalidate("catalog")
   return useMutation({
-    mutationFn: ({ id, input }: { id: number | null; input: MusicInput }) =>
-      id === null ? adminApi.createMusic(input) : adminApi.updateMusic(id, input),
+    mutationFn: (save: { id: null; input: NewMusicInput } | { id: number; input: MusicInput }) =>
+      save.id === null ? adminApi.createMusic(save.input) : adminApi.updateMusic(save.id, save.input),
     onSuccess: invalidate,
   })
 }
@@ -148,6 +174,24 @@ export function useSaveMusic() {
 export function useRemoveMusic() {
   const invalidate = useInvalidate("catalog")
   return useMutation({ mutationFn: adminApi.removeMusic, onSuccess: invalidate })
+}
+
+export function useCreateAlbum() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({ mutationFn: adminApi.createAlbum, onSuccess: invalidate })
+}
+
+export function useUpdateAlbum() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: Partial<AlbumInput> }) => adminApi.updateAlbum(id, input),
+    onSuccess: invalidate,
+  })
+}
+
+export function useRemoveAlbum() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({ mutationFn: adminApi.removeAlbum, onSuccess: invalidate })
 }
 
 export function useCreateArtist() {

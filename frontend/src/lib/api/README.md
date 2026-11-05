@@ -49,6 +49,7 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 - Mutação invalida as chaves que mudam. Se o nome de uma playlist muda, a busca também pode mudar (`searchKeys.all`).
 - Formato de tela (ex.: `Track` do player) é convertido perto de quem usa, não no service. O service devolve o que a API devolve.
 - O cache é do usuário logado: o `QueryProvider` limpa tudo quando a sessão troca de pessoa (logout, login de outra conta).
+- Para enviar arquivo, passe um `FormData` como `body`, sem `json()`. O `request` só põe `Content-Type: application/json` quando o corpo é texto. Com `FormData`, o navegador define o cabeçalho multipart, com o separador das partes. Exemplo: `request("/admin/musics", { method: "POST", body: musicFormData(input) })`, em que `musicFormData` (em `admin.ts`) põe os campos em JSON na parte `data` e o MP3 na parte `audio`.
 
 ## O que já está integrado
 
@@ -56,10 +57,10 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 | --- | --- |
 | `search.ts` | `GET /search` |
 | `playlists.ts` | `GET/POST /playlists`, `GET/PATCH/DELETE /playlists/:id` (a API ainda não devolve as músicas da playlist) |
-| `catalog.ts` | `GET /musics`, `GET /artists`, `GET /genres`, `POST /musics/:id/plays` (chamado por `useRecordPlays`, uma vez por audição) |
+| `catalog.ts` | `GET /musics`, `GET /artists`, `GET /albums` (`useAlbums`), `GET /genres`, `POST /musics/:id/plays` (chamado por `useRecordPlays`, uma vez por audição) |
 | `subscriptions.ts` | `GET /plans/me`, `POST /plans` (com o `kind`: `individual` ou `family`), `DELETE /plans/me`, o plano familiar (`GET /plans/me/members`, `POST /plans/me/invitations`, `DELETE /plans/me/invitations/:id`, `DELETE /plans/me/members/:userId`, `DELETE /plans/me/membership`) e os convites (`GET /invitations/:token`, `POST /invitations/:token/accept`). Veja os hooks abaixo. |
 | `history.ts` | `GET /history`: o histórico de reprodução da conta, uma entrada por música (`useHistory`). `useRecordPlays` invalida `historyKeys.all` a cada audição registrada. |
-| `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas e artistas |
+| `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas (o cadastro em multipart, com o MP3), álbuns e artistas |
 | `lib/auth/client.ts` | `/auth/*` pelo cliente do Better Auth (cadastro, login, logout, sessão) |
 
 ### Hooks de `subscriptions.ts`
