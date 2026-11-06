@@ -5,7 +5,7 @@ import { customSession } from "better-auth/plugins";
 import type { Pool } from "pg";
 import Joi from "joi";
 import { DomainError } from "../../domain/errors/domain-error.ts";
-import { calendarDateIn, isAdult } from "../../domain/shared/age.ts";
+import { calendarDateIn, isAdult, TIME_ZONE } from "../../domain/shared/age.ts";
 import { INVITATION_TOKEN_MAX_LENGTH, normalizeEmail } from "../../domain/shared/plan-invitation.ts";
 import { AcceptInvitation } from "../../domain/use-cases/accept-invitation.ts";
 import { GetInvitation } from "../../domain/use-cases/get-invitation.ts";
@@ -29,9 +29,6 @@ export interface AuthOptions {
  * O Better Auth lê o IP só daqui para o rate limit; um valor enviado pelo cliente é sempre sobrescrito.
  */
 export const CLIENT_IP_HEADER = "x-zovic-client-ip";
-
-/** Fuso que define "hoje" para a maioridade: o aniversário vale pelo dia do Brasil, não o de UTC. */
-const TIME_ZONE = "America/Sao_Paulo";
 
 const SIGN_UP_PATH = "/sign-up/email";
 /** Campo extra do corpo do cadastro: o token do convite do plano familiar. */

@@ -1,10 +1,7 @@
 import { BusinessRuleError, ForbiddenError } from "../errors/domain-error.ts";
 import type { PlanKind, SubscriptionRepository } from "../ports/subscription-repository.ts";
-import { calendarDateIn, isAdult } from "../shared/age.ts";
+import { calendarDateIn, isAdult, TIME_ZONE } from "../shared/age.ts";
 import { type SubscriptionOutput, toSubscriptionOutput } from "./subscription-output.ts";
-
-/** Mesmo fuso que o projeto usa para decidir a idade (adapters/auth/create-auth.ts). */
-const TIME_ZONE = "America/Sao_Paulo";
 
 export interface SubscribePlanInput {
   userId: number;
