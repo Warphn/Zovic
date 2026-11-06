@@ -6,6 +6,7 @@ import { inTransaction, type LinkTable, nextId, replaceLinks, translateConstrain
 
 const ARTISTS: LinkTable = { table: "artist_music", owner: "music_id", other: "artist_id" };
 const GENRES: LinkTable = { table: "genre_music", owner: "music_id", other: "genre_id" };
+const ALBUM: LinkTable = { table: "album_music", owner: "music_id", other: "album_id" };
 
 interface MusicRow {
   id: number;
@@ -14,6 +15,9 @@ interface MusicRow {
   lyrics_id: number | null;
   streams: number;
   rating: number | null;
+  audio_file: string | null;
+  is_explicit: boolean;
+  album_id: number | null;
   created_at: Date;
   deleted_at: Date | null;
   artist_ids: number[];
@@ -21,7 +25,9 @@ interface MusicRow {
 }
 
 const SELECT_ACTIVE = `
-  SELECT m.id, m.name, m.duration, m.lyrics_id, m.streams, m.rating, m.created_at, m.deleted_at,
+  SELECT m.id, m.name, m.duration, m.lyrics_id, m.streams, m.rating, m.audio_file, m.is_explicit,
+    m.created_at, m.deleted_at,
+    (SELECT album_id FROM album_music WHERE music_id = m.id ORDER BY album_id LIMIT 1) AS album_id,
     ARRAY(SELECT artist_id FROM artist_music WHERE music_id = m.id ORDER BY artist_id) AS artist_ids,
     ARRAY(SELECT genre_id FROM genre_music WHERE music_id = m.id ORDER BY genre_id) AS genre_ids
   FROM musics m
@@ -40,22 +46,35 @@ export class PostgresMusicRepository implements MusicRepository {
       await inTransaction(this.pool, async (client) => {
         // streams e rating são estatísticas: entram com o padrão do banco e o save não as altera.
         await client.query(
-          `INSERT INTO musics (id, name, duration, lyrics_id, created_at, deleted_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO musics (id, name, duration, lyrics_id, audio_file, is_explicit, created_at, deleted_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              duration = EXCLUDED.duration,
              lyrics_id = EXCLUDED.lyrics_id,
+             audio_file = EXCLUDED.audio_file,
+             is_explicit = EXCLUDED.is_explicit,
              deleted_at = EXCLUDED.deleted_at`,
-          [data.id, data.name, data.duration, data.lyricsId, data.createdAt, data.deletedAt],
+          [
+            data.id,
+            data.name,
+            data.duration,
+            data.lyricsId,
+            data.audioFile,
+            data.isExplicit,
+            data.createdAt,
+            data.deletedAt,
+          ],
         );
         await replaceLinks(client, ARTISTS, data.id, data.artistIds);
         await replaceLinks(client, GENRES, data.id, data.genreIds);
+        await replaceLinks(client, ALBUM, data.id, data.albumId === null ? [] : [data.albumId]);
       });
     } catch (error) {
       throw translateConstraintError(error, {
         artist_music_artist_id_fkey: () => new NotFoundError("Artist not found"),
         genre_music_genre_id_fkey: () => new NotFoundError("Genre not found"),
+        album_music_album_id_fkey: () => new NotFoundError("Album not found"),
       });
     }
   }
@@ -83,6 +102,9 @@ function toMusic(row: MusicRow): Music {
     rating: row.rating,
     artistIds: row.artist_ids,
     genreIds: row.genre_ids,
+    audioFile: row.audio_file,
+    isExplicit: row.is_explicit,
+    albumId: row.album_id,
     createdAt: row.created_at,
     deletedAt: row.deleted_at,
   });

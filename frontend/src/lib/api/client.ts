@@ -19,6 +19,16 @@ const MESSAGES: Record<string, string> = {
   "Admins cannot remove their own account": "Você não pode remover a sua própria conta.",
   "The last platform admin cannot be removed": "Não dá para remover o último admin da plataforma.",
   "Music must have at least one artist": "A música precisa de pelo menos um artista.",
+  // Music upload (api/domain/shared/audio.ts) and albums (api/domain/use-cases/manage-catalog.ts)
+  "Music must have an audio file": "Escolha o arquivo de áudio da música.",
+  "Audio file must be an MP3": "O áudio precisa ser um MP3.",
+  "Audio file must be at most 20 MB": "O áudio pode ter no máximo 20 MB.",
+  "Album not found": "Esse álbum não está mais no catálogo.",
+  "A genre with this name already exists": "Já existe um gênero com esse nome.",
+  // Album covers (api/domain/shared/cover-image.ts)
+  "Album must have a cover image": "Escolha a imagem de capa do álbum.",
+  "Cover image must be a JPEG, PNG or WebP": "A capa precisa ser uma imagem JPEG, PNG ou WebP.",
+  "Cover image must be at most 2 MB": "A capa pode ter no máximo 2 MB.",
   // Playlists (api/domain/use-cases): only the playlist's admins can change it
   "Only playlist admins can edit it": "Só quem administra a playlist pode editá-la.",
   "Only playlist admins can delete it": "Só quem administra a playlist pode apagá-la.",
@@ -57,6 +67,11 @@ const MESSAGES: Record<string, string> = {
     "Quem gerencia o plano não pode ser removido. Cancele a assinatura.",
 }
 
+/** A path the API returns, like an album's `coverUrl`, as an address the browser can load (an <img src>). */
+export function apiUrl(path: string): string {
+  return `${API_URL}${path}`
+}
+
 /** Message to show for any error thrown by a request (or by anything else). */
 export function apiErrorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Algo deu errado. Tente de novo."
@@ -79,7 +94,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   let res: Response
   try {
     const headers = new Headers(init.headers)
-    if (init.body) headers.set("Content-Type", "application/json")
+    // Only json() bodies are strings; a FormData gets its multipart Content-Type (with the boundary) from fetch
+    if (typeof init.body === "string") headers.set("Content-Type", "application/json")
     res = await fetch(`${API_URL}/api${path}`, { ...init, headers, credentials: "include" })
   } catch (error) {
     // A cancelled request (the query was superseded) is not a connection problem

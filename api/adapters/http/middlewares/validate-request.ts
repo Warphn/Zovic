@@ -29,6 +29,27 @@ export function validateBody(schema: Schema): RequestHandler {
 }
 
 /**
+ * Valida a parte `data` de um multipart: um texto JSON com os campos, que o multipart não
+ * representa como objeto. Sem a parte, valida um objeto vazio (os campos obrigatórios acusam).
+ */
+export function validateMultipartData(schema: Schema): RequestHandler {
+  return (req, res, next) => {
+    const data: unknown = req.body?.data;
+    let fields: unknown = {};
+    if (typeof data === "string") {
+      try {
+        fields = JSON.parse(data);
+      } catch {
+        res.status(400).json({ error: "INVALID_JSON", message: "The data part is not valid JSON" });
+        return;
+      }
+    }
+    req.body = fields;
+    validateBody(schema)(req, res, next);
+  };
+}
+
+/**
  * Valida os parâmetros da rota. Eles continuam strings em `req.params`: o controller converte
  * depois de validados (por exemplo, `Number(req.params.id)`).
  */

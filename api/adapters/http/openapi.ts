@@ -43,6 +43,8 @@ export const openApiDocument = {
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Histórico", description: "Músicas que o usuário ouviu" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
+    { name: "Catálogo", description: "Listas de músicas e álbuns" },
+    { name: "Admin", description: "Painel dos admins da plataforma: cadastro de músicas (com o áudio) e de álbuns" },
     { name: "Infra", description: "Estado da API" },
   ],
   paths: {
@@ -1051,6 +1053,336 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/musics": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Lista as músicas do catálogo",
+        description:
+          "Músicas ativas por nome. Para um admin da plataforma, vêm também as removidas, com `deletedAt` preenchido. `q` filtra pelo nome da música ou do artista.",
+        operationId: "listMusics",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { name: "q", in: "query", required: false, description: "Parte do nome da música ou do artista.", schema: { type: "string", example: "lago" } },
+        ],
+        responses: {
+          "200": {
+            description: "As músicas",
+            content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/MusicListItem" } } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/albums": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Lista os álbuns do catálogo",
+        description: "Álbuns ativos, por nome, com o ano e os artistas.",
+        operationId: "listAlbums",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Os álbuns",
+            content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/AlbumListItem" } } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/albums/{id}/cover": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Entrega a imagem de capa de um álbum",
+        description:
+          "A imagem, com o `Content-Type` do formato (`image/jpeg`, `image/png` ou `image/webp`). Use o `coverUrl` da `GET /api/albums`, que tem a versão no fim e muda a cada troca de capa.",
+        operationId: "getAlbumCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+          { name: "v", in: "query", required: false, description: "Versão da capa, só para o cache do navegador.", schema: { type: "string" } },
+        ],
+        responses: {
+          "200": {
+            description: "A imagem de capa",
+            content: { "image/png": { schema: { type: "string", format: "binary" } }, "image/jpeg": { schema: { type: "string", format: "binary" } }, "image/webp": { schema: { type: "string", format: "binary" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Álbum inexistente, removido ou sem capa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Cover not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/musics": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra uma música com o arquivo de áudio",
+        description:
+          "Recebe `multipart/form-data` com duas partes: `data`, um texto JSON com os campos da música, e `audio`, o arquivo MP3 de até 20 MB. O formato é conferido pelos primeiros bytes do arquivo, e não pela extensão. Sem áudio, a música não é criada. O arquivo é guardado no servidor com um nome novo, e a resposta traz só `hasAudio`.",
+        operationId: "createMusic",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["data", "audio"],
+                properties: {
+                  data: {
+                    type: "string",
+                    description: "JSON no formato de `MusicInput`.",
+                    example: '{"name":"Ressaca","duration":214,"artistIds":[1],"genreIds":[2],"albumId":3,"isExplicit":false}',
+                  },
+                  audio: { type: "string", format: "binary", description: "O arquivo MP3, de até 20 MB." },
+                },
+              },
+              encoding: { data: { contentType: "application/json" }, audio: { contentType: "audio/mpeg" } },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "A música criada", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminMusic" } } } },
+          "400": {
+            description:
+              "Campos inválidos (`VALIDATION_ERROR`), `data` que não é JSON (`INVALID_JSON`), arquivo numa parte que não é `audio`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`), sem áudio ou com um arquivo que não é MP3",
+            content: {
+              "application/json": {
+                schema: { oneOf: [{ $ref: "#/components/schemas/FieldValidationError" }, errorResponse("VALIDATION_ERROR", "Audio file must be an MP3")] },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista, gênero ou álbum inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Album not found") } },
+          },
+          "413": {
+            description: "O arquivo passa de 20 MB",
+            content: { "application/json": { schema: errorResponse("AUDIO_TOO_LARGE", "Audio file must be at most 20 MB") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/musics/{id}": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Edita uma música",
+        description:
+          "JSON com qualquer subconjunto dos campos. `artistIds` e `genreIds` substituem a lista inteira, e `albumId: null` tira a música do álbum. O arquivo de áudio não muda por aqui.",
+        operationId: "updateMusic",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/MusicUpdate" } } },
+        },
+        responses: {
+          "200": { description: "A música editada", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminMusic" } } } },
+          "400": { description: "Campos inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Música, artista, gênero ou álbum inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/genres": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra um gênero",
+        description: "A cor é guardada em maiúsculas. O nome é único entre os gêneros ativos.",
+        operationId: "createGenre",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "color"],
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 100, example: "Forró" },
+                  color: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$", example: "#e8a33d" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "O gênero criado",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "integer", example: 9 },
+                    name: { type: "string", example: "Forró" },
+                    color: { type: "string", example: "#E8A33D" },
+                    createdAt: { type: "string", format: "date-time" },
+                    deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Nome vazio ou longo demais, ou cor fora do formato", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "409": {
+            description: "Já existe um gênero ativo com esse nome",
+            content: { "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "A genre with this name already exists") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/albums": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra um álbum com a imagem de capa",
+        description:
+          "Recebe `multipart/form-data` com duas partes: `data`, um texto JSON com nome, artistas e ano (de 1900 até o ano atual), e `cover`, a imagem JPEG, PNG ou WebP de até 2 MB. O formato é conferido pelos primeiros bytes. Sem capa, o álbum não é criado.",
+        operationId: "createAlbum",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["data", "cover"],
+                properties: {
+                  data: { type: "string", description: "JSON no formato de `AlbumInput`.", example: '{"name":"Ondas de Concreto","artistIds":[1],"year":2018}' },
+                  cover: { type: "string", format: "binary", description: "A imagem de capa (JPEG, PNG ou WebP), de até 2 MB." },
+                },
+              },
+              encoding: { data: { contentType: "application/json" }, cover: { contentType: "image/jpeg, image/png, image/webp" } },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "O álbum criado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminAlbum" } } } },
+          "400": {
+            description:
+              "Campos inválidos ou ano depois do atual (`VALIDATION_ERROR`), `data` que não é JSON (`INVALID_JSON`), sem capa ou com um arquivo que não é imagem, ou multipart malformado (`INVALID_UPLOAD`)",
+            content: {
+              "application/json": {
+                schema: { oneOf: [{ $ref: "#/components/schemas/FieldValidationError" }, errorResponse("VALIDATION_ERROR", "Album must have a cover image")] },
+              },
+            },
+          },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("COVER_TOO_LARGE", "Cover image must be at most 2 MB") } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist 7 not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/albums/{id}/cover": {
+      put: {
+        tags: ["Admin"],
+        summary: "Troca a imagem de capa de um álbum",
+        description: "Recebe `multipart/form-data` com a parte `cover`. A capa antiga só é apagada depois que o álbum foi salvo com a nova.",
+        operationId: "changeAlbumCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["cover"],
+                properties: { cover: { type: "string", format: "binary", description: "A imagem de capa (JPEG, PNG ou WebP), de até 2 MB." } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "O álbum com a capa nova", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminAlbum" } } } },
+          "400": {
+            description:
+              "Sem a parte `cover`, ou com um arquivo que não é JPEG, PNG ou WebP; arquivo numa parte que não é `cover`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`)",
+            content: { "application/json": { schema: errorResponse("VALIDATION_ERROR", "Cover image must be a JPEG, PNG or WebP") } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Álbum inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Album not found") } },
+          },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("COVER_TOO_LARGE", "Cover image must be at most 2 MB") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/albums/{id}": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Edita um álbum",
+        description: "JSON com qualquer subconjunto de `name`, `artistIds` e `year`. `artistIds` substitui a lista inteira.",
+        operationId: "updateAlbum",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AlbumUpdate" } } },
+        },
+        responses: {
+          "200": { description: "O álbum editado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminAlbum" } } } },
+          "400": { description: "Campos inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Álbum ou artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Album not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        summary: "Remove um álbum",
+        description: "Soft delete: o álbum some das listas, e as músicas dele continuam no catálogo.",
+        operationId: "deleteAlbum",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Removido" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Álbum inexistente ou já removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Album not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -1111,6 +1443,12 @@ export const openApiDocument = {
         description: "A playlist não existe, foi apagada, ou é privada e o usuário não é membro",
         content: {
           "application/json": { schema: errorResponse("NOT_FOUND", "Playlist not found") },
+        },
+      },
+      NotPlatformAdmin: {
+        description: "A conta não tem o papel de admin da plataforma",
+        content: {
+          "application/json": { schema: errorResponse("FORBIDDEN", "Platform admin role required") },
         },
       },
       SubscriptionRequired: {
@@ -1602,6 +1940,121 @@ export const openApiDocument = {
           isPrivate: { type: "boolean", example: false },
           color: { type: ["string", "null"], example: "#1DB954" },
           musicCount: { type: "integer", description: "Músicas ativas da playlist.", example: 10 },
+        },
+      },
+      MusicListItem: {
+        type: "object",
+        required: ["id", "name", "duration", "streams", "plays", "artists", "genres", "album", "isExplicit", "hasAudio", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 12 },
+          name: { type: "string", example: "Ressaca" },
+          duration: { type: "integer", description: "Segundos.", example: 214 },
+          streams: { type: "integer", example: 30 },
+          plays: { type: "integer", description: "Reproduções registradas.", example: 28 },
+          artists: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } } },
+          genres: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, color: { type: "string" } } },
+          },
+          album: {
+            type: ["object", "null"],
+            description: "O álbum ativo da música, ou null se ela não está em nenhum.",
+            properties: { id: { type: "integer" }, name: { type: "string" }, year: { type: ["integer", "null"] } },
+            example: { id: 3, name: "Ondas de Concreto", year: 2018 },
+          },
+          isExplicit: { type: "boolean", example: false },
+          hasAudio: { type: "boolean", description: "Músicas anteriores ao upload não têm arquivo de áudio.", example: true },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", description: "Só para admins, nas removidas." },
+        },
+      },
+      AlbumListItem: {
+        type: "object",
+        required: ["id", "name", "year", "artists", "musicCount", "coverUrl"],
+        properties: {
+          id: { type: "integer", example: 3 },
+          name: { type: "string", example: "Ondas de Concreto" },
+          year: { type: ["integer", "null"], description: "null só nos álbuns antigos.", example: 2018 },
+          artists: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } } },
+          musicCount: { type: "integer", description: "Faixas ativas do álbum.", example: 5 },
+          coverUrl: {
+            type: ["string", "null"],
+            description: "Endereço da capa, relativo à API, com a versão no fim. null nos álbuns sem capa.",
+            example: "/api/albums/3/cover?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
+        },
+      },
+      MusicInput: {
+        type: "object",
+        required: ["name", "duration", "artistIds"],
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 255, example: "Ressaca" },
+          duration: { type: "integer", minimum: 1, description: "Segundos.", example: 214 },
+          artistIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 }, example: [1] },
+          genreIds: { type: "array", items: { type: "integer", minimum: 1 }, default: [], example: [2] },
+          albumId: { type: ["integer", "null"], minimum: 1, default: null, description: "Zero ou um álbum.", example: 3 },
+          isExplicit: { type: "boolean", default: false, example: false },
+        },
+      },
+      MusicUpdate: {
+        type: "object",
+        minProperties: 1,
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 255 },
+          duration: { type: "integer", minimum: 1 },
+          artistIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 } },
+          genreIds: { type: "array", items: { type: "integer", minimum: 1 } },
+          albumId: { type: ["integer", "null"], minimum: 1, description: "null tira a música do álbum." },
+          isExplicit: { type: "boolean" },
+        },
+        example: { albumId: null, isExplicit: true },
+      },
+      AdminMusic: {
+        type: "object",
+        required: ["id", "name", "duration", "artistIds", "genreIds", "albumId", "isExplicit", "hasAudio", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 64 },
+          name: { type: "string", example: "Ressaca" },
+          duration: { type: "integer", example: 214 },
+          artistIds: { type: "array", items: { type: "integer" }, example: [1] },
+          genreIds: { type: "array", items: { type: "integer" }, example: [2] },
+          albumId: { type: ["integer", "null"], example: 3 },
+          isExplicit: { type: "boolean", example: false },
+          hasAudio: { type: "boolean", example: true },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+        },
+      },
+      AlbumInput: {
+        type: "object",
+        required: ["name", "artistIds", "year"],
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 255, example: "Ondas de Concreto" },
+          artistIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 }, example: [1] },
+          year: { type: "integer", minimum: 1900, description: "Até o ano atual.", example: 2018 },
+        },
+      },
+      AlbumUpdate: {
+        type: "object",
+        minProperties: 1,
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 255 },
+          artistIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 } },
+          year: { type: "integer", minimum: 1900 },
+        },
+        example: { year: 2019 },
+      },
+      AdminAlbum: {
+        type: "object",
+        required: ["id", "name", "year", "artistIds", "hasCover", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 3 },
+          name: { type: "string", example: "Ondas de Concreto" },
+          year: { type: ["integer", "null"], example: 2018 },
+          artistIds: { type: "array", items: { type: "integer" }, example: [1] },
+          hasCover: { type: "boolean", example: true },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", example: null },
         },
       },
       FieldValidationError: {

@@ -1,0 +1,34 @@
+meta {
+  name: Cadastrar música com áudio
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/admin/musics
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:multipart-form {
+  data: {"name": "Faixa do Bruno", "duration": 200, "artistIds": [{{artistId}}], "albumId": {{albumId}}, "isExplicit": true}
+  audio: @file(fixtures/teste.mp3)
+}
+
+tests {
+  test("responde 201 com o álbum, a marca de explícito e o áudio", function () {
+    expect(res.getStatus()).to.equal(201);
+    const body = res.getBody();
+    expect(body.albumId).to.equal(bru.getVar("albumId"));
+    expect(body.isExplicit).to.equal(true);
+    expect(body.hasAudio).to.equal(true);
+  });
+
+  test("não expõe o nome do arquivo", function () {
+    expect(res.getBody()).to.not.have.property("audioFile");
+  });
+}

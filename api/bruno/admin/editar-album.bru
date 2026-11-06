@@ -1,0 +1,28 @@
+meta {
+  name: Editar o ano do álbum
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/albums/{{albumId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "year": 2020
+  }
+}
+
+tests {
+  test("responde 200 com o ano novo", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().year).to.equal(2020);
+  });
+}

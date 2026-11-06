@@ -133,7 +133,9 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 
 ### Album
 
-Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`, `album_music`
+Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`
+
+As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`.
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |
@@ -141,23 +143,25 @@ Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `al
 | `name` | `string` | Até 255 caracteres. |
 | `artistIds` | `number[]` | **Ao menos um.** |
 | `genreIds` | `number[]` | Pode ser vazio. |
-| `musicIds` | `number[]` | Faixas do álbum. Pode ser vazio. |
+| `year` | `number \| null` | Ano de lançamento, de 1900 (`Album.MIN_YEAR`) até o ano atual. Obrigatório no `create`. `null` só nos álbuns anteriores à coluna. |
+| `coverFile` | `string \| null` | Nome da imagem de capa no armazenamento. Obrigatório no `create`. `null` só nos álbuns anteriores à capa. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
 | --- | --- |
-| `create({ id, name, artistIds, genreIds?, musicIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia. |
+| `create({ id, name, artistIds, year, coverFile, genreIds?, now? })` | Cria o álbum. Recusa lista de artistas vazia, ano fora do intervalo e capa vazia. |
 | `restore(dados)` | Reconstrói a partir do banco. |
 | `toData()` | Dados do álbum, com cópia das listas. |
 | `rename(name)` | Troca o nome. |
 | `addArtist(artistId)` / `removeArtist(artistId)` | Vincula / desvincula um artista. **Não remove o último.** |
 | `addGenre(genreId)` / `removeGenre(genreId)` | Vincula / desvincula um gênero. |
-| `addMusic(musicId)` / `removeMusic(musicId)` | Inclui / tira uma faixa do álbum. |
+| `changeYear(year, now?)` | Troca o ano, com a mesma regra do `create`. |
+| `changeCover(coverFile)` | Troca a capa. |
 | `delete(now?)` | Soft delete. |
 
 ### Music
 
-Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `genre_music`
+Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `genre_music`, `album_music`
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |
@@ -169,19 +173,24 @@ Arquivo: `api/domain/entities/music.ts` · Tabelas: `musics`, `artist_music`, `g
 | `rating` | `number \| null` | **Só leitura.** Média das avaliações; `null` sem avaliações. |
 | `artistIds` | `number[]` | **Ao menos um.** |
 | `genreIds` | `number[]` | Pode ser vazio. |
+| `audioFile` | `string \| null` | Nome do MP3 no armazenamento (`<uuid>.mp3`). **Obrigatório no `create`.** `null` só nas músicas anteriores ao upload. |
+| `isExplicit` | `boolean` | Conteúdo explícito. Padrão `false`. |
+| `albumId` | `number \| null` | Zero ou um álbum. O repositório de músicas grava esse vínculo no `album_music`. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 `streams` e `rating` são estatísticas calculadas fora da entidade: ela não tem métodos para alterá-las e o repositório **não as sobrescreve** ao salvar.
 
 | Função | O que faz |
 | --- | --- |
-| `create({ id, name, duration, artistIds, genreIds?, lyricsId?, now? })` | Cria a música com as estatísticas zeradas. Recusa lista de artistas vazia. |
+| `create({ id, name, duration, artistIds, audioFile, genreIds?, albumId?, isExplicit?, lyricsId?, now? })` | Cria a música com as estatísticas zeradas. Recusa lista de artistas vazia e `audioFile` vazio. |
 | `restore(dados)` | Reconstrói a partir do banco, com as estatísticas. |
 | `toData()` | Dados da música, com cópia das listas. |
 | `rename(name)` | Troca o nome. |
 | `changeDuration(duration)` | Troca a duração. |
 | `addArtist(artistId)` / `removeArtist(artistId)` | Vincula / desvincula um artista. **Não remove o último.** |
 | `addGenre(genreId)` / `removeGenre(genreId)` | Vincula / desvincula um gênero. |
+| `changeAlbum(albumId)` | Troca o álbum; `null` tira a música do álbum. |
+| `setExplicit(isExplicit)` | Marca ou desmarca o conteúdo explícito. |
 | `delete(now?)` | Soft delete. |
 
 ## Repositórios
@@ -202,8 +211,8 @@ Erros do banco traduzidos para erros de domínio:
 | --- | --- | --- |
 | Playlist | Membro com usuário inexistente | `NotFoundError` |
 | Genre | Nome igual ao de outro gênero ativo | `BusinessRuleError` |
-| Album | Artista, gênero ou música inexistente | `NotFoundError` |
-| Music | Artista ou gênero inexistente | `NotFoundError` |
+| Album | Artista ou gênero inexistente | `NotFoundError` |
+| Music | Artista, gênero ou álbum inexistente | `NotFoundError` |
 
 Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 
@@ -213,6 +222,22 @@ Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 | `inTransaction(pool, work)` | Roda `work` entre `BEGIN` e `COMMIT`; faz `ROLLBACK` e relança o erro se algo falhar. |
 | `replaceLinks(client, link, ownerId, ids)` | Apaga os vínculos do dono numa tabela associativa e insere os novos. |
 | `translateConstraintError(error, map)` | Troca o erro do Postgres pelo erro de domínio mapeado para a constraint violada. |
+
+## Armazenamento de arquivos
+
+A porta `FileStorage` (`api/domain/ports/file-storage.ts`) guarda os arquivos enviados pelo painel: os MP3 das músicas e as capas dos álbuns. O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile` e em `Album.coverFile`.
+
+| Função | O que faz |
+| --- | --- |
+| `save(bytes, extension)` | Grava o arquivo e devolve o nome com que ele foi guardado, como `<uuid>.mp3`. |
+| `remove(fileName)` | Apaga o arquivo. Um nome que não existe não é erro. |
+
+A implementação, `LocalFileStorage` (`api/adapters/storage/local-file-storage.ts`), grava num diretório (`AUDIO_DIR` para os áudios, `COVER_DIR` para as capas) com um nome gerado e descarta o nome enviado pelo admin. As regras conferem os primeiros bytes, sem confiar na extensão:
+
+- **Áudio** (`api/domain/shared/audio.ts`): `validateAudio(bytes)`, MP3 de até 20 MB.
+- **Capa** (`api/domain/shared/cover-image.ts`): `validateCover(bytes)`, JPEG, PNG ou WebP de até 2 MB. Ela devolve a extensão com que a imagem é guardada (`.jpg`, `.png` ou `.webp`).
+
+No `ManageCatalog.createMusic` e no `createAlbum`, o arquivo só vai para o disco depois das conferências. Se a música ou o álbum não chegar a ser salvo, o arquivo é apagado. No `changeAlbumCover`, a capa antiga só é apagada depois que o álbum foi salvo com a nova.
 
 ## Portas de consulta
 

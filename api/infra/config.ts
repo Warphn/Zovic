@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 export interface Config {
   port: number;
   cookieSecure: boolean;
@@ -5,9 +7,17 @@ export interface Config {
   betterAuthSecret: string;
   betterAuthUrl: string;
   corsOrigins: string[];
+  /** Diretório dos arquivos de áudio das músicas. */
+  audioDir: string;
+  /** Diretório das imagens de capa dos álbuns. */
+  coverDir: string;
 }
 
 const MIN_SECRET_LENGTH = 32;
+
+/** Fora do Docker (bun dev), os áudios e as capas ficam em api/storage/, que o git ignora. */
+const DEFAULT_AUDIO_DIR = join(import.meta.dir, "..", "storage", "audio");
+const DEFAULT_COVER_DIR = join(import.meta.dir, "..", "storage", "covers");
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
   const port = Number(env.PORT ?? 3333);
@@ -23,6 +33,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       .split(",")
       .map((origin) => origin.trim())
       .filter((origin) => origin !== ""),
+    audioDir: env.AUDIO_DIR || DEFAULT_AUDIO_DIR,
+    coverDir: env.COVER_DIR || DEFAULT_COVER_DIR,
   };
 }
 

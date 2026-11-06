@@ -1,0 +1,18 @@
+meta {
+  name: Pegar a capa do álbum
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/albums/{{albumId}}/cover
+  body: none
+  auth: none
+}
+
+tests {
+  test("entrega a imagem PNG", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.equal("image/png");
+  });
+}

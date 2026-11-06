@@ -39,13 +39,13 @@ async function newArtist(name: string): Promise<Artist> {
 async function newMusic(name: string, artistIds: number[], genreIds: number[] = []): Promise<Music> {
   const id = await musics.nextId();
   created.musics.push(id);
-  return Music.create({ id, name, duration: 200, artistIds, genreIds });
+  return Music.create({ id, name, duration: 200, artistIds, genreIds, audioFile: `${name}.mp3` });
 }
 
 async function newAlbum(artistIds: number[]): Promise<Album> {
   const id = await albums.nextId();
   created.album.push(id);
-  return Album.create({ id, name: "Integration", artistIds });
+  return Album.create({ id, name: "Integration", artistIds, year: 1998, coverFile: "capa.png" });
 }
 
 beforeAll(async () => {
@@ -149,6 +149,42 @@ describe("PostgresMusicRepository", () => {
     expect(found?.rating).toBe(4);
   });
 
+  it("grava o áudio, a marca de explícito e o álbum", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const music = await newMusic("Completa", [artistId]);
+    music.setExplicit(true);
+    music.changeAlbum(album.id);
+
+    await musics.save(music);
+
+    expect((await musics.findById(music.id))?.toData()).toMatchObject({
+      audioFile: "Completa.mp3",
+      isExplicit: true,
+      albumId: album.id,
+    });
+  });
+
+  it("tira o álbum da música", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const music = await newMusic("Sem álbum", [artistId]);
+    music.changeAlbum(album.id);
+    await musics.save(music);
+    music.changeAlbum(null);
+
+    await musics.save(music);
+
+    expect((await musics.findById(music.id))?.albumId).toBeNull();
+  });
+
+  it("traduz álbum inexistente em NotFoundError", async () => {
+    const music = await newMusic("Álbum fantasma", [artistId]);
+    music.changeAlbum(MISSING_ID);
+    const error = await musics.save(music).catch((e: unknown) => e);
+    expect(error).toEqual(new NotFoundError("Album not found"));
+  });
+
   it("findByIds devolve na ordem pedida e ignora inexistentes", async () => {
     const first = await newMusic("First", [artistId]);
     const second = await newMusic("Second", [artistId]);
@@ -181,17 +217,35 @@ describe("PostgresMusicRepository", () => {
 });
 
 describe("PostgresAlbumRepository", () => {
-  it("grava o álbum com artistas, gêneros e músicas", async () => {
-    const music = await newMusic("Track", [artistId]);
-    await musics.save(music);
+  it("grava o álbum com artistas, gêneros e ano", async () => {
     const album = await newAlbum([artistId]);
     album.addGenre(genreId);
-    album.addMusic(music.id);
 
     await albums.save(album);
 
     const found = await albums.findById(album.id);
-    expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], musicIds: [music.id] });
+    expect(found?.toData()).toMatchObject({ artistIds: [artistId], genreIds: [genreId], year: 1998 });
+  });
+
+  it("grava a capa e a troca de capa", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    expect((await albums.findById(album.id))?.coverFile).toBe("capa.png");
+
+    album.changeCover("nova.webp");
+    await albums.save(album);
+
+    expect((await albums.findById(album.id))?.coverFile).toBe("nova.webp");
+  });
+
+  it("grava a troca de ano", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    album.changeYear(2001);
+
+    await albums.save(album);
+
+    expect((await albums.findById(album.id))?.year).toBe(2001);
   });
 
   it("não encontra álbum apagado", async () => {
@@ -199,12 +253,5 @@ describe("PostgresAlbumRepository", () => {
     album.delete();
     await albums.save(album);
     expect(await albums.findById(album.id)).toBeNull();
-  });
-
-  it("traduz música inexistente em NotFoundError", async () => {
-    const album = await newAlbum([artistId]);
-    album.addMusic(MISSING_ID);
-    const error = await albums.save(album).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(NotFoundError);
   });
 });

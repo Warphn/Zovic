@@ -157,3 +157,15 @@ O Claude Opus leu a #84, viu que o único critério sem código era a seção de
 | # | Prompt (resumo) | Resultado |
 |---|---|---|
 | 1 | Fechar a #84 "até onde dá": seção de planos na landing com preço e número de pessoas, e conferir os critérios de cadastro e entrada | [`plans.tsx`](../../frontend/src/components/plans.tsx), com os planos, o preço formatado e o número de pessoas em [`rules.ts`](../../frontend/src/lib/subscription/rules.ts), usados também por `/planos` e `/meu-plano` |
+
+### 05/11/2026: cadastro de música com áudio pelo painel de admin (HU-28)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Ok, agora precisamos da rota de adição de músicas e que ela seja vinculada, primeiramente, ao portal admin. | Conversa de design: upload do áudio com os campos da HU-28, migração do áudio, do explícito e do ano do álbum nesta entrega, álbum opcional, só MP3 de até 20 MB e envio em multipart com o `multer`. Resultado: a [spec](../superpowers/specs/2026-11-05-cadastro-de-musica-com-audio-design.md) |
+| 2 | Ok agora vamos aplicar a rota de cadastro de música e tudo mais. | O [plano de implementação](../superpowers/plans/2026-11-05-cadastro-de-musica-com-audio.md), em 9 tarefas com os testes antes do código |
+| 3 | Vamos usar Native. Manda bala. | A implementação: a regra do MP3 ([`audio.ts`](../../api/domain/shared/audio.ts)), a migration, `Music` e `Album`, o armazenamento ([`local-file-storage.ts`](../../api/adapters/storage/local-file-storage.ts)), o caso de uso, as rotas com multipart, o cliente do front e a tela Conteúdo, com testes de unidade e de integração, o `openapi.ts`, o Bruno ([`api/bruno/admin/`](../../api/bruno/admin/)) e a documentação |
+| 4 | Na tela de adição de músicas é preciso ter um campo para adicionar um artista novo; a duração deve ser identificada a partir do arquivo enviado; é preciso um campo de adição de gênero; a listagem de álbuns está muito feia. | A rota `POST /api/admin/genres`, o `musicCount` na `GET /api/albums`, a leitura da duração no navegador ([`audio-duration.ts`](../../frontend/src/lib/audio-duration.ts)), a criação de artista e gênero pelo formulário e os álbuns em cards ([`album-cover.ts`](../../frontend/src/lib/album-cover.ts)) |
+| 5 | Precisamos mudar o campo de álbum: listar apenas os álbuns do artista selecionado e poder criar um novo, com nome e imagem de capa. Além disso, o campo de álbum deve ser mais bonito. | A capa obrigatória do álbum (migration, [`cover-image.ts`](../../api/domain/shared/cover-image.ts), o `LocalFileStorage` para áudios e capas, `PUT /api/admin/albums/:id/cover` e `GET /api/albums/:id/cover`) e a grade de capas no formulário de música ([`album-picker.tsx`](../../frontend/src/app/admin/conteudo/album-picker.tsx)) |
+
+A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e o uso do `multer`, aprovou a spec e o plano antes da implementação, e o time aprovou a dependência nova. A IA conferiu cada passo com os testes, rodou as requisições do Bruno contra a API e o cadastro pelo Docker, com o arquivo no volume `audio`. A tela do painel ainda precisa ser conferida no navegador.

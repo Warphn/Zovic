@@ -1,0 +1,32 @@
+meta {
+  name: Criar álbum
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/admin/albums
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:multipart-form {
+  data: {"name": "Álbum do Bruno", "artistIds": [{{artistId}}], "year": 2019}
+  cover: @file(fixtures/capa.png)
+}
+
+script:post-response {
+  bru.setVar("albumId", res.getBody().id);
+}
+
+tests {
+  test("responde 201 com o ano e a capa", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().year).to.equal(2019);
+    expect(res.getBody().hasCover).to.equal(true);
+  });
+}
