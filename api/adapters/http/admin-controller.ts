@@ -1,6 +1,7 @@
 import type { Request, RequestHandler } from "express";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type { AdminQueries, CatalogQueries, PlayLog } from "../../domain/ports/admin-queries.ts";
+import type { GetMusicAudio } from "../../domain/use-cases/get-music-audio.ts";
 import type { ManageCatalog } from "../../domain/use-cases/manage-catalog.ts";
 import type { ManageUsers } from "../../domain/use-cases/manage-users.ts";
 import type { LocalFileStorage } from "../storage/local-file-storage.ts";
@@ -10,6 +11,12 @@ const RECENT_PLAYS_LIMIT = 50;
 
 /** A URL da capa muda a cada troca (?v=), mas quem pede sem a versão também precisa ver a nova logo. */
 const COVER_CACHE_CONTROL = "private, max-age=86400";
+
+/**
+ * O navegador guarda o arquivo, mas confirma com a API antes de cada uso (304 pelo ETag). Assim a
+ * assinatura e a idade valem também para o que está no cache, mesmo com outra pessoa no mesmo navegador.
+ */
+const AUDIO_CACHE_CONTROL = "private, no-cache";
 
 /** Id da URL; um id malformado é tratado como registro inexistente. */
 function idParam(req: Request): number {
@@ -27,11 +34,18 @@ export interface CatalogController {
   listArtists: RequestHandler;
   listAlbums: RequestHandler;
   albumCover: RequestHandler;
+  musicAudio: RequestHandler;
   listGenres: RequestHandler;
   recordPlay: RequestHandler;
 }
 
-export function makeCatalogController(queries: CatalogQueries, plays: PlayLog, covers: LocalFileStorage): CatalogController {
+export function makeCatalogController(
+  queries: CatalogQueries,
+  plays: PlayLog,
+  covers: LocalFileStorage,
+  audio: LocalFileStorage,
+  getMusicAudio: GetMusicAudio,
+): CatalogController {
   return {
     // Músicas removidas só aparecem para admins (e vêm com deletedAt preenchido).
     listMusics: async (req, res) => {
@@ -49,7 +63,21 @@ export function makeCatalogController(queries: CatalogQueries, plays: PlayLog, c
       res.set("Cache-Control", COVER_CACHE_CONTROL);
       // O sendFile define o Content-Type pela extensão; um arquivo que sumiu do disco vira 404.
       res.sendFile(covers.pathOf(coverFile), (error) => {
-        if (error) next(new NotFoundError("Cover not found"));
+        // Com os cabeçalhos já enviados, o erro é o navegador cancelando o download: não há o que responder.
+        if (error && !res.headersSent) next(new NotFoundError("Cover not found"));
+      });
+    },
+    musicAudio: async (req, res, next) => {
+      const { audioFile } = await getMusicAudio.execute({
+        musicId: idParam(req),
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+      });
+      res.set("Cache-Control", AUDIO_CACHE_CONTROL);
+      // O sendFile responde a Range (206), que o <audio> usa para pular trechos; um arquivo que sumiu do disco vira 404.
+      res.sendFile(audio.pathOf(audioFile), (error) => {
+        // O <audio> cancela downloads o tempo todo (pular trecho, trocar de faixa): aí não há o que responder.
+        if (error && !res.headersSent) next(new NotFoundError("Audio not found"));
       });
     },
     listGenres: async (_req, res) => {

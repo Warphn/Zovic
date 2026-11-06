@@ -149,8 +149,9 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |
 | `GET /api/genres` | Lista os gêneros |
 | `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
+| `GET /api/musics/:id/audio` | Entrega o MP3 da música (`audio/mpeg`). Aceita `Range` e responde 206 com o trecho, que é como o player pula para outro ponto. O cache é `private, no-cache`: o navegador confirma o arquivo guardado com a API (304), que confere a assinatura e a idade de novo. Responde 404 para música removida ou sem arquivo, e 403 para música explícita quando a conta não é maior de idade. |
 
-O player do front chama essa rota quando uma música começa a tocar, e a página `/historico` atualiza a lista depois de cada reprodução registrada.
+O player do front toca o áudio pela `GET /api/musics/:id/audio` e chama a `POST /api/musics/:id/plays` quando o som começa, uma vez por audição. A página `/historico` atualiza a lista depois de cada reprodução registrada.
 
 ### Admin
 

@@ -37,10 +37,11 @@ import type { UserProfile } from "@/lib/comments-store"
 import { TrackComments } from "@/components/comments/track-comments"
 import { useLikedTracks } from "@/lib/likes-store"
 import { cn } from "@/lib/utils"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { LevelBars } from "@/components/playback-marks"
-import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, playPlaylist, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -85,6 +86,8 @@ export default function PlaylistDetailPage() {
   // color is previewed on the page; nothing is saved until "Salvar"
   const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
+  // What the last "Adicionar à fila" did, announced to screen readers too
+  const [queued, setQueued] = React.useState<string | null>(null)
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
   // from this playlist, and starts this playlist when one of its tracks is played
@@ -231,13 +234,11 @@ export default function PlaylistDetailPage() {
   const color = draft?.color ?? currentPlaylist.color
   // The current track of this playlist is marked even while paused, so the list shows where
   // playback stands
-  const currentTrackIndex = isThisPlaylist
-    ? tracks.findIndex((t) => t.id === playback?.currentTrackId)
-    : -1
+  const currentTrackId = isThisPlaylist ? currentTrackOf(playback)?.id : undefined
+  const currentTrackIndex = currentTrackId ? tracks.findIndex((track) => track.id === currentTrackId) : -1
   const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
   const playAt = (index: number, playing = true) => {
-    const track = tracks[index]
-    if (track) playPlaylist(currentPlaylist.id, track.id, playing)
+    if (tracks[index]) playPlaylist(currentPlaylist, index, playing)
   }
   const playlistAccent = getPlaylistAccentStyle(color)
   const totalDuration = formatTotalDuration(sumDurationSec(tracks))
@@ -330,6 +331,8 @@ export default function PlaylistDetailPage() {
               </div>
             </div>
 
+            {/* Always rendered, so the live region exists before the first message */}
+            <output className={queued ? "block py-2 text-xs text-muted-foreground" : "sr-only"}>{queued}</output>
             {reorderTracks.isError && (
               <p role="alert" className="py-2 text-xs text-destructive">
                 Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
@@ -374,11 +377,8 @@ export default function PlaylistDetailPage() {
                   const isTrackPlaying = isCurrent && isPlaying
                   const isLiked = isTrackLiked(track.id)
 
-                  // Clicking the playing track pauses it; any other click plays the clicked track
-                  const playOrPauseRow = () => {
-                    if (isTrackPlaying) togglePlayback()
-                    else playAt(actualIdx)
-                  }
+                  // Clicking the current track pauses or resumes it; any other click plays the clicked track
+                  const playOrPauseRow = () => playOrTogglePlaylistTrack(currentPlaylist, actualIdx)
 
                   return (
                     <div
@@ -443,6 +443,11 @@ export default function PlaylistDetailPage() {
                       <div className="pointer-events-none relative flex shrink-0 items-center gap-3">
                         <span className="w-10 text-right font-mono text-xs tabular-nums text-muted-foreground">
                           {track.duration}
+                        </span>
+
+                        {/* Content is click-through to the row; this button opts back in */}
+                        <span className="pointer-events-auto">
+                          <AddToQueueButton track={track} onResult={setQueued} />
                         </span>
 
                         {/* Comentários: visível para maiores de 18 */}
@@ -553,16 +558,10 @@ export default function PlaylistDetailPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (isThisPlaylist && playback?.currentTrackId === commentTrack.id && playback?.isPlaying) {
-                    togglePlayback()
-                  } else {
-                    playPlaylist(currentPlaylist.id, commentTrack.id)
-                  }
-                }}
+                onClick={() => playOrTogglePlaylistTrack(currentPlaylist, tracks.indexOf(commentTrack))}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-border bg-background hover:bg-surface text-xs font-medium cursor-pointer transition-colors"
               >
-                {isThisPlaylist && playback?.currentTrackId === commentTrack.id && playback?.isPlaying ? (
+                {currentTrackId === commentTrack.id && playback?.isPlaying ? (
                   <>
                     <PauseIcon size={14} />
                     <span>Pausar</span>
@@ -594,7 +593,7 @@ export default function PlaylistDetailPage() {
               user={currentUser}
               currentPlaybackSec={0}
               onSeek={() => {
-                playPlaylist(currentPlaylist.id, commentTrack.id)
+                playAt(tracks.indexOf(commentTrack))
               }}
             />
           </div>

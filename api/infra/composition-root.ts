@@ -38,6 +38,7 @@ import { CreateComment } from "../domain/use-cases/create-comment.ts";
 import { CreatePlaylist } from "../domain/use-cases/create-playlist.ts";
 import { DeleteComment } from "../domain/use-cases/delete-comment.ts";
 import { DeletePlaylist } from "../domain/use-cases/delete-playlist.ts";
+import { GetMusicAudio } from "../domain/use-cases/get-music-audio.ts";
 import { GetPlaylist } from "../domain/use-cases/get-playlist.ts";
 import { ListMusicComments } from "../domain/use-cases/list-music-comments.ts";
 import { ListMyHistory } from "../domain/use-cases/list-my-history.ts";
@@ -82,11 +83,18 @@ export function composeApp(
   });
   const searchController = makeSearchController(new SearchCatalog(new PostgresSearchQuery(db)));
 
+  const musicRepository = new PostgresMusicRepository(db);
   const catalogQueries = new PostgresCatalogQueries(db);
-  const catalogController = makeCatalogController(catalogQueries, catalogQueries, storages.covers);
+  const catalogController = makeCatalogController(
+    catalogQueries,
+    catalogQueries,
+    storages.covers,
+    storages.audio,
+    new GetMusicAudio(musicRepository),
+  );
 
   const manageCatalog = new ManageCatalog(
-    new PostgresMusicRepository(db),
+    musicRepository,
     new PostgresArtistRepository(db),
     new PostgresGenreRepository(db),
     new PostgresAlbumRepository(db),

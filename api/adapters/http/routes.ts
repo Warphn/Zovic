@@ -106,6 +106,7 @@ export function makeRouter(
 
   router.get("/musics", subscriberOnly, catalog.listMusics);
   router.post("/musics/:id/plays", subscriberOnly, catalog.recordPlay);
+  router.get("/musics/:id/audio", subscriberOnly, catalog.musicAudio);
   router.get("/artists", subscriberOnly, catalog.listArtists);
   router.get("/albums", subscriberOnly, catalog.listAlbums);
   router.get("/albums/:id/cover", subscriberOnly, catalog.albumCover);

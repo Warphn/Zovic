@@ -1,5 +1,8 @@
 export const ADULT_AGE = 18;
 
+/** Fuso que define "hoje" para a maioridade: o aniversário vale pelo dia do Brasil, não o de UTC. */
+export const TIME_ZONE = "America/Sao_Paulo";
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**

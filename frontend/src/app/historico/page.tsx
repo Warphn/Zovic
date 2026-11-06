@@ -2,13 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
 import Header from "@/components/header"
 import { PauseIcon, PlayIcon } from "@/components/icons"
 import { apiErrorMessage } from "@/lib/api/client"
 import { type HistoryEntry, useHistory } from "@/lib/api/history"
 import { formatDayAndTime } from "@/lib/format-date-time"
 import { formatDuration } from "@/lib/format-duration"
-import { playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
 
 function entryMeta(entry: HistoryEntry): string {
@@ -21,7 +22,7 @@ function entryMeta(entry: HistoryEntry): string {
 // A removed music stays in the history, but is muted and cannot be played
 function UnavailableRow({ entry }: { entry: HistoryEntry }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-2 opacity-60">
+    <div className="flex w-full items-center gap-3 rounded-xl px-3 py-2 opacity-60">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{entry.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{entryMeta(entry)}</span>
@@ -40,7 +41,7 @@ function PlayableRow({ entry, isPlaying, onClick }: { entry: HistoryEntry; isPla
       onClick={onClick}
       aria-label={isPlaying ? `Pausar ${entry.name}` : `Tocar ${entry.name}`}
       aria-pressed={isPlaying}
-      className="group flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+      className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{entry.name}</span>
@@ -61,6 +62,8 @@ function HistoryList() {
   const { data: entries, isPending, error } = useHistory()
   const catalogTracks = useCatalogTracks()
   const playback = usePlayback()
+  // What the last "Adicionar à fila" did, announced to screen readers too
+  const [queued, setQueued] = React.useState<string | null>(null)
 
   if (error) {
     return (
@@ -82,26 +85,32 @@ function HistoryList() {
   }
 
   return (
-    <ul className="mt-8 space-y-1">
-      {entries.map((entry) => (
-        <li key={entry.musicId}>
-          {entry.isAvailable ? (
-            <PlayableRow
-              entry={entry}
-              isPlaying={Boolean(playback?.isPlaying) && playback?.currentTrackId === String(entry.musicId)}
-              onClick={() =>
-                playOrToggleTrack(String(entry.musicId), [
-                  musicToTrack({ id: entry.musicId, name: entry.name, duration: entry.duration, artists: entry.artists }),
-                  ...catalogTracks,
-                ])
-              }
-            />
-          ) : (
-            <UnavailableRow entry={entry} />
-          )}
-        </li>
-      ))}
-    </ul>
+    <>
+      {/* Always rendered, so the live region exists before the first message */}
+      <output className={queued ? "mt-3 block text-sm text-muted-foreground" : "sr-only"}>{queued}</output>
+      <ul className="mt-8 space-y-1">
+        {entries.map((entry) => {
+          const track = musicToTrack({ id: entry.musicId, name: entry.name, duration: entry.duration, artists: entry.artists })
+          return (
+            <li key={entry.musicId} className="flex items-center gap-1">
+              {entry.isAvailable ? (
+                <>
+                  <PlayableRow
+                    entry={entry}
+                    isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
+                    onClick={() => playOrToggleTrack(track.id, [track, ...catalogTracks])}
+                  />
+                  {/* Beside the row, never inside it: the row is a button of its own */}
+                  <AddToQueueButton track={track} onResult={setQueued} />
+                </>
+              ) : (
+                <UnavailableRow entry={entry} />
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }
 

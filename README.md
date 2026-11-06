@@ -157,6 +157,13 @@ Para demonstrar a assinatura, comece pela página inicial sem entrar: a seção 
 
 Menor de idade só se cadastra por convite do plano familiar. Quem já tem assinatura ativa não aceita um convite.
 
+### Demo do player
+
+1. Como `admin@zovic.test`, cadastre em **Conteúdo** uma ou mais músicas com um MP3 de verdade. As músicas do seed não têm áudio.
+2. Entre com uma conta com plano, busque a música e toque. A barra mostra o tempo real, pula para o ponto clicado (ou 5 s pelas setas) e controla o volume.
+3. **Adicionar à fila** (o ícone ao lado de "Adicionar à playlist") põe a música no fim da fila. No `/player`, o × de uma carta a tira da fila. No fim de uma música, a próxima começa sozinha.
+4. Uma música do seed, removida pelo admin, ou explícita para um menor (`heitor.costa@zovic.test`) aparece como **Indisponível**, e a fila passa para a próxima.
+
 ## Documentação
 
 | Documento | O que tem |

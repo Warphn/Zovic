@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { PlaybackAudio } from "@/components/playback-audio";
 import { AppPlaybackBar } from "@/components/playback-bar";
 import { QueryProvider } from "@/lib/api/query-provider";
 
@@ -18,6 +19,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           {children}
+          {/* The sound plays on every page, the landing and sign-in included, so it never stops on a page change */}
+          <PlaybackAudio />
           {/* Every page but the landing and sign-in/sign-up ends with the playback bar */}
           <AppPlaybackBar />
         </QueryProvider>

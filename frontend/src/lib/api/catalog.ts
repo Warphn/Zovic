@@ -48,6 +48,8 @@ export const catalogApi = {
   albums: (signal?: AbortSignal) => request<Album[]>("/albums", { signal }),
   /** Counts one play of the music for the viewer (event + stream count). */
   recordPlay: (musicId: number) => request<void>(`/musics/${musicId}/plays`, { method: "POST" }),
+  /** API path of the music's MP3, for the player's <audio> (load it through `apiUrl`). Subscribers only. */
+  musicAudioPath: (musicId: number) => `/api/musics/${musicId}/audio`,
 }
 
 export const catalogKeys = {
