@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
 import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { seekTo, setVolume, toggleMute, useAudioPlayer } from "@/lib/audio-player"
+import { formatDuration } from "@/lib/format-duration"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +15,9 @@ const DEFAULT_COLOR = "#d33a2c"
 
 // Pages without the bar: the landing and the sign-in/sign-up pages
 const HIDDEN_ON = new Set(["/", "/entrar", "/cadastro"])
+
+// The arrow keys on the progress bar move this many seconds
+const SEEK_STEP_SECONDS = 5
 
 // Where the queue button returns to when it closes the player: the page it was opened from.
 // Module state, so it survives the client-side navigation; after a reload the fallback is used.
@@ -98,9 +103,12 @@ export function PlaybackBar({
 }: PlaybackBarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [playbackProgress, setPlaybackProgress] = React.useState(35) // percentage 0-100
-  const [volume, setVolume] = React.useState(70) // percentage 0-100
-  const [isMuted, setIsMuted] = React.useState(false)
+  const { currentTime, duration, volume, isMuted, unavailableTrackIds } = useAudioPlayer()
+  const isUnavailable = track ? unavailableTrackIds.has(track.id) : false
+  // Until the file's metadata loads, the catalog's duration stands in
+  const totalSec = duration ?? track?.durationSec ?? 0
+  const progressPercent = totalSec > 0 ? Math.min(100, (currentTime / totalSec) * 100) : 0
+  const volumePercent = Math.round(volume * 100)
 
   const toggleQueue = () => {
     if (queueOpen) {
@@ -112,11 +120,6 @@ export function PlaybackBar({
     playerReturnPath = pathname + window.location.search
     router.push("/player")
   }
-
-  // Calculate current elapsed time in mm:ss from playbackProgress
-  const currentElapsedSec = Math.round(((track?.durationSec ?? 240) * playbackProgress) / 100)
-  const elapsedMin = Math.floor(currentElapsedSec / 60)
-  const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
 
   return (
     <div
@@ -135,7 +138,7 @@ export function PlaybackBar({
         </div>
         <div className="min-w-0 hidden sm:block">
           <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
-          <div className="text-[11px] text-muted-foreground truncate">{track?.artist}</div>
+          <div className="text-[11px] text-muted-foreground truncate">{isUnavailable ? "Indisponível" : track?.artist}</div>
         </div>
       </div>
 
@@ -155,7 +158,7 @@ export function PlaybackBar({
             type="button"
             onClick={onTogglePlay}
             aria-label={isPlaying ? "Pausar reprodução" : "Iniciar reprodução"}
-            disabled={!track}
+            disabled={!track || isUnavailable}
             className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform disabled:pointer-events-none disabled:opacity-40"
           >
             {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
@@ -173,34 +176,33 @@ export function PlaybackBar({
 
         {/* Scrubber in the accent color */}
         <div className="w-full flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-          <span>{isPlaying ? `${elapsedMin}:${elapsedSecFormatted}` : "0:00"}</span>
+          <span>{formatDuration(Math.floor(currentTime))}</span>
           <button
             type="button"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               const clickX = e.clientX - rect.left
-              const percentage = Math.max(0, Math.min(100, (clickX / rect.width) * 100))
-              setPlaybackProgress(Math.round(percentage))
+              seekTo((clickX / rect.width) * totalSec)
             }}
             onKeyDown={(e) => {
               if (e.key === "ArrowRight") {
-                setPlaybackProgress((p) => Math.min(100, p + 5))
+                seekTo(currentTime + SEEK_STEP_SECONDS)
               } else if (e.key === "ArrowLeft") {
-                setPlaybackProgress((p) => Math.max(0, p - 5))
+                seekTo(currentTime - SEEK_STEP_SECONDS)
               }
             }}
             aria-label="Avançar ou retroceder na reprodução"
-            disabled={!track}
+            disabled={!track || isUnavailable}
             className="relative flex-1 h-3 flex items-center cursor-pointer group focus:outline-none"
           >
             <span className="w-full h-1.5 bg-border rounded-full overflow-hidden block">
               <span
                 className="h-full rounded-full transition-all block"
-                style={{ width: `${playbackProgress}%`, backgroundColor: color }}
+                style={{ width: `${progressPercent}%`, backgroundColor: color }}
               />
             </span>
           </button>
-          <span>{track?.duration || "0:00"}</span>
+          <span>{formatDuration(Math.round(totalSec))}</span>
         </div>
       </div>
 
@@ -223,21 +225,18 @@ export function PlaybackBar({
         </button>
         <button
           type="button"
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={toggleMute}
           aria-label={isMuted || volume === 0 ? "Ativar som" : "Silenciar"}
           className="hover:text-foreground transition-colors cursor-pointer"
         >
-          <VolumeIcon level={isMuted || volume === 0 ? "muted" : volume < 50 ? "low" : "high"} size={18} />
+          <VolumeIcon level={isMuted || volume === 0 ? "muted" : volumePercent < 50 ? "low" : "high"} size={18} />
         </button>
         <input
           type="range"
           min={0}
           max={100}
-          value={isMuted ? 0 : volume}
-          onChange={(e) => {
-            setVolume(Number(e.target.value))
-            setIsMuted(false)
-          }}
+          value={isMuted ? 0 : volumePercent}
+          onChange={(e) => setVolume(Number(e.target.value) / 100)}
           aria-label="Volume"
           // Phones set the volume with their own buttons; the mute toggle stays
           className="hidden sm:block w-28 h-1.5 cursor-pointer"

@@ -4,9 +4,10 @@ import * as React from "react"
 import Link from "next/link"
 import Header from "@/components/header"
 import { getPlaylistAccentStyle } from "@/components/color-picker"
-import { ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons"
+import { ArrowRightIcon, CloseIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
-import { selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { useAudioPlayer } from "@/lib/audio-player"
+import { removeFromQueueAt, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { LevelBars } from "@/components/playback-marks"
@@ -42,6 +43,7 @@ export default function PlayerPage() {
   const tracks = playback?.queue ?? NO_TRACKS
   const currentIndex = playback?.currentIndex ?? 0
   const isPlaying = Boolean(playback?.isPlaying)
+  const { unavailableTrackIds } = useAudioPlayer()
 
   // Clicking the current track plays or pauses it; clicking any other track plays that one
   const onCardClick = (index: number) => {
@@ -212,7 +214,10 @@ export default function PlayerPage() {
                   track={track}
                   distance={index - currentIndex}
                   isPlaying={isPlaying && index === currentIndex}
+                  isUnavailable={unavailableTrackIds.has(track.id)}
                   onClick={() => onCardClick(index)}
+                  // Only what is still to come can leave the queue: the current track is the one playing
+                  onRemove={index > currentIndex ? () => removeFromQueueAt(index) : undefined}
                 />
               ))}
             </ul>
@@ -243,10 +248,14 @@ interface TrackCardProps {
   /** Position relative to the current track: 0 is current, negative already went by */
   distance: number
   isPlaying: boolean
+  /** Its audio failed: removed, without a file, or not allowed */
+  isUnavailable: boolean
   onClick: () => void
+  /** Takes it out of the queue; only for the tracks still to come */
+  onRemove?: () => void
 }
 
-function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
+function TrackCard({ track, distance, isPlaying, isUnavailable, onClick, onRemove }: TrackCardProps) {
   const isCurrent = distance === 0
   const isPast = distance < 0
   const isPrevious = distance === -1
@@ -271,7 +280,7 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
         // Older tracks left the row; keep them out of reach until they come back
         inert={isPast && !isPrevious}
         className={cn(
-          "absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8 text-primary-foreground",
+          "group absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8 text-primary-foreground",
           "shadow-[0_32px_60px_-24px_rgba(23,21,18,0.55)] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isPast && (isPrevious ? "opacity-0 sm:opacity-55 sm:hover:opacity-80" : "opacity-0")
         )}
@@ -294,6 +303,22 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
           className="absolute inset-0 z-10 cursor-pointer rounded-[24px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/60"
         />
 
+        {onRemove && (
+          <button
+            type="button"
+            onClick={(event) => {
+              // The card underneath plays on click; removing must not also play it
+              event.stopPropagation()
+              onRemove()
+            }}
+            aria-label={`Tirar ${track.title} da fila`}
+            title="Tirar da fila"
+            className="absolute top-5 right-5 z-20 flex size-12 items-center justify-center rounded-full bg-black/20 opacity-0 transition-opacity duration-150 cursor-pointer group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/60 [@media(hover:none)]:opacity-100"
+          >
+            <CloseIcon size={24} />
+          </button>
+        )}
+
         {/* One layout for every card, at the current card's size; small cards are this at half size */}
         <div className="pointer-events-none relative flex h-full flex-col justify-between">
           <span className="select-none text-6xl leading-none font-medium tracking-[-0.03em]">
@@ -307,6 +332,7 @@ function TrackCard({ track, distance, isPlaying, onClick }: TrackCardProps) {
                 {isPlaying && <LevelBars playing className="h-5 shrink-0" />}
               </p>
               <p className="truncate text-xl opacity-75">{track.artist}</p>
+              {isUnavailable && <p className="mt-2 font-mono text-xs">Indisponível</p>}
             </div>
             {/* Flat, in the sleeve's own ink */}
             <span aria-hidden="true" className="flex size-14 shrink-0 items-center justify-center rounded-full bg-black/15">
