@@ -12,6 +12,7 @@ import {
   pickRandomTracks,
   type PlaybackState,
   playOrTogglePlaylistTrack,
+  playOrToggleQueueTrack,
   playQueue,
   removeFromQueue,
   skipUnavailable,
@@ -161,6 +162,30 @@ describe("playOrTogglePlaylistTrack", () => {
 
     expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: true, currentIndex: 2 })
     expect(getPlaybackSnapshot()?.listenId).toBeGreaterThan(firstListenId)
+    stopPlayback()
+  })
+})
+
+describe("playOrToggleQueueTrack", () => {
+  const chart = [catalogTrack(1), catalogTrack(2), catalogTrack(3)]
+
+  it("pauses the current track instead of restarting the list", () => {
+    playOrToggleQueueTrack(chart, 1)
+    const listenId = getPlaybackSnapshot()?.listenId
+
+    playOrToggleQueueTrack(chart, 1)
+
+    expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: false, currentIndex: 1, listenId })
+    stopPlayback()
+  })
+
+  it("plays the list from another track", () => {
+    playOrToggleQueueTrack(chart, 0)
+
+    playOrToggleQueueTrack(chart, 2)
+
+    expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: true, currentIndex: 2, origin: null })
+    expect(getPlaybackSnapshot()?.queue.map((track) => track.id)).toEqual(["1", "2", "3"])
     stopPlayback()
   })
 })

@@ -239,6 +239,15 @@ export function playQueue(tracks: Track[], startIndex: number) {
   if (next) setState(next)
 }
 
+/**
+ * Clicking a track of a list (the home chart, a genre, an album): the current track pauses or
+ * resumes where it stands; any other track plays the list from it.
+ */
+export function playOrToggleQueueTrack(tracks: Track[], startIndex: number) {
+  if (currentTrackOf(getSnapshot())?.id === tracks[startIndex]?.id) togglePlayback()
+  else playQueue(tracks, startIndex)
+}
+
 /** Plays `track` on its own, followed by tracks drawn at random from `catalog`. */
 export function playTrack(track: Track, catalog: Track[]) {
   playQueue([track, ...pickRandomTracks(catalog, track.id, SUGGESTION_COUNT)], 0)

@@ -235,10 +235,10 @@ export default function Header() {
 
         <div className={`relative z-10 ${menuMounted ? "" : "glass"}`}>
           <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6 md:px-8">
-            {/* Signed in, the logo leads home to the playlists; signed out, to the landing page,
-                since playlists are behind login */}
+            {/* Signed in, the logo leads to the home page (/inicio); signed out, to the landing page,
+                since the home page is behind login */}
             <Link
-              href={session ? "/playlist" : "/"}
+              href={session ? "/inicio" : "/"}
               className="rounded-sm text-lg font-semibold tracking-tight text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               Zovic
