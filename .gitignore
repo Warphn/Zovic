@@ -13,6 +13,8 @@ fma_full/
 *.wav
 *.ogg
 *.m4a
+# MP3 mínimo usado pelas requisições de cadastro de música do Bruno
+!api/bruno/fixtures/*.mp3
 
 # ── Python / FastAPI ───────────────────────────────────────────────
 __pycache__/
@@ -35,6 +37,8 @@ build/
 dist/
 .turbo/
 api/generated/
+# Áudios enviados pelo painel quando a API roda fora do Docker (AUDIO_DIR padrão)
+api/storage/
 *.tsbuildinfo
 npm-debug.log*
 yarn-error.log*

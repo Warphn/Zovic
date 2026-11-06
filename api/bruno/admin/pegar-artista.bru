@@ -1,0 +1,22 @@
+meta {
+  name: Pegar um artista
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/artists
+  body: none
+  auth: none
+}
+
+script:post-response {
+  bru.setVar("artistId", res.getBody()[0].id);
+}
+
+tests {
+  test("responde 200 com ao menos um artista", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.be.greaterThan(0);
+  });
+}

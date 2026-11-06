@@ -39,6 +39,7 @@ export const seedCatalog: Seeder["run"] = async (tx) => {
     const { id } = await tx.album.create({
       data: {
         name: album.name,
+        year: album.year,
         createdAt: day(-80 + i),
         artists: { create: album.artists.map((name) => ({ artistId: idOf(artistIds, name) })) },
         genres: { create: album.genres.map((name) => ({ genreId: idOf(genreIds, name) })) },

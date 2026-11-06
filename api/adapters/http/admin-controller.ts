@@ -3,9 +3,13 @@ import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type { AdminQueries, CatalogQueries, PlayLog } from "../../domain/ports/admin-queries.ts";
 import type { ManageCatalog } from "../../domain/use-cases/manage-catalog.ts";
 import type { ManageUsers } from "../../domain/use-cases/manage-users.ts";
+import type { LocalFileStorage } from "../storage/local-file-storage.ts";
 
 /** Quantas reproduções recentes o painel mostra por usuário. */
 const RECENT_PLAYS_LIMIT = 50;
+
+/** A URL da capa muda a cada troca (?v=), mas quem pede sem a versão também precisa ver a nova logo. */
+const COVER_CACHE_CONTROL = "private, max-age=86400";
 
 /** Id da URL; um id malformado é tratado como registro inexistente. */
 function idParam(req: Request): number {
@@ -21,11 +25,13 @@ function searchParam(req: Request): string | undefined {
 export interface CatalogController {
   listMusics: RequestHandler;
   listArtists: RequestHandler;
+  listAlbums: RequestHandler;
+  albumCover: RequestHandler;
   listGenres: RequestHandler;
   recordPlay: RequestHandler;
 }
 
-export function makeCatalogController(queries: CatalogQueries, plays: PlayLog): CatalogController {
+export function makeCatalogController(queries: CatalogQueries, plays: PlayLog, covers: LocalFileStorage): CatalogController {
   return {
     // Músicas removidas só aparecem para admins (e vêm com deletedAt preenchido).
     listMusics: async (req, res) => {
@@ -33,6 +39,18 @@ export function makeCatalogController(queries: CatalogQueries, plays: PlayLog): 
     },
     listArtists: async (_req, res) => {
       res.json(await queries.listArtists());
+    },
+    listAlbums: async (_req, res) => {
+      res.json(await queries.listAlbums());
+    },
+    albumCover: async (req, res, next) => {
+      const coverFile = await queries.findAlbumCoverFile(idParam(req));
+      if (!coverFile) throw new NotFoundError("Cover not found");
+      res.set("Cache-Control", COVER_CACHE_CONTROL);
+      // O sendFile define o Content-Type pela extensão; um arquivo que sumiu do disco vira 404.
+      res.sendFile(covers.pathOf(coverFile), (error) => {
+        if (error) next(new NotFoundError("Cover not found"));
+      });
     },
     listGenres: async (_req, res) => {
       res.json(await queries.listGenres());
@@ -53,6 +71,11 @@ export interface AdminController {
   createMusic: RequestHandler;
   updateMusic: RequestHandler;
   removeMusic: RequestHandler;
+  createAlbum: RequestHandler;
+  updateAlbum: RequestHandler;
+  removeAlbum: RequestHandler;
+  changeAlbumCover: RequestHandler;
+  createGenre: RequestHandler;
   createArtist: RequestHandler;
   renameArtist: RequestHandler;
   removeArtist: RequestHandler;
@@ -79,7 +102,8 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
       res.json(plays);
     },
     createMusic: async (req, res) => {
-      res.status(201).json(await catalog.createMusic(req.body));
+      // O receiveAudio deixa o arquivo da parte "audio" em req.file; sem ela, o domínio recusa.
+      res.status(201).json(await catalog.createMusic(req.body, req.file?.buffer ?? null));
     },
     updateMusic: async (req, res) => {
       res.json(await catalog.updateMusic(idParam(req), req.body));
@@ -87,6 +111,23 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
     removeMusic: async (req, res) => {
       await catalog.deleteMusic(idParam(req));
       res.sendStatus(204);
+    },
+    createAlbum: async (req, res) => {
+      // O receiveCover deixa a imagem da parte "cover" em req.file; sem ela, o domínio recusa.
+      res.status(201).json(await catalog.createAlbum(req.body, req.file?.buffer ?? null));
+    },
+    updateAlbum: async (req, res) => {
+      res.json(await catalog.updateAlbum(idParam(req), req.body));
+    },
+    removeAlbum: async (req, res) => {
+      await catalog.deleteAlbum(idParam(req));
+      res.sendStatus(204);
+    },
+    changeAlbumCover: async (req, res) => {
+      res.json(await catalog.changeAlbumCover(idParam(req), req.file?.buffer ?? null));
+    },
+    createGenre: async (req, res) => {
+      res.status(201).json(await catalog.createGenre(req.body));
     },
     createArtist: async (req, res) => {
       res.status(201).json(await catalog.createArtist(req.body.name));

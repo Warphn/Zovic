@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type {
   AdminQueries,
+  AlbumListItem,
   AdminUserItem,
   CatalogQueries,
   MusicListItem,
@@ -15,6 +16,15 @@ const TOP_CONTENT = 10;
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
+/**
+ * A versão é o nome do arquivo sem a extensão: muda a cada troca de capa, então o navegador pode
+ * guardar a imagem em cache sem nunca mostrar a antiga. O nome em si não é segredo (é um UUID).
+ */
+function coverUrlOf(albumId: number, coverFile: string): string {
+  const version = coverFile.slice(0, coverFile.lastIndexOf("."));
+  return `/api/albums/${albumId}/cover?v=${version}`;
+}
+
 interface MusicRow {
   id: number;
   name: string;
@@ -23,6 +33,9 @@ interface MusicRow {
   plays: string;
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
+  album: { id: number; name: string; year: number | null } | null;
+  is_explicit: boolean;
+  has_audio: boolean;
   created_at: Date;
   deleted_at: Date | null;
 }
@@ -32,7 +45,11 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
 
   async listMusics({ search, includeDeleted }: { search?: string; includeDeleted: boolean }): Promise<MusicListItem[]> {
     const { rows } = await this.pool.query<MusicRow>(
-      `SELECT m.id, m.name, m.duration, m.streams, m.created_at, m.deleted_at,
+      `SELECT m.id, m.name, m.duration, m.streams, m.is_explicit, m.audio_file IS NOT NULL AS has_audio,
+         m.created_at, m.deleted_at,
+         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year)
+            FROM album_music amu JOIN album al ON al.id = amu.album_id
+            WHERE amu.music_id = m.id AND al.deleted_at IS NULL ORDER BY al.id LIMIT 1) AS album,
          (SELECT count(*) FROM user_event e WHERE e.music_id = m.id AND e.event_type = 'music_play') AS plays,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
             FROM artist_music am JOIN artist a ON a.id = am.artist_id WHERE am.music_id = m.id), '[]') AS artists,
@@ -54,6 +71,9 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
       plays: Number(row.plays),
       artists: row.artists,
       genres: row.genres,
+      album: row.album,
+      isExplicit: row.is_explicit,
+      hasAudio: row.has_audio,
       createdAt: row.created_at.toISOString(),
       deletedAt: iso(row.deleted_at),
     }));
@@ -64,6 +84,34 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
       "SELECT id, name FROM artist WHERE deleted_at IS NULL ORDER BY name, id",
     );
     return rows;
+  }
+
+  async listAlbums(): Promise<AlbumListItem[]> {
+    const { rows } = await this.pool.query<
+      Omit<AlbumListItem, "musicCount" | "coverUrl"> & { music_count: string; cover_file: string | null }
+    >(
+      `SELECT al.id, al.name, al.year, al.cover_file,
+         (SELECT count(*) FROM album_music amu JOIN musics m ON m.id = amu.music_id
+            WHERE amu.album_id = al.id AND m.deleted_at IS NULL) AS music_count,
+         COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
+            FROM album_artist aa JOIN artist a ON a.id = aa.artist_id WHERE aa.album_id = al.id), '[]') AS artists
+       FROM album al
+       WHERE al.deleted_at IS NULL
+       ORDER BY al.name, al.id`,
+    );
+    return rows.map(({ music_count: musicCount, cover_file: coverFile, ...album }) => ({
+      ...album,
+      musicCount: Number(musicCount),
+      coverUrl: coverFile === null ? null : coverUrlOf(album.id, coverFile),
+    }));
+  }
+
+  async findAlbumCoverFile(albumId: number): Promise<string | null> {
+    const { rows } = await this.pool.query<{ cover_file: string | null }>(
+      "SELECT cover_file FROM album WHERE id = $1 AND deleted_at IS NULL",
+      [albumId],
+    );
+    return rows[0]?.cover_file ?? null;
   }
 
   async listGenres(): Promise<{ id: number; name: string; color: string }[]> {
