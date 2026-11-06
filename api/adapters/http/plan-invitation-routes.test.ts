@@ -5,6 +5,13 @@ import { createAuth } from "../auth/create-auth.ts";
 import { composeApp } from "../../infra/composition-root.ts";
 import { deletePlansOfAccounts } from "./testing/subscriptions.ts";
 
+/**
+ * Um minuto atrás pelo relógio da API, que é quem confere a validade do convite (expires_at > $2,
+ * com o horário do domínio). O now() do Postgres não serve: o banco roda na VM do Docker, cujo
+ * relógio pode estar adiantado em relação ao do Windows, e aí "um minuto atrás" ainda está no futuro.
+ */
+const aMinuteAgo = () => new Date(Date.now() - 60_000);
+
 // Plano familiar pela app Express real (composeApp): convites, cadastro pelo link, remoção e saída.
 // Pool próprio: o singleton de infra/db/pool.ts é encerrado pelo auth-flow.test.ts, que roda no mesmo processo.
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -238,7 +245,7 @@ describe("cadastro pelo link do convite", () => {
   it("convite expirado, cancelado ou já usado não serve para se cadastrar", async () => {
     const manager = await createManager("gestor-cadastro-morto");
     const expired = await invite(manager, uniqueEmail("exp"));
-    await pool.query("UPDATE plan_invitation SET expires_at = now() - interval '1 minute' WHERE id = $1", [expired.id]);
+    await pool.query("UPDATE plan_invitation SET expires_at = $2 WHERE id = $1", [expired.id, aMinuteAgo()]);
     const canceled = await invite(manager, uniqueEmail("canc"));
     await call("DELETE", `/plans/me/invitations/${canceled.id}`, manager.cookie);
 
@@ -537,7 +544,7 @@ describe("HU-06: aceitar o convite", () => {
   it("convite expirado, usado, cancelado ou de plano cancelado é inválido na consulta e no aceite", async () => {
     const manager = await createManager("gestor-invalidos");
     const expired = await invite(manager, uniqueEmail("expirado"));
-    await pool.query("UPDATE plan_invitation SET expires_at = now() - interval '1 minute' WHERE id = $1", [expired.id]);
+    await pool.query("UPDATE plan_invitation SET expires_at = $2 WHERE id = $1", [expired.id, aMinuteAgo()]);
     const used = await invite(manager, uniqueEmail("usado"));
     await pool.query("UPDATE plan_invitation SET accepted_at = now() WHERE id = $1", [used.id]);
     const canceled = await invite(manager, uniqueEmail("cancelado"));
