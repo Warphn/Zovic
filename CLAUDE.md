@@ -150,7 +150,7 @@ Ao commitar uma task, atualize no mesmo PR a documentação que ela muda. A doc 
 | Se a task muda… | Atualize |
 | --- | --- |
 | Uma rota da API (nova, removida, ou com outro corpo, resposta ou erro) | `api/adapters/http/openapi.ts`, a requisição correspondente em `api/bruno/` e a tabela de rotas em `docs/api.md` |
-| O banco (migração nova em `db/migrations`) | `docs/banco-de-dados.md`, `docs/modelo-er.md`, a imagem `docs/assets/modelo-er.png` e `bun run db:erd` (gera o `.d2` e o `.svg`) |
+| O banco (migração nova em `db/migrations`) | `docs/banco-de-dados.md`, `docs/modelo-er.md`, a imagem `docs/assets/modelo-er.png` e, se houver tabela nova, a área dela em `GROUPS` no `api/scripts/db-erd.ts` (o `.d2` e o `.svg` são gerados e commitados pelo CI no push) |
 | Uma entidade do domínio | `docs/models.md` |
 | Como subir, configurar ou rodar o projeto (variável de ambiente, script, Docker) | `README.md` e `docs/docker.md` |
 | O servidor de produção (profile `prod`, Cloudflare, `bun server`, `db:member`, `db:connect`) | `docs/servidor.md` |

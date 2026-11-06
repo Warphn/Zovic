@@ -74,7 +74,7 @@ Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.
 | `bun dev` | Sobe a API em http://localhost:3333 e reinicia a cada mudança | Para trabalhar no backend |
 | `bun install` | Instala as dependências | Depois de um `git pull` que muda o `api/bun.lock` |
 | `bun run db:sync` | Lê o banco, atualiza o `schema.prisma` e gera o client do Prisma | Depois de criar ou receber uma migration |
-| `bun run db:erd` | Lê o banco e gera o diagrama ER em `docs/assets/modelo-er-gerado.svg`. Precisa do Docker. | Depois de criar ou receber uma migration |
+| `bun run db:erd` | Lê o banco e gera o diagrama ER em `docs/assets/modelo-er-gerado.svg`. Precisa do Docker. | Opcional localmente (o CI gera e commita sozinho no push) |
 | `bun run db:generate` | Só gera o client do Prisma, sem consultar o banco | Depois do `bun install` |
 | `bun run db:seed` | Apaga o banco local e insere os dados de teste | Para ter dados para testar ou para voltar a um estado limpo |
 | `bun run test` | Testes do domínio, sem banco | Antes de commitar |

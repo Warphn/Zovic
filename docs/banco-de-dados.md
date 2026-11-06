@@ -35,8 +35,8 @@ O Flyway roda a cada `docker compose up` (e, portanto, a cada `bun start`). Ele 
 1. Crie o arquivo em `db/migrations/` com o nome no padrão (veja abaixo).
 2. Aplique no banco local com `docker compose up flyway`. Se falhar, o log mostra o erro: corrija o arquivo e rode de novo. Se a migration foi aplicada pela metade, apague o banco com `docker compose down -v` e suba de novo.
 3. Rode `bun run db:sync` em `api/` e commite o `schema.prisma` junto com a migration.
-4. Rode `bun run db:erd` em `api/` (precisa do Docker) e commite o `docs/assets/modelo-er-gerado.d2` e o `.svg` junto com a migration. Se a migration criar uma tabela, o script pede que você a coloque numa área do diagrama, em `GROUPS`, no `api/scripts/db-erd.ts`.
-4. Atualize o [Modelo ER](modelo-er.md), a imagem `docs/assets/modelo-er.png` e esta página, se ela mencionar a tabela.
+4. Se a migration criar uma tabela nova, coloque o nome dela numa área do diagrama em `GROUPS`, no `api/scripts/db-erd.ts`. No push, o GitHub Actions roda `bun run db:erd` e commita o `docs/assets/modelo-er-gerado.d2` e o `.svg` sozinho (ou rode localmente se quiser ver antes).
+5. Atualize o [Modelo ER](modelo-er.md), a imagem `docs/assets/modelo-er.png` e esta página, se ela mencionar a tabela.
 
 ### Nome do arquivo
 

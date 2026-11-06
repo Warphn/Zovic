@@ -35,7 +35,7 @@ const GROUPS: Record<string, { label: string; tables: string[] }> = {
     tables: ["musics", "album", "artist", "genre", "album_music", "artist_music", "album_artist", "genre_music", "album_genre"],
   },
   playlists: { label: "Playlists", tables: ["playlists", "playlist_user", "music_playlist"] },
-  interacoes: { label: "Interações", tables: ["comments", "rating", "music_user"] },
+  interacoes: { label: "Interações", tables: ["comments", "comment_reports", "rating", "music_user"] },
   sistema: { label: "Sistema", tables: ["system_data"] },
 };
 
