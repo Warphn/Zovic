@@ -161,3 +161,13 @@ Forma de trabalho: a mesma da #86. O Claude Opus fez o plano, preparou a tarefa 
 | 5 | Precisamos mudar o campo de álbum: listar apenas os álbuns do artista selecionado e poder criar um novo, com nome e imagem de capa. Além disso, o campo de álbum deve ser mais bonito. | A capa obrigatória do álbum (migration, [`cover-image.ts`](../../api/domain/shared/cover-image.ts), o `LocalFileStorage` para áudios e capas, `PUT /api/admin/albums/:id/cover` e `GET /api/albums/:id/cover`) e a grade de capas no formulário de música ([`album-picker.tsx`](../../frontend/src/app/admin/conteudo/album-picker.tsx)) |
 
 A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e o uso do `multer`, aprovou a spec e o plano antes da implementação, e o time aprovou a dependência nova. A IA conferiu cada passo com os testes, rodou as requisições do Bruno contra a API e o cadastro pelo Docker, com o arquivo no volume `audio`. A tela do painel ainda precisa ser conferida no navegador.
+
+### 06/11/2026: reprodução com áudio real e fila (#90, HU-13 e HU-14)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Leia a passagem da sessão anterior e vamos implementar a reprodução das músicas (HU-13 e HU-14, issue #90). | Conversa de design: a música explícita para menor recusada na rota de áudio, a indisponibilidade descoberta pelo erro do `<audio>`, a audição contada quando o som começa, a fila como cópia da playlist e os botões da fila. Resultado: a [spec](../superpowers/specs/2026-11-06-reproducao-design.md) |
+| 2 | Perfeito, continue. | O [plano de implementação](../superpowers/plans/2026-11-06-reproducao.md), em 8 tarefas com os testes antes do código |
+| 3 | Manda bala. | A rota `GET /api/musics/:id/audio` ([`get-music-audio.ts`](../../api/domain/use-cases/get-music-audio.ts)) com testes de integração, o `openapi.ts` e o Bruno; a fila em [`playback-store.ts`](../../frontend/src/lib/playback-store.ts); o motor [`playback-audio.tsx`](../../frontend/src/components/playback-audio.tsx) com [`audio-player.ts`](../../frontend/src/lib/audio-player.ts); a barra, o player e o botão [`add-to-queue-button.tsx`](../../frontend/src/components/add-to-queue-button.tsx) |
+
+A equipe decidiu cada regra na conversa de design e aprovou a spec e o plano antes da implementação. A IA conferiu cada passo com os testes, rodou a coleção do Bruno contra a API no Docker e deixou a conferência do som no navegador para o Victor.

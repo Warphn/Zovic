@@ -103,7 +103,7 @@ Montado uma vez no layout raiz, fora da regra que esconde a barra no `/`, no `/e
 - O `isPlaying` do store chama `play()` ou `pause()`. Se o navegador recusar o `play()` (por exemplo, depois de recarregar a página sem clique), o `isPlaying` volta para falso.
 - `timeupdate` e `durationchange` atualizam o `audio-player`.
 - `ended` chama `nextOnEnded`.
-- `playing` registra a audição: chama `catalogApi.recordPlay` e invalida as consultas do painel e do histórico, como hoje. A chave da audição é `índice:id`: pausar e voltar é a mesma audição; ir para outra posição da fila e tocar é outra. A lógica fica numa função pura, a sucessora do `nextPlayRecord`, e o `useRecordPlays` sai.
+- `playing` registra a audição: chama `catalogApi.recordPlay` e invalida as consultas do painel e do histórico, como hoje. A chave da audição é o `listenId` do estado, que muda sempre que a reprodução vai para uma posição da fila: pausar e voltar é a mesma audição; ir para outra posição e tocar é outra; tirar uma faixa de antes da atual não muda nada. A lógica fica numa função pura, a sucessora do `nextPlayRecord`, e o `useRecordPlays` sai.
 - `error` põe a faixa em `unavailableTrackIds` e pausa. Se ela estava tocando e há uma próxima, a próxima começa depois de `UNAVAILABLE_SKIP_DELAY_MS = 1500`, para dar tempo de ver o aviso.
 
 ### Interface
@@ -133,7 +133,7 @@ Montado uma vez no layout raiz, fora da regra que esconde a barra no `/`, no `/e
 ## Documentação
 
 - `api/adapters/http/openapi.ts`: a rota nova, com 200, 206, 401, 403 e 404.
-- `api/bruno/catalogo/`: requisição do áudio, com casos sem cookie e com `Range`.
+- `api/bruno/admin/`: `pegar-audio.bru` e `pegar-audio-trecho.bru` (com `Range`), depois do cadastro da música.
 - `docs/api.md`: tabela de rotas.
 - `frontend/src/lib/api/README.md`: a URL do áudio no cliente.
 - `docs/prompts/prompts.md`: o uso de IA nesta entrega.
