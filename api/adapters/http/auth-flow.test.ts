@@ -87,6 +87,13 @@ function birthdateForAge(age: number, dayOffset = 0): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Um minuto atrás pelo relógio da API, que é quem compara a validade (o Better Auth, em JS). O
+ * now() do Postgres não serve: o banco roda na VM do Docker, cujo relógio pode estar adiantado em
+ * relação ao do Windows, onde o bun test roda, e aí "um minuto atrás" ainda está no futuro.
+ */
+const aMinuteAgo = () => new Date(Date.now() - 60_000);
+
 async function playlistsWith(app: TestApp, cookie: string | null, headers: Record<string, string> = {}) {
   return fetch(
     `${app.url}/api/playlists`,
@@ -297,9 +304,9 @@ describe("autenticação com Better Auth", () => {
       const email = uniqueEmail("expirada");
       const { cookie } = await signUp(app, email);
       await pool.query(
-        `UPDATE session SET expires_at = now() - interval '1 minute'
+        `UPDATE session SET expires_at = $2
           WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`,
-        [email],
+        [email, aMinuteAgo()],
       );
 
       expect((await playlistsWith(app, cookie!.header)).status).toBe(401);
