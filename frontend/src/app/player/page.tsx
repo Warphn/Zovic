@@ -6,7 +6,7 @@ import Header from "@/components/header"
 import { getPlaylistAccentStyle } from "@/components/color-picker"
 import { ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
-import { resolveQueue, selectTrack, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { LevelBars } from "@/components/playback-marks"
@@ -19,6 +19,9 @@ const QUEUE_TILT_DEG = 14
 // The current card is this many slots wide; the others are drawn at its size and scaled down
 // by it (square cards, so 2 slots fill the row's height)
 const CURRENT_SCALE = 2
+
+// Stable empty queue, so the effects below do not rerun on every render with nothing playing
+const NO_TRACKS: Track[] = []
 
 // Keys typed into a field belong to it (the header search, for one), not to the player
 function isTextField(target: EventTarget | null): boolean {
@@ -34,23 +37,21 @@ function isActivatable(target: EventTarget | null): boolean {
 // suggestions. Every page shares that playback, so this page only reads and steers it.
 export default function PlayerPage() {
   const playback = usePlayback()
-  const { data: sourcePlaylist } = usePlaylistData(
-    playback?.source.kind === "playlist" ? playback.source.playlistId : null
-  )
-  const { tracks, playlist } = resolveQueue(playback, sourcePlaylist ? [sourcePlaylist] : [])
-  const currentIndex = Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
+  const { data: sourcePlaylist } = usePlaylistData(playback?.origin?.playlistId ?? null)
+  const playlist = sourcePlaylist ?? null
+  const tracks = playback?.queue ?? NO_TRACKS
+  const currentIndex = playback?.currentIndex ?? 0
   const isPlaying = Boolean(playback?.isPlaying)
 
   // Clicking the current track plays or pauses it; clicking any other track plays that one
-  const onCardClick = (track: Track) => {
-    if (track.id === playback?.currentTrackId) togglePlayback()
-    else selectTrack(track.id, true)
+  const onCardClick = (index: number) => {
+    if (index === currentIndex) togglePlayback()
+    else selectTrackAt(index, true)
   }
 
   // Walks the queue one track at a time, keeping play/pause; stops at either end
   const moveBy = (step: number) => {
-    const next = tracks[currentIndex + step]
-    if (next) selectTrack(next.id)
+    if (tracks[currentIndex + step]) selectTrackAt(currentIndex + step)
   }
   // Mouse wheel (or trackpad) over the row moves one track per gesture: after a step, more
   // wheel events are ignored until they pause, so a trackpad's inertia does not skip several.
@@ -72,8 +73,8 @@ export default function PlayerPage() {
       }, 180)
       if (gesture.locked) return
       gesture.locked = true
-      const next = tracks[currentIndex + (delta > 0 ? 1 : -1)]
-      if (next) selectTrack(next.id)
+      const nextIndex = currentIndex + (delta > 0 ? 1 : -1)
+      if (tracks[nextIndex]) selectTrackAt(nextIndex)
     }
     row.addEventListener("wheel", onWheel, { passive: false })
     return () => row.removeEventListener("wheel", onWheel)
@@ -109,8 +110,8 @@ export default function PlayerPage() {
       if (isTextField(e.target)) return
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault()
-        const next = tracks[currentIndex + (e.key === "ArrowRight" ? 1 : -1)]
-        if (next) selectTrack(next.id)
+        const nextIndex = currentIndex + (e.key === "ArrowRight" ? 1 : -1)
+        if (tracks[nextIndex]) selectTrackAt(nextIndex)
       } else if ((e.key === "Enter" || e.key === " ") && !isActivatable(e.target)) {
         e.preventDefault()
         togglePlayback()
@@ -206,11 +207,12 @@ export default function PlayerPage() {
             >
               {tracks.map((track, index) => (
                 <TrackCard
-                  key={track.id}
+                  // The same music can be queued twice: its position tells the cards apart
+                  key={`${index}-${track.id}`}
                   track={track}
                   distance={index - currentIndex}
                   isPlaying={isPlaying && index === currentIndex}
-                  onClick={() => onCardClick(track)}
+                  onClick={() => onCardClick(index)}
                 />
               ))}
             </ul>

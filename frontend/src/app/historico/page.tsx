@@ -8,7 +8,7 @@ import { apiErrorMessage } from "@/lib/api/client"
 import { type HistoryEntry, useHistory } from "@/lib/api/history"
 import { formatDayAndTime } from "@/lib/format-date-time"
 import { formatDuration } from "@/lib/format-duration"
-import { playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
 
 function entryMeta(entry: HistoryEntry): string {
@@ -88,7 +88,7 @@ function HistoryList() {
           {entry.isAvailable ? (
             <PlayableRow
               entry={entry}
-              isPlaying={Boolean(playback?.isPlaying) && playback?.currentTrackId === String(entry.musicId)}
+              isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === String(entry.musicId)}
               onClick={() =>
                 playOrToggleTrack(String(entry.musicId), [
                   musicToTrack({ id: entry.musicId, name: entry.name, duration: entry.duration, artists: entry.artists }),

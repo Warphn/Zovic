@@ -7,7 +7,7 @@ import Header from "@/components/header"
 import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { SuggestionView } from "@/components/search/suggestion-renderers"
 import { PauseIcon, PlayIcon } from "@/components/icons"
-import { playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { suggestionHref } from "@/lib/search/routes"
 import { toSuggestions } from "@/lib/search/suggestions"
 import { SEARCH_MAX_LIMIT, useCatalogSearch } from "@/lib/api/search"
@@ -120,7 +120,7 @@ function SearchResults() {
                       {result.kind === "track" ? (
                         // A track plays (or pauses) right here, without leaving the results
                         <TrackResult
-                          isPlaying={Boolean(playback?.isPlaying) && playback?.currentTrackId === result.id}
+                          isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === result.id}
                           onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                           title={result.title}
                           actions={

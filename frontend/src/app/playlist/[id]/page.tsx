@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { LevelBars } from "@/components/playback-marks"
-import { isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -231,13 +231,11 @@ export default function PlaylistDetailPage() {
   const color = draft?.color ?? currentPlaylist.color
   // The current track of this playlist is marked even while paused, so the list shows where
   // playback stands
-  const currentTrackIndex = isThisPlaylist
-    ? tracks.findIndex((t) => t.id === playback?.currentTrackId)
-    : -1
+  const currentTrackId = isThisPlaylist ? currentTrackOf(playback)?.id : undefined
+  const currentTrackIndex = currentTrackId ? tracks.findIndex((track) => track.id === currentTrackId) : -1
   const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
   const playAt = (index: number, playing = true) => {
-    const track = tracks[index]
-    if (track) playPlaylist(currentPlaylist.id, track.id, playing)
+    if (tracks[index]) playPlaylist(currentPlaylist, index, playing)
   }
   const playlistAccent = getPlaylistAccentStyle(color)
   const totalDuration = formatTotalDuration(sumDurationSec(tracks))
@@ -554,15 +552,15 @@ export default function PlaylistDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (isThisPlaylist && playback?.currentTrackId === commentTrack.id && playback?.isPlaying) {
+                  if (currentTrackId === commentTrack.id && playback?.isPlaying) {
                     togglePlayback()
                   } else {
-                    playPlaylist(currentPlaylist.id, commentTrack.id)
+                    playAt(tracks.indexOf(commentTrack))
                   }
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-border bg-background hover:bg-surface text-xs font-medium cursor-pointer transition-colors"
               >
-                {isThisPlaylist && playback?.currentTrackId === commentTrack.id && playback?.isPlaying ? (
+                {currentTrackId === commentTrack.id && playback?.isPlaying ? (
                   <>
                     <PauseIcon size={14} />
                     <span>Pausar</span>
@@ -594,7 +592,7 @@ export default function PlaylistDetailPage() {
               user={currentUser}
               currentPlaybackSec={0}
               onSeek={() => {
-                playPlaylist(currentPlaylist.id, commentTrack.id)
+                playAt(tracks.indexOf(commentTrack))
               }}
             />
           </div>

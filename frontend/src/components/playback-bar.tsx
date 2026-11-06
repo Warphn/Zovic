@@ -4,14 +4,7 @@ import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
-import {
-  playPlaylist,
-  resolveQueue,
-  selectTrack,
-  togglePlayback,
-  usePlayback,
-  useRecordPlays,
-} from "@/lib/playback-store"
+import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 
@@ -49,28 +42,25 @@ interface PlaybackBarProps {
 export function AppPlaybackBar() {
   const pathname = usePathname()
   const playback = usePlayback()
-  // Mounted on every page (root layout), so every listen is counted once
-  useRecordPlays()
-  // The playlist being played, or (with nothing playing) the one on this page; both come from
-  // the same cache the playlist page fills
+  // The playlist the queue came from, or (with nothing playing) the one on this page; both come
+  // from the same cache the playlist page fills
   const pagePlaylistId = /^\/playlist\/([^/]+)$/.exec(pathname)?.[1]
-  const sourceId = playback?.source.kind === "playlist" ? playback.source.playlistId : playback ? null : pagePlaylistId
+  const sourceId = playback ? (playback.origin?.playlistId ?? null) : pagePlaylistId
   const { data: sourcePlaylist } = usePlaylistData(sourceId)
   if (HIDDEN_ON.has(pathname)) return null
 
   const pagePlaylist = playback ? null : sourcePlaylist
-  const { tracks, playlist } = playback
-    ? resolveQueue(playback, sourcePlaylist ? [sourcePlaylist] : [])
-    : { tracks: pagePlaylist?.tracks ?? [], playlist: pagePlaylist }
-  const currentIndex = Math.max(0, tracks.findIndex((t) => t.id === playback?.currentTrackId))
+  const playlist = sourcePlaylist ?? null
+  const tracks = playback ? playback.queue : (pagePlaylist?.tracks ?? [])
+  const currentIndex = playback?.currentIndex ?? 0
   const track = tracks[currentIndex]
 
   // Moves within the queue (wrapping); with nothing playing yet, starts the page's playlist there
   const goTo = (index: number) => {
-    const next = tracks[(index + tracks.length) % tracks.length]
-    if (!next) return
-    if (playback) selectTrack(next.id)
-    else if (pagePlaylist) playPlaylist(pagePlaylist.id, next.id)
+    const wrapped = (index + tracks.length) % tracks.length
+    if (!tracks[wrapped]) return
+    if (playback) selectTrackAt(wrapped)
+    else if (pagePlaylist) playPlaylist(pagePlaylist, wrapped)
   }
 
   return (
