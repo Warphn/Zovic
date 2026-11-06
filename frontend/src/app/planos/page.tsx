@@ -11,19 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { safeRedirectPath } from "@/lib/auth/validation"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useSubscribe, useSubscription } from "@/lib/api/subscriptions"
-import { PLAN_TYPES, type PlanType } from "@/lib/subscription/rules"
+import { formatPlanPrice, PLAN_TYPES, type PlanType } from "@/lib/subscription/rules"
 import { cn } from "@/lib/utils"
-
-const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
-
-const PERKS: Record<PlanType["id"], string[]> = {
-  individual: ["1 perfil de acesso", "Todo o catálogo", "Histórico e recomendações só seus"],
-  family: [
-    "Até 4 pessoas, cada uma com o próprio perfil",
-    "Menores de 18 anos entram com conta infantil",
-    "Quem assina gerencia quem entra e sai",
-  ],
-}
 
 function PlansContent() {
   const router = useRouter()
@@ -83,11 +72,11 @@ function PlansContent() {
                 {current && <Badge className="text-[10px]">Seu plano</Badge>}
               </div>
               <p className="mt-3">
-                <span className="text-3xl font-black tabular-nums tracking-tight">{price.format(plan.price)}</span>
+                <span className="text-3xl font-black tabular-nums tracking-tight">{formatPlanPrice(plan.price)}</span>
                 <span className="text-sm text-muted-foreground"> /mês</span>
               </p>
               <ul className="mt-4 flex-1 space-y-1.5 text-sm">
-                {PERKS[plan.id].map((perk) => (
+                {plan.perks.map((perk) => (
                   <li key={perk} className="flex gap-2">
                     <span aria-hidden="true" className="text-[var(--color-red)]">
                       ✓
@@ -135,7 +124,7 @@ function PlansContent() {
           <DialogHeader>
             <DialogTitle>Assinar o plano {choosing?.name}?</DialogTitle>
             <DialogDescription>
-              {choosing && `${price.format(choosing.price)} por mês.`} O pagamento ainda é simulado: a assinatura começa na hora.
+              {choosing && `${formatPlanPrice(choosing.price)} por mês.`} O pagamento ainda é simulado: a assinatura começa na hora.
             </DialogDescription>
           </DialogHeader>
           {subscribe.isError && <Notice>{apiErrorMessage(subscribe.error)}</Notice>}
