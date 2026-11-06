@@ -1125,7 +1125,7 @@ export const openApiDocument = {
         tags: ["Catálogo"],
         summary: "Entrega o arquivo de áudio de uma música",
         description:
-          "O MP3 da música, para o `<audio>` do player. Aceita o cabeçalho `Range` e responde 206 com o trecho pedido, que é como o navegador pula para outro ponto da música. O cache é `private, max-age=86400`: o arquivo nunca muda, mas só o navegador de quem tem acesso o guarda. Música explícita só é entregue a maiores de 18 anos.",
+          "O MP3 da música, para o `<audio>` do player. Aceita o cabeçalho `Range` e responde 206 com o trecho pedido, que é como o navegador pula para outro ponto da música. O cache é `private, no-cache`: o navegador guarda o arquivo, mas confirma com a API antes de usá-lo (304 pelo `ETag`), e a confirmação também exige assinatura e idade. Música explícita só é entregue a maiores de 18 anos.",
         operationId: "getMusicAudio",
         security: [{ cookieAuth: [] }],
         parameters: [

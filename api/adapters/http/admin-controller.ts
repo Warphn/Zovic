@@ -12,8 +12,11 @@ const RECENT_PLAYS_LIMIT = 50;
 /** A URL da capa muda a cada troca (?v=), mas quem pede sem a versão também precisa ver a nova logo. */
 const COVER_CACHE_CONTROL = "private, max-age=86400";
 
-/** O arquivo de uma música nunca muda, mas o acesso depende da assinatura: só o navegador guarda. */
-const AUDIO_CACHE_CONTROL = "private, max-age=86400";
+/**
+ * O navegador guarda o arquivo, mas confirma com a API antes de cada uso (304 pelo ETag). Assim a
+ * assinatura e a idade valem também para o que está no cache, mesmo com outra pessoa no mesmo navegador.
+ */
+const AUDIO_CACHE_CONTROL = "private, no-cache";
 
 /** Id da URL; um id malformado é tratado como registro inexistente. */
 function idParam(req: Request): number {

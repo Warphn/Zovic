@@ -109,7 +109,7 @@ describe("GET /musics/:id/audio", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("audio/mpeg");
-    expect(res.headers.get("cache-control")).toBe("private, max-age=86400");
+    expect(res.headers.get("cache-control")).toBe("private, no-cache");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(AUDIO_BYTES);
   });
 
@@ -156,6 +156,28 @@ describe("GET /musics/:id/audio", () => {
 
   it("entrega a música explícita ao adulto", async () => {
     expect((await getAudio(explicitMusic, subscriber.cookie)).status).toBe(200);
+  });
+
+  it("confirma o arquivo guardado pelo navegador com 304, sem enviá-lo de novo", async () => {
+    const first = await getAudio(playableMusic, subscriber.cookie);
+    const etag = first.headers.get("etag") ?? "";
+    await first.arrayBuffer();
+
+    const revalidated = await getAudio(playableMusic, subscriber.cookie, { "If-None-Match": etag });
+
+    expect(etag).not.toBe("");
+    expect(revalidated.status).toBe(304);
+  });
+
+  it("não confirma o arquivo guardado a quem perdeu o acesso", async () => {
+    const adultCopy = await getAudio(explicitMusic, subscriber.cookie);
+    const etag = adultCopy.headers.get("etag") ?? "";
+    await adultCopy.arrayBuffer();
+    const minor = await createSubscriber("menor-cache");
+    await pool.query('UPDATE "user" SET birthdate = $1 WHERE id = $2', [MINOR_BIRTHDATE, minor.id]);
+
+    expect((await getAudio(explicitMusic, minor.cookie, { "If-None-Match": etag })).status).toBe(403);
+    expect((await getAudio(explicitMusic, null, { "If-None-Match": etag })).status).toBe(401);
   });
 
   it("não entrega música explícita a menor de idade", async () => {

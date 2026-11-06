@@ -11,9 +11,9 @@ get {
 }
 
 tests {
-  test("entrega o MP3, com cache só no navegador", function () {
+  test("entrega o MP3, com cache que o navegador confirma antes de usar", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getHeader("content-type")).to.equal("audio/mpeg");
-    expect(res.getHeader("cache-control")).to.equal("private, max-age=86400");
+    expect(res.getHeader("cache-control")).to.equal("private, no-cache");
   });
 }

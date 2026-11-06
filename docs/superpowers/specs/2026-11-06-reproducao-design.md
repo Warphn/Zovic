@@ -43,7 +43,7 @@ Protegida pelo `subscriberOnly` (`authenticate` + `requireSubscription`). O admi
 ### Adaptador HTTP
 
 - `makeCatalogController` ganha `musicAudio`, ao lado de `albumCover`, e passa a receber o storage de áudio. O `composeApp` passa `storages.audio`.
-- O controller lê `res.locals.birthdate`, chama o caso de uso, define `Cache-Control: private, max-age=86400` (o arquivo nunca muda, mas o acesso depende da assinatura) e responde com `res.sendFile(audio.pathOf(arquivo))`, que trata o `Range` e define o tipo pela extensão. O erro do `sendFile` segue o tratamento da capa.
+- O controller lê `res.locals.birthdate`, chama o caso de uso, define `Cache-Control: private, no-cache` (o navegador guarda o arquivo, mas confirma com a API antes de cada uso, com 304 pelo `ETag`; assim a assinatura e a idade valem também para o cache, mesmo com outra pessoa no mesmo navegador) e responde com `res.sendFile(audio.pathOf(arquivo))`, que trata o `Range` e define o tipo pela extensão. O erro do `sendFile` segue o tratamento da capa.
 - **Cookie:** em dev (`localhost:3000` para `localhost:3333`) e em produção (`zovic.com.br` para `api.zovic.com.br`), front e API são do mesmo site. O `<audio>` sem `crossOrigin` envia o cookie de sessão, como a `<img>` da capa já faz. O CORS não muda.
 
 ### Testes da API
