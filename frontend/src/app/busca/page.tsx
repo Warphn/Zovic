@@ -7,7 +7,7 @@ import Header from "@/components/header"
 import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SuggestionView } from "@/components/search/suggestion-renderers"
-import { PauseIcon, PlayIcon } from "@/components/icons"
+import { TrackRow } from "@/components/track-row"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { suggestionHref } from "@/lib/search/routes"
 import { toSuggestions } from "@/lib/search/suggestions"
@@ -25,43 +25,6 @@ const GROUPS = [
   { kind: "artist", label: "Artistas" },
   { kind: "playlist", label: "Playlists" },
 ] as const
-
-// A track row: the row plays or pauses it; next to it, the menu that adds it to a playlist
-function TrackResult({
-  isPlaying,
-  onClick,
-  title,
-  actions,
-  children,
-}: {
-  isPlaying: boolean
-  onClick: () => void
-  title: string
-  actions: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="group flex items-center gap-1 rounded-xl pr-2 transition-colors hover:bg-muted/25">
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={isPlaying ? `Pausar ${title}` : `Tocar ${title}`}
-        aria-pressed={isPlaying}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
-      >
-        <span className="min-w-0 flex-1">{children}</span>
-        <span
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full transition-colors ${
-            isPlaying ? "bg-primary text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
-          }`}
-        >
-          {isPlaying ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
-        </span>
-      </button>
-      {actions}
-    </div>
-  )
-}
 
 function SearchResults() {
   const query = useSearchParams().get("q") ?? ""
@@ -120,7 +83,7 @@ function SearchResults() {
                     <li key={`${result.kind}-${index}`}>
                       {result.kind === "track" ? (
                         // A track plays (or pauses) right here, without leaving the results
-                        <TrackResult
+                        <TrackRow
                           isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === result.id}
                           onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                           title={result.title}
@@ -136,7 +99,7 @@ function SearchResults() {
                           }
                         >
                           <SuggestionView suggestion={result} query={search.resultsQuery} showKind={false} />
-                        </TrackResult>
+                        </TrackRow>
                       ) : (
                         <Link href={suggestionHref(result)} className={RESULT_CLASSES}>
                           <SuggestionView suggestion={result} query={search.resultsQuery} showKind={false} />
