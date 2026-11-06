@@ -145,7 +145,9 @@ Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na ra
 
 Depois do login, quem tem assinatura (ou é admin) cai na tela inicial, `/inicio`: as 10 músicas mais tocadas, as últimas ouvidas, as playlists da conta, os álbuns mais recentes e os gêneros. O álbum e o gênero abrem as páginas `/album/<id>` e `/genero/<id>`. Uma conta nova, sem histórico nem playlists, vê a parada e o convite para criar a primeira playlist.
 
-Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo item **Histórico** do menu da conta. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
+Para essas contas, o cabeçalho traz a navegação principal: **Início**, **Playlists**, **Histórico** e **Tocando** (`/player`). A partir de 1024 px, os links aparecem como ícones ao lado do logo, e o nome aparece ao passar o mouse. Em telas menores, eles ficam no menu ☰.
+
+Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo link **Histórico** do cabeçalho. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
 
 Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 

@@ -3,6 +3,8 @@
 import * as React from "react"
 import {
   CircleAlert,
+  History,
+  House,
   ListMinus,
   ListPlus,
   LogOut,
@@ -107,6 +109,8 @@ export const UserIcon = withParentHover(AnimatedUser, "UserIcon")
 export const QueueIcon = withParentHover(AnimatedGalleryHorizontalEnd, "QueueIcon")
 
 export const AlertIcon = staticLucide(CircleAlert)
+export const HomeIcon = staticLucide(House)
+export const HistoryIcon = staticLucide(History)
 export const LogOutIcon = staticLucide(LogOut)
 export const ShieldIcon = staticLucide(ShieldCheck)
 export const SkipBackIcon = staticLucide(SkipBack)
