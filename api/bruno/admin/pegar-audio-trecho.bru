@@ -1,0 +1,23 @@
+meta {
+  name: Pegar um trecho do áudio
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/musics/{{musicId}}/audio
+  body: none
+  auth: none
+}
+
+headers {
+  Range: bytes=0-9
+}
+
+tests {
+  test("entrega só os 10 bytes pedidos", function () {
+    expect(res.getStatus()).to.equal(206);
+    expect(res.getHeader("content-length")).to.equal("10");
+    expect(res.getHeader("content-range")).to.match(/^bytes 0-9\//);
+  });
+}

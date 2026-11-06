@@ -1,0 +1,18 @@
+meta {
+  name: Sem cookie de sessão
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/history
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 401 sem o cookie zovic.session_token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().error).to.equal("UNAUTHENTICATED");
+  });
+}

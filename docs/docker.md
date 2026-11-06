@@ -24,6 +24,10 @@ Para subir o ambiente, use o `bun start` (veja o [README](../README.md#dia-a-dia
 
 Cada profile acrescenta uma camada à anterior. O `--build` refaz as imagens, para a API e o front no Docker ficarem com o código atual. O `bun stop` roda `docker compose --profile full --profile prod down`, que para os serviços de todos os profiles.
 
+Três volumes guardam dados entre uma subida e outra: `pgdata`, com o banco, `audio`, com os MP3 enviados pelo painel de admin, e `covers`, com as capas dos álbuns. Os dois últimos são montados em `/data/audio` e `/data/covers` no serviço `api`, que recebe `AUDIO_DIR` e `COVER_DIR` com esses caminhos. O `docker compose down -v` apaga os três.
+
+Os containers e o banco de desenvolvimento ficam no projeto `zovic-dev`, definido pelo `COMPOSE_PROJECT_NAME` do `.env`. Sem essa variável, o Compose usa o nome da pasta, e um clone numa pasta `Zovic` cairia no mesmo projeto do servidor de produção (`~/zovic`), com os mesmos containers e o mesmo banco. Isso só importa na máquina que também roda o servidor. Um `.env` antigo, sem a variável, continua funcionando como antes.
+
 Migrations, Prisma e como acessar o banco estão em [Banco de dados](banco-de-dados.md).
 
 ## Produção

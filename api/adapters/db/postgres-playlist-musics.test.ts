@@ -33,7 +33,7 @@ async function artist(name: string, deleted = false): Promise<Artist> {
 async function music(name: string, options: { artistIds?: number[]; deleted?: boolean } = {}): Promise<number> {
   const id = await musics.nextId();
   created.musics.push(id);
-  const entity = Music.create({ id, name, duration: 180, artistIds: options.artistIds ?? [artistId] });
+  const entity = Music.create({ id, name, duration: 180, artistIds: options.artistIds ?? [artistId], audioFile: "teste.mp3" });
   if (options.deleted) entity.delete();
   await musics.save(entity);
   return id;
@@ -42,9 +42,12 @@ async function music(name: string, options: { artistIds?: number[]; deleted?: bo
 async function album(name: string, musicIds: number[], deleted = false): Promise<number> {
   const id = await albums.nextId();
   created.album.push(id);
-  const entity = Album.create({ id, name, artistIds: [artistId], musicIds });
+  const entity = Album.create({ id, name, artistIds: [artistId], year: 2000, coverFile: "capa.png" });
   if (deleted) entity.delete();
   await albums.save(entity);
+  // Uma música em vários álbuns só existe nos dados antigos (o domínio limita a um), por isso
+  // o vínculo entra direto no banco: é ele que a regra do "álbum ativo de menor id" cobre.
+  await pool.query("INSERT INTO album_music (album_id, music_id) SELECT $1, unnest($2::integer[])", [id, musicIds]);
   return id;
 }
 

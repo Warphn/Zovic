@@ -1,0 +1,21 @@
+meta {
+  name: Remover álbum
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/albums/{{albumId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

@@ -49,6 +49,9 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 - Mutação invalida as chaves que mudam. Se o nome de uma playlist muda, a busca também pode mudar (`searchKeys.all`).
 - Formato de tela (ex.: `Track` do player) é convertido perto de quem usa, não no service. O service devolve o que a API devolve.
 - O cache é do usuário logado: o `QueryProvider` limpa tudo quando a sessão troca de pessoa (logout, login de outra conta).
+- Para enviar arquivo, passe um `FormData` como `body`, sem `json()`. O `request` só põe `Content-Type: application/json` quando o corpo é texto. Com `FormData`, o navegador define o cabeçalho multipart, com o separador das partes. Exemplo: `request("/admin/musics", { method: "POST", body: musicFormData(input) })`, em que `musicFormData` (em `admin.ts`) põe os campos em JSON na parte `data` e o MP3 na parte `audio`. O cadastro de álbum faz o mesmo com `albumFormData`, com a imagem na parte `cover`.
+- Um caminho que a API devolve, como o `coverUrl` de um álbum, vira um endereço para o `<img src>` com `apiUrl(path)` (em `client.ts`), que põe o endereço da API na frente.
+- O áudio do player segue a mesma regra: `apiUrl(catalogApi.musicAudioPath(id))` é o `src` do `<audio>` em `components/playback-audio.tsx`. O navegador manda o cookie de sessão porque o front e a API são do mesmo site (`localhost` em dev, `zovic.com.br` e `api.zovic.com.br` em produção), então o `<audio>` não usa `crossOrigin`.
 
 ## O que já está integrado
 
@@ -56,9 +59,10 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 | --- | --- |
 | `search.ts` | `GET /search` |
 | `playlists.ts` | `GET/POST /playlists`, `GET/PATCH/DELETE /playlists/:id` (a API ainda não devolve as músicas da playlist) |
-| `catalog.ts` | `GET /musics`, `GET /artists`, `GET /genres`, `POST /musics/:id/plays` (chamado por `useRecordPlays`, uma vez por audição) |
+| `catalog.ts` | `GET /musics`, `GET /artists`, `GET /albums` (`useAlbums`), `GET /genres`, `POST /musics/:id/plays` (chamado pelo `PlaybackAudio` quando o som começa, uma vez por audição) e o caminho de `GET /musics/:id/audio` (`musicAudioPath`) |
 | `subscriptions.ts` | `GET /plans/me`, `POST /plans` (com o `kind`: `individual` ou `family`), `DELETE /plans/me`, o plano familiar (`GET /plans/me/members`, `POST /plans/me/invitations`, `DELETE /plans/me/invitations/:id`, `DELETE /plans/me/members/:userId`, `DELETE /plans/me/membership`) e os convites (`GET /invitations/:token`, `POST /invitations/:token/accept`). Veja os hooks abaixo. |
-| `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas e artistas |
+| `history.ts` | `GET /history`: o histórico de reprodução da conta, uma entrada por música (`useHistory`). O `PlaybackAudio` invalida `historyKeys.all` a cada audição registrada. |
+| `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas (o cadastro em multipart, com o MP3), álbuns (o cadastro em multipart, com a capa, e a troca de capa), gêneros (só a criação) e artistas |
 | `lib/auth/client.ts` | `/auth/*` pelo cliente do Better Auth (cadastro, login, logout, sessão) |
 
 ### Hooks de `subscriptions.ts`

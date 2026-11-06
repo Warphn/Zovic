@@ -13,6 +13,11 @@ export interface ExistingMusicData {
   rating: number | null;
   artistIds: number[];
   genreIds: number[];
+  /** Nome do arquivo no armazenamento (FileStorage); null só nas músicas anteriores ao upload. */
+  audioFile: string | null;
+  isExplicit: boolean;
+  /** Zero ou um álbum (album_music). */
+  albumId: number | null;
   createdAt: Date;
   deletedAt: Date | null;
 }
@@ -24,11 +29,14 @@ export interface NewMusicData {
   artistIds: number[];
   genreIds?: number[];
   lyricsId?: number | null;
+  audioFile: string;
+  isExplicit?: boolean;
+  albumId?: number | null;
   now?: Date;
 }
 
 /**
- * Música com seus vínculos: artist_music e genre_music.
+ * Música com seus vínculos: artist_music, genre_music e album_music.
  *
  * `streams` e `rating` são estatísticas calculadas fora da entidade: ela só as
  * expõe, e o repositório não as sobrescreve ao salvar.
@@ -52,6 +60,9 @@ export class Music {
       rating: null,
       artistIds,
       genreIds: normalizeIds(input.genreIds ?? [], "Genre"),
+      audioFile: Music.validateAudioFile(input.audioFile),
+      isExplicit: input.isExplicit ?? false,
+      albumId: Music.validateAlbumId(input.albumId ?? null),
       createdAt: input.now ?? new Date(),
       deletedAt: null,
     });
@@ -91,6 +102,18 @@ export class Music {
 
   get genreIds(): number[] {
     return [...this.input.genreIds];
+  }
+
+  get audioFile(): string | null {
+    return this.input.audioFile;
+  }
+
+  get isExplicit(): boolean {
+    return this.input.isExplicit;
+  }
+
+  get albumId(): number | null {
+    return this.input.albumId;
   }
 
   get createdAt(): Date {
@@ -139,6 +162,16 @@ export class Music {
     this.input.genreIds = removeId(this.input.genreIds, genreId, "Genre");
   }
 
+  changeAlbum(albumId: number | null): void {
+    this.ensureNotDeleted();
+    this.input.albumId = Music.validateAlbumId(albumId);
+  }
+
+  setExplicit(isExplicit: boolean): void {
+    this.ensureNotDeleted();
+    this.input.isExplicit = isExplicit;
+  }
+
   delete(now: Date = new Date()): void {
     this.ensureNotDeleted();
     this.input.deletedAt = now;
@@ -149,6 +182,20 @@ export class Music {
       throw new ValidationError("Music duration must be a positive number of seconds");
     }
     return duration;
+  }
+
+  private static validateAudioFile(audioFile: string): string {
+    if (audioFile.trim() === "") {
+      throw new ValidationError("Music must have an audio file");
+    }
+    return audioFile;
+  }
+
+  private static validateAlbumId(albumId: number | null): number | null {
+    if (albumId !== null && (!Number.isInteger(albumId) || albumId <= 0)) {
+      throw new ValidationError("Album id must be a positive integer");
+    }
+    return albumId;
   }
 
   private static validateLyricsId(lyricsId: number | null): number | null {

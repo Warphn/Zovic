@@ -59,13 +59,15 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 | `COOKIE_SECURE` | `false` em desenvolvimento (HTTP). Se faltar, a API liga o `Secure`, e o navegador não guarda o cookie em `http://`. |
 | `TRUST_PROXY` | Número de proxies na frente da API, para o limite de login ver o IP real. Vazia em desenvolvimento e `1` em produção. |
 | `NEXT_PUBLIC_API_URL` | Endereço da API para o front no Docker. Vazio vale `http://localhost:3333`. |
+| `AUDIO_DIR` | Diretório dos MP3 das músicas. Vazio vale `api/storage/audio`. No Docker, o compose passa `/data/audio`, o volume `audio`. |
+| `COVER_DIR` | Diretório das capas dos álbuns. Vazio vale `api/storage/covers`. No Docker, o compose passa `/data/covers`, o volume `covers`. |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Só no servidor de produção |
 
 ## Rotas
 
 Fora `/api/auth/*`, toda rota exige sessão: sem um cookie válido, a resposta é 401.
 
-As rotas de playlists, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
+As rotas de playlists, histórico, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
 
 ### Planos
 
@@ -123,6 +125,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Só para admins. A mesma música não entra duas vezes (409). |
 | `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Só para admins. |
 | `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só para admins. |
+| `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
 
 **Ordem das músicas.** A ordem é da playlist, então todos os membros veem a mesma. Ela fica em `music_playlist.position`. Para reordenar, o cliente manda a lista inteira. Se faltar ou sobrar uma música (porque outro admin mexeu na playlist depois que a lista foi carregada), a API responde 409 e não muda nada. As rotas que mudam as músicas respondem com a lista atualizada.
@@ -140,12 +143,15 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /api/musics?q=` | Lista as músicas. As removidas só aparecem para admins, marcadas. |
+| `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
 | `GET /api/artists` | Lista os artistas |
+| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`) e o endereço da capa (`coverUrl`, ou `null`) |
+| `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |
 | `GET /api/genres` | Lista os gêneros |
-| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1` |
+| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
+| `GET /api/musics/:id/audio` | Entrega o MP3 da música (`audio/mpeg`). Aceita `Range` e responde 206 com o trecho, que é como o player pula para outro ponto. O cache é `private, no-cache`: o navegador confirma o arquivo guardado com a API (304), que confere a assinatura e a idade de novo. Responde 404 para música removida ou sem arquivo, e 403 para música explícita quando a conta não é maior de idade. |
 
-O player do front ainda é simulado e não chama a rota de reprodução.
+O player do front toca o áudio pela `GET /api/musics/:id/audio` e chama a `POST /api/musics/:id/plays` quando o som começa, uma vez por audição. A página `/historico` atualiza a lista depois de cada reprodução registrada.
 
 ### Admin
 
@@ -157,10 +163,49 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `GET /api/admin/users` e `POST /api/admin/users` | Lista todas as contas, inclusive as removidas, e cria uma conta com email, senha, data de nascimento e papel |
 | `DELETE /api/admin/users/:id` | Remove a conta com soft delete e derruba as sessões. Ninguém remove a própria conta nem o último admin ativo. |
 | `GET /api/admin/users/:id/plays` | As últimas 50 reproduções da conta |
-| `POST`, `PATCH` e `DELETE` em `/api/admin/musics` | Cria, edita (nome, duração, artistas e gêneros) e remove músicas |
+| `POST /api/admin/musics` | Cadastra uma música com o arquivo de áudio, em multipart (veja abaixo) |
+| `PATCH` e `DELETE` em `/api/admin/musics/:id` | Edita (nome, duração, artistas, gêneros, álbum e explícito) e remove músicas. O `PATCH` é em JSON e não troca o áudio. |
+| `POST /api/admin/albums` | Cria um álbum com a imagem de capa, em multipart: a parte `data` com `{ name, artistIds, year }` e a parte `cover` com a imagem |
+| `PUT /api/admin/albums/:id/cover` | Troca a capa, em multipart com a parte `cover`. A antiga só é apagada depois de salvar a nova. |
+| `PATCH` e `DELETE` em `/api/admin/albums/:id` | Edita (nome, artistas e ano, em JSON) e remove álbuns |
+| `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas |
 
-Remover é sempre soft delete.
+Remover é sempre soft delete. Remover um álbum não remove as músicas dele.
+
+**Cadastro de música com áudio.** O `POST /api/admin/musics` recebe `multipart/form-data` com duas partes:
+
+| Parte | Conteúdo |
+| --- | --- |
+| `data` | Texto JSON: `{ name, duration, artistIds, genreIds?, albumId?, isExplicit? }` |
+| `audio` | O arquivo MP3, de até 20 MB |
+
+```bash
+curl -b cookies.txt -H "Origin: http://localhost:3000" http://localhost:3333/api/admin/musics \
+  -F 'data={"name":"Ressaca","duration":214,"artistIds":[1],"albumId":3}' \
+  -F 'audio=@faixa.mp3;type=audio/mpeg'
+```
+
+- **Formato:** a API confere os primeiros bytes do arquivo (a tag ID3 ou o sincronismo de quadro MPEG), e não a extensão.
+- **Nome:** o arquivo é guardado em `AUDIO_DIR` como `<uuid>.mp3`. A resposta traz `hasAudio`, e nunca o nome do arquivo.
+- **Álbum:** zero ou um. Um álbum novo precisa de ano, de 1900 até o ano atual.
+- **Erros:**
+
+  | Situação | Resposta |
+  | --- | --- |
+  | Sem a parte `audio`, ou o arquivo não é MP3 | 400, com `"Music must have an audio file"` ou `"Audio file must be an MP3"` |
+  | A parte `data` não é JSON | 400 `INVALID_JSON` |
+  | O arquivo veio numa parte com outro nome, mais de um arquivo, ou o multipart está malformado (sem o separador das partes, ou cortado no meio do envio) | 400 `INVALID_UPLOAD` |
+  | O arquivo passa de 20 MB | 413 `AUDIO_TOO_LARGE` |
+  | Artista, gênero ou álbum inexistente | 404 |
+
+O arquivo só é gravado depois dessas conferências. Se a música não chegar a ser salva, ele é apagado.
+
+**Capa do álbum.** O cadastro e a troca de capa seguem o mesmo esquema, com a imagem na parte `cover`:
+
+- **Formato:** JPEG, PNG ou WebP, de até 2 MB, conferido pelos primeiros bytes. Acima do limite, a resposta é 413 `COVER_TOO_LARGE`.
+- **Obrigatória:** sem capa, o álbum não é criado (400). Os álbuns antigos, sem capa, têm `coverUrl: null`.
+- **Cache:** o `coverUrl` termina com uma versão (`?v=`), que muda a cada troca. O navegador guarda a imagem, mas nunca mostra a capa antiga depois da troca.
 
 ## Assinaturas
 

@@ -6,18 +6,20 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {
-  useAdminMusics,
-  useCreateArtist,
-  useRemoveArtist,
-  useRemoveMusic,
-  useRenameArtist,
-  useSaveMusic,
-} from "@/lib/api/admin"
-import { type CatalogMusic, type Genre, type NamedItem, useArtists, useGenres } from "@/lib/api/catalog"
+import { Switch } from "@/components/ui/switch"
+import { albumsOfArtists, MAX_AUDIO_BYTES, musicChanges, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
+import { type Album, type CatalogMusic, type Genre, type NamedItem, useAlbums, useArtists, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
-import { formatDuration, parseDuration } from "@/lib/format-duration"
+import { readAudioDuration } from "@/lib/audio-duration"
+import { formatDuration } from "@/lib/format-duration"
 import { cn } from "@/lib/utils"
+import { AlbumsSection } from "./albums-section"
+import { ArtistsSection } from "./artists-section"
+import { AlbumPicker } from "./album-picker"
+import { ConfirmDialog } from "./confirm-dialog"
+import { FileInput } from "./file-input"
+import { NewArtistField, NewGenreField } from "./new-catalog-item"
+import { Picker } from "./picker"
 
 // "Nova música" (null id) or the music being edited
 type MusicDraft = { music: CatalogMusic | null }
@@ -27,6 +29,7 @@ export default function AdminContentPage() {
   const [query, setQuery] = React.useState("")
   const musics = useAdminMusics(query)
   const artists = useArtists()
+  const albums = useAlbums()
   const genres = useGenres()
   const removeMusic = useRemoveMusic()
   const [editing, setEditing] = React.useState<MusicDraft | null>(null)
@@ -84,13 +87,22 @@ export default function AdminContentPage() {
                           <span className={music.deletedAt ? "font-medium text-muted-foreground line-through" : "font-medium"}>
                             {music.name}
                           </span>
+                          {music.isExplicit && (
+                            <Badge variant="outline" className="text-[10px]" aria-label="Conteúdo explícito" title="Conteúdo explícito">
+                              E
+                            </Badge>
+                          )}
                           {music.deletedAt && (
                             <Badge variant="destructive" className="text-[10px]">
                               Removida
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{music.artists.map((a) => a.name).join(", ")}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {music.artists.map((artist) => artist.name).join(", ")}
+                          {music.album && ` · ${music.album.name}`}
+                          {!music.hasAudio && " · sem áudio"}
+                        </div>
                       </td>
                       <td className="px-2 py-2.5">
                         <div className="flex flex-wrap gap-1">
@@ -133,11 +145,18 @@ export default function AdminContentPage() {
         </div>
       </Section>
 
+      <AlbumsSection
+        albums={albums.data ?? null}
+        artists={artists.data ?? []}
+        error={albums.isError ? apiErrorMessage(albums.error) : null}
+      />
+
       <ArtistsSection artists={artists.data ?? null} error={artists.isError ? apiErrorMessage(artists.error) : null} />
 
       <MusicDialog
         draft={editing}
         artists={artists.data ?? []}
+        albums={albums.data ?? []}
         genres={genres.data ?? []}
         onClose={() => setEditing(null)}
       />
@@ -158,11 +177,13 @@ export default function AdminContentPage() {
 function MusicDialog({
   draft,
   artists,
+  albums,
   genres,
   onClose,
 }: {
   draft: MusicDraft | null
   artists: NamedItem[]
+  albums: Album[]
   genres: Genre[]
   onClose: () => void
 }) {
@@ -174,7 +195,7 @@ function MusicDialog({
           <DialogDescription>Os artistas e gêneros escolhidos substituem os anteriores.</DialogDescription>
         </DialogHeader>
         {/* DialogContent unmounts while closed, so the form starts from the music on every open */}
-        {draft && <MusicForm music={draft.music} artists={artists} genres={genres} onClose={onClose} />}
+        {draft && <MusicForm music={draft.music} artists={artists} albums={albums} genres={genres} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   )
@@ -183,32 +204,69 @@ function MusicDialog({
 function MusicForm({
   music,
   artists,
+  albums,
   genres,
   onClose,
 }: {
   music: CatalogMusic | null
   artists: NamedItem[]
+  albums: Album[]
   genres: Genre[]
   onClose: () => void
 }) {
   const [name, setName] = React.useState(music?.name ?? "")
-  const [duration, setDuration] = React.useState(music ? formatDuration(music.duration) : "")
   const [artistIds, setArtistIds] = React.useState<number[]>(music?.artists.map((a) => a.id) ?? [])
   const [genreIds, setGenreIds] = React.useState<number[]>(music?.genres.map((g) => g.id) ?? [])
+  const [albumId, setAlbumId] = React.useState<number | null>(music?.album?.id ?? null)
+  const [isExplicit, setIsExplicit] = React.useState(music?.isExplicit ?? false)
+  // Only a new music takes a file: editing keeps the audio, and so the duration, it already has
+  const [audio, setAudio] = React.useState<File | null>(null)
+  const [audioDuration, setAudioDuration] = React.useState<number | null>(null)
+  const [isReadingAudio, setIsReadingAudio] = React.useState(false)
+  // The last file chosen: a slow read of an earlier one must not overwrite its duration
+  const latestAudio = React.useRef<File | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
   const saveMusic = useSaveMusic()
 
+  // The album must have one of the music's artists: unchecking its artist takes the album out too
+  const changeArtists = (nextArtistIds: number[]) => {
+    setArtistIds(nextArtistIds)
+    if (albumId !== null && !albumsOfArtists(albums, nextArtistIds).some((album) => album.id === albumId)) setAlbumId(null)
+  }
+
+  const chooseAudio = async (file: File | null) => {
+    latestAudio.current = file
+    setAudio(file)
+    setAudioDuration(null)
+    setError(null)
+    if (!file) return
+    setIsReadingAudio(true)
+    const seconds = await readAudioDuration(file)
+    if (latestAudio.current !== file) return
+    setIsReadingAudio(false)
+    if (seconds === null) setError("Não deu para ler a duração. Confira se o arquivo é um MP3.")
+    setAudioDuration(seconds)
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const seconds = parseDuration(duration)
     if (!name.trim()) return setError("Dê um nome para a música.")
-    if (seconds === null) return setError("Duração inválida. Use minutos:segundos, como 3:45.")
     if (artistIds.length === 0) return setError("Escolha pelo menos um artista.")
+    // The API checks both again; this only spares uploading 20 MB to get the same answer
+    if (!music && !audio) return setError("Escolha o arquivo de áudio da música.")
+    if (audio && audio.size > MAX_AUDIO_BYTES) return setError("O áudio pode ter no máximo 20 MB.")
+    const duration = music ? music.duration : audioDuration
+    if (duration === null) return setError("Não deu para ler a duração. Confira se o arquivo é um MP3.")
     setSaving(true)
     try {
-      const input = { name: name.trim(), duration: seconds, artistIds, genreIds }
-      await saveMusic.mutateAsync({ id: music?.id ?? null, input })
+      const input = { name: name.trim(), duration, artistIds, genreIds, albumId, isExplicit }
+      if (music) {
+        const changes = musicChanges(music, input, artists.map((artist) => artist.id))
+        if (Object.keys(changes).length > 0) await saveMusic.mutateAsync({ id: music.id, input: changes })
+      } else if (audio) {
+        await saveMusic.mutateAsync({ id: null, input: { ...input, audio } })
+      }
       onClose()
     } catch (err) {
       setError(apiErrorMessage(err))
@@ -219,223 +277,41 @@ function MusicForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_7rem]">
-        <Field label="Nome" id="music-name">
-          <Input id="music-name" required maxLength={255} value={name} onChange={(e) => setName(e.target.value)} />
+      <Field label="Nome" id="music-name">
+        <Input id="music-name" required maxLength={255} value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      {!music && (
+        <Field label="Arquivo de áudio (MP3, até 20 MB)" id="music-audio">
+          <FileInput id="music-audio" file={audio} accept="audio/mpeg,.mp3" onChange={chooseAudio} describedBy="music-audio-status" />
+          <p id="music-audio-status" className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+            {isReadingAudio
+              ? "Lendo a duração do arquivo…"
+              : audioDuration !== null
+                ? `Duração: ${formatDuration(audioDuration)}, lida do arquivo`
+                : "A duração é lida do arquivo."}
+          </p>
         </Field>
-        <Field label="Duração" id="music-duration">
-          <Input id="music-duration" required placeholder="3:45" value={duration} onChange={(e) => setDuration(e.target.value)} />
-        </Field>
-      </div>
-      <Picker label="Artistas" items={artists} selected={artistIds} onChange={setArtistIds} />
+      )}
+      <Picker label="Artistas" items={artists} selected={artistIds} onChange={changeArtists} />
+      <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       <Picker label="Gêneros" items={genres} selected={genreIds} onChange={setGenreIds} />
+      <NewGenreField onCreated={(genreId) => setGenreIds((selected) => [...selected, genreId])} />
+      <AlbumPicker albums={albums} artistIds={artistIds} selected={albumId} onChange={setAlbumId} />
+      <div className="flex items-center justify-between gap-4">
+        <span id="music-explicit-label" className="text-sm font-medium">
+          Conteúdo explícito
+        </span>
+        <Switch checked={isExplicit} onCheckedChange={setIsExplicit} aria-labelledby="music-explicit-label" />
+      </div>
       {error && <Notice>{error}</Notice>}
       <DialogFooter>
         <Button type="button" variant="ghost" size="lg" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={saving}>
+        <Button type="submit" size="lg" disabled={saving || isReadingAudio}>
           {saving ? "Salvando…" : music ? "Salvar" : "Criar música"}
         </Button>
       </DialogFooter>
     </form>
-  )
-}
-
-// Multi-select as toggle chips, with a filter when the list is long
-function Picker({
-  label,
-  items,
-  selected,
-  onChange,
-}: {
-  label: string
-  items: (NamedItem & { color?: string })[]
-  selected: number[]
-  onChange: (ids: number[]) => void
-}) {
-  const [filter, setFilter] = React.useState("")
-  const visible = items.filter((item) => selected.includes(item.id) || item.name.toLowerCase().includes(filter.trim().toLowerCase()))
-  const toggle = (id: number) => onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id])
-
-  return (
-    <fieldset className="space-y-1.5">
-      <legend className="text-xs font-medium tracking-wide text-foreground/80">
-        {label} <span className="text-muted-foreground">({selected.length} selecionado{selected.length === 1 ? "" : "s"})</span>
-      </legend>
-      {items.length > 12 && (
-        <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={`Filtrar ${label.toLowerCase()}`} aria-label={`Filtrar ${label.toLowerCase()}`} />
-      )}
-      <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto py-1">
-        {visible.map((item) => {
-          const on = selected.includes(item.id)
-          return (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => toggle(item.id)}
-              className={cn(
-                "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-                on ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted/30"
-              )}
-            >
-              {item.color && <span aria-hidden="true" className="size-2 rounded-full" style={{ background: item.color }} />}
-              {item.name}
-            </button>
-          )
-        })}
-      </div>
-    </fieldset>
-  )
-}
-
-// Every change here refreshes the artist list and the musics (their credits) on its own
-function ArtistsSection({ artists, error }: { artists: NamedItem[] | null; error: string | null }) {
-  const createArtist = useCreateArtist()
-  const renameArtist = useRenameArtist()
-  const removeArtist = useRemoveArtist()
-  const [newName, setNewName] = React.useState("")
-  const [editing, setEditing] = React.useState<{ id: number; name: string } | null>(null)
-  const [removing, setRemoving] = React.useState<NamedItem | null>(null)
-  const [actionError, setActionError] = React.useState<string | null>(null)
-  const [filter, setFilter] = React.useState("")
-
-  const run = async (action: () => Promise<unknown>) => {
-    setActionError(null)
-    try {
-      await action()
-      return true
-    } catch (err) {
-      setActionError(apiErrorMessage(err))
-      return false
-    }
-  }
-
-  const visible = (artists ?? []).filter((a) => a.name.toLowerCase().includes(filter.trim().toLowerCase()))
-
-  return (
-    <Section title="Artistas" description="Renomear um artista muda o nome em todas as músicas dele.">
-      <div className="space-y-4">
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (newName.trim() && (await run(() => createArtist.mutateAsync(newName.trim())))) setNewName("")
-          }}
-        >
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome do novo artista" aria-label="Nome do novo artista" maxLength={255} className="max-w-xs" />
-          <Button type="submit" size="lg" disabled={!newName.trim()}>
-            Adicionar artista
-          </Button>
-          <Input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filtrar artistas" aria-label="Filtrar artistas" className="ml-auto max-w-[14rem]" />
-        </form>
-        {(error || actionError) && <Notice>{actionError ?? error}</Notice>}
-        {!artists ? (
-          <Loading />
-        ) : (
-          <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((artist) => (
-              <li key={artist.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/20">
-                {editing?.id === artist.id ? (
-                  <form
-                    className="flex flex-1 gap-1.5"
-                    onSubmit={async (e) => {
-                      e.preventDefault()
-                      if (editing.name.trim() && (await run(() => renameArtist.mutateAsync({ id: artist.id, name: editing.name.trim() })))) setEditing(null)
-                    }}
-                  >
-                    <Input value={editing.name} onChange={(e) => setEditing({ id: artist.id, name: e.target.value })} aria-label={`Novo nome de ${artist.name}`} maxLength={255} />
-                    <Button type="submit">Salvar</Button>
-                    <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-                      Cancelar
-                    </Button>
-                  </form>
-                ) : (
-                  <>
-                    <span className="flex-1 truncate text-sm">{artist.name}</span>
-                    <Button variant="ghost" onClick={() => setEditing({ id: artist.id, name: artist.name })}>
-                      Renomear
-                    </Button>
-                    <Button variant="ghost" className="text-destructive" onClick={() => setRemoving(artist)}>
-                      Remover
-                    </Button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <ConfirmDialog
-        title={`Remover ${removing?.name}?`}
-        description="O artista some das listas de escolha. As músicas que já estão ligadas a ele continuam como estão."
-        confirmLabel="Remover artista"
-        open={removing !== null}
-        onClose={() => setRemoving(null)}
-        onConfirm={async () => {
-          if (removing) await removeArtist.mutateAsync(removing.id)
-        }}
-      />
-    </Section>
-  )
-}
-
-function ConfirmDialog({
-  title,
-  description,
-  confirmLabel,
-  open,
-  onClose,
-  onConfirm,
-}: {
-  title: string
-  description: string
-  confirmLabel: string
-  open: boolean
-  onClose: () => void
-  onConfirm: () => Promise<void>
-}) {
-  const [error, setError] = React.useState<string | null>(null)
-  const [saving, setSaving] = React.useState(false)
-
-  const close = () => {
-    setError(null)
-    onClose()
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(next) => !next && close()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {error && <Notice>{error}</Notice>}
-        <DialogFooter>
-          <Button variant="ghost" size="lg" onClick={close}>
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            size="lg"
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true)
-              try {
-                await onConfirm()
-                close()
-              } catch (err) {
-                setError(apiErrorMessage(err))
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            {saving ? "Removendo…" : confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

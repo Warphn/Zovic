@@ -1,0 +1,34 @@
+meta {
+  name: Listar histórico
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/history
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com uma lista", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+
+  test("cada entrada traz música, artistas, última reprodução e disponibilidade", function () {
+    expect(res.getBody()[0]).to.have.all.keys("musicId", "name", "duration", "artists", "lastPlayedAt", "isAvailable");
+  });
+
+  test("mostra cada música uma vez, com a A (ouvida por último) no topo e a B logo depois", function () {
+    const ids = res.getBody().map((entry) => entry.musicId);
+    expect(ids[0]).to.equal(bru.getVar("musicA"));
+    expect(ids[1]).to.equal(bru.getVar("musicB"));
+    expect(new Set(ids).size).to.equal(ids.length);
+  });
+
+  test("vem da reprodução mais recente para a mais antiga", function () {
+    const dates = res.getBody().map((entry) => entry.lastPlayedAt);
+    expect(dates).to.deep.equal([...dates].sort().reverse());
+  });
+}

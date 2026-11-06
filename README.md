@@ -38,7 +38,7 @@ O `bun start` pergunta três coisas:
    | `full` | o sistema inteiro | nada, é só abrir o site |
    | `banco de produção` | nada: abre o acesso ao banco do servidor (o mesmo que `bun db:connect`) | o DBeaver ou o `psql` |
 
-2. **É o seu primeiro acesso?** "Sim" cria o `.env` (se ainda não existir), roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não".
+2. **É o seu primeiro acesso?** "Sim" roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não". O `.env` é criado a partir do `.env.example` sempre que ainda não existir.
 3. **Quer popular o banco?** **Não** mantém os dados. **LOCAL** apaga o banco local e insere os dados de teste. **PROD** insere só os dados reais (tipos de plano e gêneros), sem apagar nada.
 
 Para pular as perguntas, passe as respostas como argumentos: `bun start backend`, `bun start frontend --seed=local` ou `bun start full --first`.
@@ -53,6 +53,8 @@ Para pular as perguntas, passe as respostas como argumentos: `bun start backend`
 | Postgres | `localhost:5432` (usuário, senha e banco: `zovic`) |
 
 Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
+
+**Arquivos enviados pelo painel.** Os MP3 das músicas ficam em `AUDIO_DIR`, e as capas dos álbuns em `COVER_DIR`. Com `bun dev`, os padrões são `api/storage/audio/` e `api/storage/covers/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam nos volumes `audio` e `covers`, em `/data/audio` e `/data/covers`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esses volumes junto com o banco.
 
 ## Comandos
 
@@ -134,11 +136,17 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 - **Visão geral:** usuários, reproduções, as 10 músicas mais tocadas e as reproduções por gênero.
 - **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
-- **Conteúdo:** cria, edita e remove músicas e artistas.
+- **Conteúdo:** cria, edita e remove músicas, álbuns e artistas.
+  - **Música:** o cadastro pede o arquivo MP3 (até 20 MB), e a duração é lida do arquivo. Ela também tem álbum (opcional), gêneros e a marca de conteúdo explícito. As músicas do seed não têm áudio e aparecem como "sem áudio".
+  - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
+  - **Álbuns:** aparecem em cards, com a capa, o ano, os artistas e quantas faixas têm. Todo álbum novo pede nome, artistas, ano e a imagem de capa (JPEG, PNG ou WebP, até 2 MB), que pode ser trocada depois. Os álbuns do seed não têm capa e mostram as iniciais.
+  - **Álbum da música:** o formulário de música mostra as capas dos álbuns dos artistas marcados, e dá para criar um álbum novo ali mesmo.
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
-Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
+Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo item **Histórico** do menu da conta. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
+
+Para demonstrar a assinatura, comece pela página inicial sem entrar: a seção **Planos** mostra o Individual e o Família, com preço e número de pessoas. Depois cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 
 ### Demo do plano Família
 
@@ -149,6 +157,13 @@ Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do s
 5. De volta ao gestor, **Remover** tira o membro, e o membro pode **Sair do plano**. Nos dois casos o acesso acaba na hora e a vaga volta.
 
 Menor de idade só se cadastra por convite do plano familiar. Quem já tem assinatura ativa não aceita um convite.
+
+### Demo do player
+
+1. Como `admin@zovic.test`, cadastre em **Conteúdo** uma ou mais músicas com um MP3 de verdade. As músicas do seed não têm áudio.
+2. Entre com uma conta com plano, busque a música e toque. A barra mostra o tempo real, pula para o ponto clicado (ou 5 s pelas setas) e controla o volume.
+3. **Adicionar à fila** (o ícone ao lado de "Adicionar à playlist") põe a música no fim da fila. No `/player`, o × de uma carta a tira da fila. No fim de uma música, a próxima começa sozinha.
+4. Uma música do seed, removida pelo admin, ou explícita para um menor (`heitor.costa@zovic.test`) aparece como **Indisponível**, e a fila passa para a próxima.
 
 ## Documentação
 
