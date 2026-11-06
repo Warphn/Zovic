@@ -77,12 +77,12 @@ function HomeSection({
   )
 }
 
-/** "Carregando…" or the error of a section's query; null once its data arrived. */
-function QueryStatus({ isPending, error }: { isPending: boolean; error: unknown }) {
-  if (error) {
+/** "Carregando…" or the error message of a section's query; null once its data arrived. */
+function QueryStatus({ isPending, errorMessage }: { isPending: boolean; errorMessage: string | null }) {
+  if (errorMessage) {
     return (
       <p role="alert" className="text-sm text-destructive">
-        {apiErrorMessage(error)}
+        {errorMessage}
       </p>
     )
   }
@@ -147,7 +147,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
 
   return (
     <HomeSection id="inicio-mais-tocadas" title="Mais tocadas">
-      <QueryStatus isPending={isPending} error={error} />
+      <QueryStatus isPending={isPending} errorMessage={error ? apiErrorMessage(error) : null} />
       <ol className="space-y-1">
         {chart.map((music, index) => {
           const track = tracks[index]
@@ -183,7 +183,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
 
   return (
     <HomeSection id="inicio-ouvidas" title="Ouvidas recentemente" link={{ href: "/historico", label: "Ver histórico →" }}>
-      <QueryStatus isPending={isPending} error={error} />
+      <QueryStatus isPending={isPending} errorMessage={error ? apiErrorMessage(error) : null} />
       <ul className="space-y-1">
         {recent.map((entry) => {
           const track = musicToTrack({ id: entry.musicId, name: entry.name, duration: entry.duration, artists: entry.artists })
@@ -214,7 +214,8 @@ function YourPlaylists() {
 
   return (
     <HomeSection id="inicio-playlists" title="Suas playlists" link={{ href: "/playlist", label: "Ver todas →" }}>
-      <QueryStatus isPending={isPending} error={error} />
+      {/* The playlists hook already turns its error into the message */}
+      <QueryStatus isPending={isPending} errorMessage={error} />
       {!isPending && !error && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {shown.map((playlist) => (
@@ -266,7 +267,7 @@ function NewestAlbums() {
 
   return (
     <HomeSection id="inicio-novidades" title="Novidades">
-      <QueryStatus isPending={albums.isPending} error={albums.error} />
+      <QueryStatus isPending={albums.isPending} errorMessage={albums.error ? apiErrorMessage(albums.error) : null} />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {newest.map((album) => (
           <AlbumCard key={album.id} album={album} musics={musics.data ?? []} />
@@ -283,7 +284,7 @@ function Genres() {
 
   return (
     <HomeSection id="inicio-generos" title="Gêneros">
-      <QueryStatus isPending={genres.isPending} error={genres.error} />
+      <QueryStatus isPending={genres.isPending} errorMessage={genres.error ? apiErrorMessage(genres.error) : null} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {(genres.data ?? []).map((genre) => {
           const count = counts.get(genre.id) ?? 0
