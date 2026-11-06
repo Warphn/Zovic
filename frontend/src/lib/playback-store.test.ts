@@ -3,6 +3,7 @@ import { DEFAULT_TRACKS, type Track } from "./playlist-store"
 import {
   appendToQueue,
   currentTrackOf,
+  getPlaybackSnapshot,
   isPlayingFrom,
   listenToRecord,
   moveTo,
@@ -10,9 +11,12 @@ import {
   parsePlaybackState,
   pickRandomTracks,
   type PlaybackState,
+  playQueue,
   removeFromQueue,
   skipUnavailable,
+  skipUnavailableTrack,
   startQueue,
+  stopPlayback,
 } from "./playback-store"
 
 const PLAYLIST_ORIGIN = { kind: "playlist", playlistId: "7" } as const
@@ -114,6 +118,19 @@ describe("skipUnavailable", () => {
 
   it("moves past an unavailable track in the middle", () => {
     expect(skipUnavailable(playing(DEFAULT_TRACKS, 1)).currentIndex).toBe(2)
+  })
+})
+
+describe("skipUnavailableTrack", () => {
+  it("skips only while the failed listen is still the current one", () => {
+    playQueue(DEFAULT_TRACKS.slice(0, 3), 0)
+    const failedListenId = getPlaybackSnapshot()?.listenId ?? -1
+
+    skipUnavailableTrack(failedListenId - 1)
+    expect(getPlaybackSnapshot()?.currentIndex).toBe(0)
+    skipUnavailableTrack(failedListenId)
+    expect(getPlaybackSnapshot()?.currentIndex).toBe(1)
+    stopPlayback()
   })
 })
 

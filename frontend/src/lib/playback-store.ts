@@ -199,6 +199,11 @@ export function usePlayback(): PlaybackState | null {
   return React.useSyncExternalStore(subscribe, getSnapshot, () => null)
 }
 
+/** The state right now, for event handlers that must not wait for a render. */
+export function getPlaybackSnapshot(): PlaybackState | null {
+  return getSnapshot()
+}
+
 /** The catalog as tracks: a track played on its own is followed by tracks drawn from it. */
 export function useCatalogTracks(): Track[] {
   const { data } = useCatalogMusics()
@@ -253,6 +258,11 @@ export function removeFromQueueAt(index: number) {
 /** The current track ended: the next one starts, or playback stops at the end of the queue. */
 export function advanceAfterEnd() {
   update(nextOnEnded)
+}
+
+/** The audio of listen `failedListenId` failed: moves on, unless playback already went elsewhere. */
+export function skipUnavailableTrack(failedListenId: number) {
+  update((current) => (current.listenId === failedListenId ? skipUnavailable(current) : current))
 }
 
 export function setPlaying(playing: boolean) {
