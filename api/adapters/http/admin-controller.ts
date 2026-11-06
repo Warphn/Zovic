@@ -60,7 +60,8 @@ export function makeCatalogController(
       res.set("Cache-Control", COVER_CACHE_CONTROL);
       // O sendFile define o Content-Type pela extensão; um arquivo que sumiu do disco vira 404.
       res.sendFile(covers.pathOf(coverFile), (error) => {
-        if (error) next(new NotFoundError("Cover not found"));
+        // Com os cabeçalhos já enviados, o erro é o navegador cancelando o download: não há o que responder.
+        if (error && !res.headersSent) next(new NotFoundError("Cover not found"));
       });
     },
     musicAudio: async (req, res, next) => {
@@ -72,7 +73,8 @@ export function makeCatalogController(
       res.set("Cache-Control", AUDIO_CACHE_CONTROL);
       // O sendFile responde a Range (206), que o <audio> usa para pular trechos; um arquivo que sumiu do disco vira 404.
       res.sendFile(audio.pathOf(audioFile), (error) => {
-        if (error) next(new NotFoundError("Audio not found"));
+        // O <audio> cancela downloads o tempo todo (pular trecho, trocar de faixa): aí não há o que responder.
+        if (error && !res.headersSent) next(new NotFoundError("Audio not found"));
       });
     },
     listGenres: async (_req, res) => {
