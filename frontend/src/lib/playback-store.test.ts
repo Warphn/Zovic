@@ -179,6 +179,17 @@ describe("playOrToggleQueueTrack", () => {
     stopPlayback()
   })
 
+  it("plays the list from a track paused in another queue", () => {
+    playQueue([catalogTrack(2), catalogTrack(9)], 0)
+    togglePlayback()
+
+    playOrToggleQueueTrack(chart, 1)
+
+    expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: true, currentIndex: 1 })
+    expect(getPlaybackSnapshot()?.queue.map((track) => track.id)).toEqual(["1", "2", "3"])
+    stopPlayback()
+  })
+
   it("plays the list from another track", () => {
     playOrToggleQueueTrack(chart, 0)
 

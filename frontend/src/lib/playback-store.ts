@@ -239,12 +239,20 @@ export function playQueue(tracks: Track[], startIndex: number) {
   if (next) setState(next)
 }
 
+/** True when the queue holds exactly `tracks`, in order: it was started from that list. */
+function isQueueOf(playback: PlaybackState, tracks: Track[]): boolean {
+  return playback.queue.length === tracks.length && playback.queue.every((track, index) => track.id === tracks[index]?.id)
+}
+
 /**
- * Clicking a track of a list (the home chart, a genre, an album): the current track pauses or
- * resumes where it stands; any other track plays the list from it.
+ * Clicking a track of a list (the home chart, a genre, an album): the current track pauses, or
+ * resumes when it is paused in this same list; any other track, or the same music paused in
+ * another queue, plays the list from it.
  */
 export function playOrToggleQueueTrack(tracks: Track[], startIndex: number) {
-  if (currentTrackOf(getSnapshot())?.id === tracks[startIndex]?.id) togglePlayback()
+  const current = getSnapshot()
+  const isCurrentTrack = current !== null && currentTrackOf(current)?.id === tracks[startIndex]?.id
+  if (isCurrentTrack && (current.isPlaying || isQueueOf(current, tracks))) togglePlayback()
   else playQueue(tracks, startIndex)
 }
 

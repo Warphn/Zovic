@@ -61,7 +61,8 @@ export function AppPlaybackBar() {
   const tracks = playback ? playback.queue : (pagePlaylist?.tracks ?? [])
   const currentIndex = playback?.currentIndex ?? 0
   const track = tracks[currentIndex]
-  const coverUrl = useTrackCover(track?.id)
+  // Where the bar is hidden (landing, sign-in) the visitor may not read the catalog
+  const coverUrl = useTrackCover(HIDDEN_ON.has(pathname) ? null : track?.id)
   if (HIDDEN_ON.has(pathname)) return null
 
   // Moves within the queue (wrapping); with nothing playing yet, starts the page's playlist there
