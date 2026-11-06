@@ -221,6 +221,18 @@ export function playPlaylist(playlist: { id: string; tracks: Track[] }, trackInd
   if (next) setState(next)
 }
 
+/**
+ * Clicking a track of a playlist page: the playlist's current track pauses or resumes where it
+ * stands (keeping the queue and the listen); any other track plays the playlist from it.
+ */
+export function playOrTogglePlaylistTrack(playlist: { id: string; tracks: Track[] }, trackIndex: number) {
+  const current = getSnapshot()
+  const isCurrentTrack =
+    isPlayingFrom(current, playlist.id) && currentTrackOf(current)?.id === playlist.tracks[trackIndex]?.id
+  if (isCurrentTrack) togglePlayback()
+  else playPlaylist(playlist, trackIndex)
+}
+
 /** Plays `tracks` in order from `startIndex`, outside any playlist (an album page, for one). */
 export function playQueue(tracks: Track[], startIndex: number) {
   const next = startQueue(getSnapshot(), tracks, startIndex, null)

@@ -41,7 +41,7 @@ import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { LevelBars } from "@/components/playback-marks"
-import { currentTrackOf, isPlayingFrom, playPlaylist, togglePlayback, usePlayback } from "@/lib/playback-store"
+import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, playPlaylist, usePlayback } from "@/lib/playback-store"
 import {
   ArrowLeftIcon,
   HeartIcon,
@@ -377,11 +377,8 @@ export default function PlaylistDetailPage() {
                   const isTrackPlaying = isCurrent && isPlaying
                   const isLiked = isTrackLiked(track.id)
 
-                  // Clicking the playing track pauses it; any other click plays the clicked track
-                  const playOrPauseRow = () => {
-                    if (isTrackPlaying) togglePlayback()
-                    else playAt(actualIdx)
-                  }
+                  // Clicking the current track pauses or resumes it; any other click plays the clicked track
+                  const playOrPauseRow = () => playOrTogglePlaylistTrack(currentPlaylist, actualIdx)
 
                   return (
                     <div
@@ -561,13 +558,7 @@ export default function PlaylistDetailPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (currentTrackId === commentTrack.id && playback?.isPlaying) {
-                    togglePlayback()
-                  } else {
-                    playAt(tracks.indexOf(commentTrack))
-                  }
-                }}
+                onClick={() => playOrTogglePlaylistTrack(currentPlaylist, tracks.indexOf(commentTrack))}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-border bg-background hover:bg-surface text-xs font-medium cursor-pointer transition-colors"
               >
                 {currentTrackId === commentTrack.id && playback?.isPlaying ? (

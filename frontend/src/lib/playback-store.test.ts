@@ -11,12 +11,15 @@ import {
   parsePlaybackState,
   pickRandomTracks,
   type PlaybackState,
+  playOrTogglePlaylistTrack,
   playQueue,
   removeFromQueue,
   skipUnavailable,
   skipUnavailableTrack,
   startQueue,
   stopPlayback,
+  togglePlayback,
+  addToQueue,
 } from "./playback-store"
 
 const PLAYLIST_ORIGIN = { kind: "playlist", playlistId: "7" } as const
@@ -130,6 +133,34 @@ describe("skipUnavailableTrack", () => {
     expect(getPlaybackSnapshot()?.currentIndex).toBe(0)
     skipUnavailableTrack(failedListenId)
     expect(getPlaybackSnapshot()?.currentIndex).toBe(1)
+    stopPlayback()
+  })
+})
+
+describe("playOrTogglePlaylistTrack", () => {
+  const playlist = { id: "7", tracks: DEFAULT_TRACKS.slice(0, 3) }
+
+  it("resumes the paused current track of the playlist instead of restarting it", () => {
+    playOrTogglePlaylistTrack(playlist, 1)
+    addToQueue(DEFAULT_TRACKS[4])
+    togglePlayback()
+    const pausedListenId = getPlaybackSnapshot()?.listenId
+
+    playOrTogglePlaylistTrack(playlist, 1)
+
+    expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: true, currentIndex: 1, listenId: pausedListenId })
+    expect(getPlaybackSnapshot()?.queue).toHaveLength(4)
+    stopPlayback()
+  })
+
+  it("plays another track of the playlist from the start", () => {
+    playOrTogglePlaylistTrack(playlist, 0)
+    const firstListenId = getPlaybackSnapshot()?.listenId ?? 0
+
+    playOrTogglePlaylistTrack(playlist, 2)
+
+    expect(getPlaybackSnapshot()).toMatchObject({ isPlaying: true, currentIndex: 2 })
+    expect(getPlaybackSnapshot()?.listenId).toBeGreaterThan(firstListenId)
     stopPlayback()
   })
 })
