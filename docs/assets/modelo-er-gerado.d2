@@ -70,6 +70,8 @@ catalogo: "Catálogo" {
     rating: "double"
     created_at: "timestamptz"
     deleted_at: "timestamptz"
+    audio_file: "varchar(255)"
+    is_explicit: "boolean"
   }
   album: {
     shape: sql_table
@@ -77,6 +79,8 @@ catalogo: "Catálogo" {
     name: "varchar(255)"
     created_at: "timestamptz"
     deleted_at: "timestamptz"
+    year: "smallint"
+    cover_file: "varchar(255)"
   }
   artist: {
     shape: sql_table
@@ -156,6 +160,14 @@ interacoes: "Interações" {
     deleted_at: "timestamptz"
     created_at: "timestamptz"
   }
+  comment_reports: {
+    shape: sql_table
+    id: "integer" {constraint: [primary_key]}
+    comment_id: "integer" {constraint: [foreign_key]}
+    user_id: "integer" {constraint: [foreign_key]}
+    reason: "varchar(280)"
+    created_at: "timestamptz"
+  }
   rating: {
     shape: sql_table
     id: "integer" {constraint: [primary_key]}
@@ -214,6 +226,14 @@ catalogo.artist_music.artist_id <-> catalogo.artist.id: {
   target-arrowhead.shape: cf-one-required
 }
 catalogo.artist_music.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.comment_reports.comment_id <-> interacoes.comments.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.comment_reports.user_id <-> contas.user.id: {
   source-arrowhead.shape: cf-many
   target-arrowhead.shape: cf-one-required
 }
