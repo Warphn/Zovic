@@ -19,6 +19,10 @@ body:multipart-form {
   audio: @file(fixtures/teste.mp3)
 }
 
+script:post-response {
+  bru.setVar("musicId", res.getBody().id);
+}
+
 tests {
   test("responde 201 com o álbum, a marca de explícito e o áudio", function () {
     expect(res.getStatus()).to.equal(201);

@@ -1120,6 +1120,43 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/musics/{id}/audio": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Entrega o arquivo de áudio de uma música",
+        description:
+          "O MP3 da música, para o `<audio>` do player. Aceita o cabeçalho `Range` e responde 206 com o trecho pedido, que é como o navegador pula para outro ponto da música. O cache é `private, max-age=86400`: o arquivo nunca muda, mas só o navegador de quem tem acesso o guarda. Música explícita só é entregue a maiores de 18 anos.",
+        operationId: "getMusicAudio",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+          { name: "Range", in: "header", required: false, description: "Trecho pedido, como `bytes=0-9`.", schema: { type: "string" } },
+        ],
+        responses: {
+          "200": {
+            description: "O arquivo inteiro",
+            content: { "audio/mpeg": { schema: { type: "string", format: "binary" } } },
+          },
+          "206": {
+            description: "O trecho pedido no `Range`, com o `Content-Range`",
+            content: { "audio/mpeg": { schema: { type: "string", format: "binary" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description:
+              "A conta não tem assinatura ativa (`SUBSCRIPTION_REQUIRED`), ou a música é explícita e a conta não é maior de idade (`FORBIDDEN`)",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Música explícita: só para maiores de 18 anos") },
+            },
+          },
+          "404": {
+            description: "Música inexistente, removida ou sem arquivo de áudio",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Audio not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/admin/musics": {
       post: {
         tags: ["Admin"],
