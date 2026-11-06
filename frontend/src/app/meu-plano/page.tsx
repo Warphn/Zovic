@@ -12,9 +12,8 @@ import { Notice } from "@/components/ui/notice"
 import { apiErrorMessage } from "@/lib/api/client"
 import { type Subscription, useCancelSubscription, useSubscription } from "@/lib/api/subscriptions"
 import { stopPlayback } from "@/lib/playback-store"
-import { planType } from "@/lib/subscription/rules"
+import { formatPlanPrice, planType } from "@/lib/subscription/rules"
 
-const price = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 const since = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "America/Sao_Paulo" })
 
 export default function MyPlanPage() {
@@ -84,7 +83,7 @@ function PlanSummary({ subscription }: { subscription: Subscription }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-xl font-bold tracking-tight">Plano {type.name}</h2>
         <p className="text-sm">
-          <span className="font-semibold tabular-nums">{price.format(type.price)}</span>
+          <span className="font-semibold tabular-nums">{formatPlanPrice(type.price)}</span>
           <span className="text-muted-foreground"> /mês</span>
         </p>
       </div>

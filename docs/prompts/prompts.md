@@ -150,13 +150,21 @@ Forma de trabalho: a mesma da #86. O Claude Opus fez o plano, preparou a tarefa 
 | 3 | Fase 2, front: página `/historico`, item "Histórico" no menu do usuário, estado vazio, música indisponível sem botão de tocar e lista atualizada a cada reprodução registrada | [`frontend/src/app/historico/`](../../frontend/src/app/historico/), [`history.ts`](../../frontend/src/lib/api/history.ts) e [`header.tsx`](../../frontend/src/components/header.tsx) |
 | 4 | Fase 3, documentação: tabela de rotas, demo do README, cliente da API no front e este registro | [`docs/api.md`](../api.md), [`README.md`](../../README.md) e [`frontend/src/lib/api/README.md`](../../frontend/src/lib/api/README.md) |
 
+### 05/11/2026: planos na landing (#84, HU-01)
+
+O Claude Opus leu a #84, viu que o único critério sem código era a seção de planos na landing e a escreveu direto, sem subagentes. Os critérios da HU-02 já tinham testes de integração em `auth-flow.test.ts`, e todos foram conferidos no navegador com Playwright (13/13).
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Fechar a #84 "até onde dá": seção de planos na landing com preço e número de pessoas, e conferir os critérios de cadastro e entrada | [`plans.tsx`](../../frontend/src/components/plans.tsx), com os planos, o preço formatado e o número de pessoas em [`rules.ts`](../../frontend/src/lib/subscription/rules.ts), usados também por `/planos` e `/meu-plano` |
+
 ### 05/11/2026: cadastro de música com áudio pelo painel de admin (HU-28)
 
 | # | Prompt | Resultado |
 |---|---|---|
 | 1 | Ok, agora precisamos da rota de adição de músicas e que ela seja vinculada, primeiramente, ao portal admin. | Conversa de design: upload do áudio com os campos da HU-28, migração do áudio, do explícito e do ano do álbum nesta entrega, álbum opcional, só MP3 de até 20 MB e envio em multipart com o `multer`. Resultado: a [spec](../superpowers/specs/2026-11-05-cadastro-de-musica-com-audio-design.md) |
 | 2 | Ok agora vamos aplicar a rota de cadastro de música e tudo mais. | O [plano de implementação](../superpowers/plans/2026-11-05-cadastro-de-musica-com-audio.md), em 9 tarefas com os testes antes do código |
-| 3 | Vamos usar Native. Manda bala. | A implementação: a regra do MP3 ([`audio.ts`](../../api/domain/shared/audio.ts)), a migration, `Music` e `Album`, o armazenamento ([`local-audio-storage.ts`](../../api/adapters/storage/local-audio-storage.ts)), o caso de uso, as rotas com multipart, o cliente do front e a tela Conteúdo, com testes de unidade e de integração, o `openapi.ts`, o Bruno ([`api/bruno/admin/`](../../api/bruno/admin/)) e a documentação |
+| 3 | Vamos usar Native. Manda bala. | A implementação: a regra do MP3 ([`audio.ts`](../../api/domain/shared/audio.ts)), a migration, `Music` e `Album`, o armazenamento ([`local-file-storage.ts`](../../api/adapters/storage/local-file-storage.ts)), o caso de uso, as rotas com multipart, o cliente do front e a tela Conteúdo, com testes de unidade e de integração, o `openapi.ts`, o Bruno ([`api/bruno/admin/`](../../api/bruno/admin/)) e a documentação |
 | 4 | Na tela de adição de músicas é preciso ter um campo para adicionar um artista novo; a duração deve ser identificada a partir do arquivo enviado; é preciso um campo de adição de gênero; a listagem de álbuns está muito feia. | A rota `POST /api/admin/genres`, o `musicCount` na `GET /api/albums`, a leitura da duração no navegador ([`audio-duration.ts`](../../frontend/src/lib/audio-duration.ts)), a criação de artista e gênero pelo formulário e os álbuns em cards ([`album-cover.ts`](../../frontend/src/lib/album-cover.ts)) |
 | 5 | Precisamos mudar o campo de álbum: listar apenas os álbuns do artista selecionado e poder criar um novo, com nome e imagem de capa. Além disso, o campo de álbum deve ser mais bonito. | A capa obrigatória do álbum (migration, [`cover-image.ts`](../../api/domain/shared/cover-image.ts), o `LocalFileStorage` para áudios e capas, `PUT /api/admin/albums/:id/cover` e `GET /api/albums/:id/cover`) e a grade de capas no formulário de música ([`album-picker.tsx`](../../frontend/src/app/admin/conteudo/album-picker.tsx)) |
 
@@ -171,6 +179,15 @@ A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e
 | 3 | Manda bala. | A rota `GET /api/musics/:id/audio` ([`get-music-audio.ts`](../../api/domain/use-cases/get-music-audio.ts)) com testes de integração, o `openapi.ts` e o Bruno; a fila em [`playback-store.ts`](../../frontend/src/lib/playback-store.ts); o motor [`playback-audio.tsx`](../../frontend/src/components/playback-audio.tsx) com [`audio-player.ts`](../../frontend/src/lib/audio-player.ts); a barra, o player e o botão [`add-to-queue-button.tsx`](../../frontend/src/components/add-to-queue-button.tsx) |
 
 A equipe decidiu cada regra na conversa de design e aprovou a spec e o plano antes da implementação. A IA conferiu cada passo com os testes, rodou a coleção do Bruno contra a API no Docker e deixou a conferência do som no navegador para o Victor.
+
+### 05/11/2026: diagrama ER gerado do banco
+
+Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do banco (tbls, SchemaSpy e D2 com o layout ELK) e comparou as imagens. O usuário escolheu o D2. Um subagente Claude Sonnet implementou o script a partir do protótipo aprovado.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Gerar o diagrama ER a partir do banco, com tabelas agrupadas por área, PK, FK e pé de galinha, sem alterar a imagem feita à mão | Protótipo com tbls e D2, aprovado pelo usuário |
+| 2 | Implementar o `db:erd`: ler o Postgres com o `pg`, escrever o `.d2` e desenhar o `.svg` com o D2 em Docker, de forma determinística | [`api/scripts/db-erd.ts`](../../api/scripts/db-erd.ts), [`modelo-er-gerado.d2`](../assets/modelo-er-gerado.d2) e [`modelo-er-gerado.svg`](../assets/modelo-er-gerado.svg) |
 
 ### 06/11/2026: tela inicial e páginas de gênero e álbum (HU-33)
 

@@ -8,6 +8,7 @@ import Header from "@/components/header";
 import Features from "@/components/features";
 import Hero from "@/components/hero";
 import HowItWorks from "@/components/how-it-works";
+import Plans from "@/components/plans";
 import { useLandingSectionScroll } from "@/components/section-link";
 import { useSession } from "@/lib/auth/client";
 
@@ -29,6 +30,7 @@ export default function Home() {
         <Hero />
         <Features />
         <HowItWorks />
+        <Plans />
         <CallToAction />
       </main>
       <Footer />

@@ -38,7 +38,7 @@ O `bun start` pergunta três coisas:
    | `full` | o sistema inteiro | nada, é só abrir o site |
    | `banco de produção` | nada: abre o acesso ao banco do servidor (o mesmo que `bun db:connect`) | o DBeaver ou o `psql` |
 
-2. **É o seu primeiro acesso?** "Sim" cria o `.env` (se ainda não existir), roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não".
+2. **É o seu primeiro acesso?** "Sim" roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não". O `.env` é criado a partir do `.env.example` sempre que ainda não existir.
 3. **Quer popular o banco?** **Não** mantém os dados. **LOCAL** apaga o banco local e insere os dados de teste. **PROD** insere só os dados reais (tipos de plano e gêneros), sem apagar nada.
 
 Para pular as perguntas, passe as respostas como argumentos: `bun start backend`, `bun start frontend --seed=local` ou `bun start full --first`.
@@ -76,6 +76,7 @@ Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.
 | `bun dev` | Sobe a API em http://localhost:3333 e reinicia a cada mudança | Para trabalhar no backend |
 | `bun install` | Instala as dependências | Depois de um `git pull` que muda o `api/bun.lock` |
 | `bun run db:sync` | Lê o banco, atualiza o `schema.prisma` e gera o client do Prisma | Depois de criar ou receber uma migration |
+| `bun run db:erd` | Lê o banco e gera o diagrama ER em `docs/assets/modelo-er-gerado.svg`. Precisa do Docker. | Opcional localmente (o CI gera e commita sozinho no push) |
 | `bun run db:generate` | Só gera o client do Prisma, sem consultar o banco | Depois do `bun install` |
 | `bun run db:seed` | Apaga o banco local e insere os dados de teste | Para ter dados para testar ou para voltar a um estado limpo |
 | `bun run test` | Testes do domínio, sem banco | Antes de commitar |
@@ -149,7 +150,7 @@ Para essas contas, o cabeçalho traz a navegação principal: **Início**, **Pla
 
 Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo link **Histórico** do cabeçalho. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
 
-Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
+Para demonstrar a assinatura, comece pela página inicial sem entrar: a seção **Planos** mostra o Individual e o Família, com preço e número de pessoas. Depois cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
 
 ### Demo do plano Família
 

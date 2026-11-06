@@ -2,7 +2,17 @@
 
 O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_213000__Adiciona_capa_do_album.sql`).
 
+### Diagrama gerado do banco
+
+![Diagrama ER gerado do banco](assets/modelo-er-gerado.svg)
+
+Esta imagem sai do banco com `bun run db:erd` (veja [Banco de dados](banco-de-dados.md)), é atualizada automaticamente pelo CI a cada push e está sempre fiel a ele: tabelas, colunas, chaves e cardinalidades vêm do próprio Postgres. As tabelas do Better Auth e o histórico do Flyway ficam de fora.
+
+### Diagrama didático
+
 ![Diagrama ER do Zovic](assets/modelo-er.png)
+
+Esta é a versão feita à mão, com os verbos das relações, para explicar o modelo.
 
 ## Diagrama
 

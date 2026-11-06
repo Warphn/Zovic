@@ -15,6 +15,7 @@ import { SearchBar } from "@/components/search/search-bar";
 const NAV_LINKS = [
   { label: "Recursos", href: "/#recursos" },
   { label: "Como funciona", href: "/#como-funciona" },
+  { label: "Planos", href: "/#planos" },
   { label: "Contato", href: "/#contato" },
 ];
 

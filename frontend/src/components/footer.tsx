@@ -24,6 +24,9 @@ export default function Footer() {
           <SectionLink section="como-funciona" className="transition-colors hover:text-paper">
             Como funciona
           </SectionLink>
+          <SectionLink section="planos" className="transition-colors hover:text-paper">
+            Planos
+          </SectionLink>
         </nav>
 
         <p className="text-xs font-mono text-paper/40">© Zovic</p>
