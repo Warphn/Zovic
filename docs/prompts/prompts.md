@@ -179,3 +179,12 @@ A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e
 | 3 | Manda bala. | A rota `GET /api/musics/:id/audio` ([`get-music-audio.ts`](../../api/domain/use-cases/get-music-audio.ts)) com testes de integração, o `openapi.ts` e o Bruno; a fila em [`playback-store.ts`](../../frontend/src/lib/playback-store.ts); o motor [`playback-audio.tsx`](../../frontend/src/components/playback-audio.tsx) com [`audio-player.ts`](../../frontend/src/lib/audio-player.ts); a barra, o player e o botão [`add-to-queue-button.tsx`](../../frontend/src/components/add-to-queue-button.tsx) |
 
 A equipe decidiu cada regra na conversa de design e aprovou a spec e o plano antes da implementação. A IA conferiu cada passo com os testes, rodou a coleção do Bruno contra a API no Docker e deixou a conferência do som no navegador para o Victor.
+
+### 05/11/2026: diagrama ER gerado do banco
+
+Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do banco (tbls, SchemaSpy e D2 com o layout ELK) e comparou as imagens. O usuário escolheu o D2. Um subagente Claude Sonnet implementou o script a partir do protótipo aprovado.
+
+| # | Prompt (resumo) | Resultado |
+|---|---|---|
+| 1 | Gerar o diagrama ER a partir do banco, com tabelas agrupadas por área, PK, FK e pé de galinha, sem alterar a imagem feita à mão | Protótipo com tbls e D2, aprovado pelo usuário |
+| 2 | Implementar o `db:erd`: ler o Postgres com o `pg`, escrever o `.d2` e desenhar o `.svg` com o D2 em Docker, de forma determinística | [`api/scripts/db-erd.ts`](../../api/scripts/db-erd.ts), [`modelo-er-gerado.d2`](../assets/modelo-er-gerado.d2) e [`modelo-er-gerado.svg`](../assets/modelo-er-gerado.svg) |

@@ -14,6 +14,8 @@ jobs:
   api:
     name: API
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: api
@@ -31,6 +33,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -60,6 +64,21 @@ jobs:
           flyway/flyway:13.9.0
           -url=jdbc:postgresql://localhost:5432/zovic -user=zovic -password=zovic
           -connectRetries=10 -validateMigrationNaming=true migrate
+
+      - name: Gera diagrama ER (D2)
+        run: bun run db:erd
+
+      - name: Commita diagrama ER se mudou
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        working-directory: .
+        run: |
+          if ! git diff --quiet docs/assets/modelo-er-gerado.d2 docs/assets/modelo-er-gerado.svg; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/assets/modelo-er-gerado.d2 docs/assets/modelo-er-gerado.svg
+            git commit -m "chore(db): atualiza diagrama ER gerado"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
 
       # Os testes de assinatura precisam dos tipos de plano, que vêm do seed
       - run: bun run db:seed --env=prod
