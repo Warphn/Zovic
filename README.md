@@ -143,6 +143,8 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
+Depois do login, quem tem assinatura (ou é admin) cai na tela inicial, `/inicio`: as 10 músicas mais tocadas, as últimas ouvidas, as playlists da conta, os álbuns mais recentes e os gêneros. O álbum e o gênero abrem as páginas `/album/<id>` e `/genero/<id>`. Uma conta nova, sem histórico nem playlists, vê a parada e o convite para criar a primeira playlist.
+
 Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo item **Histórico** do menu da conta. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
 
 Para demonstrar a assinatura, cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
@@ -162,7 +164,8 @@ Menor de idade só se cadastra por convite do plano familiar. Quem já tem assin
 1. Como `admin@zovic.test`, cadastre em **Conteúdo** uma ou mais músicas com um MP3 de verdade. As músicas do seed não têm áudio.
 2. Entre com uma conta com plano, busque a música e toque. A barra mostra o tempo real, pula para o ponto clicado (ou 5 s pelas setas) e controla o volume.
 3. **Adicionar à fila** (o ícone ao lado de "Adicionar à playlist") põe a música no fim da fila. No `/player`, o × de uma carta a tira da fila. No fim de uma música, a próxima começa sozinha.
-4. Uma música do seed, removida pelo admin, ou explícita para um menor (`heitor.costa@zovic.test`) aparece como **Indisponível**, e a fila passa para a próxima.
+4. Na tela inicial, o ▶ sobre a capa de um álbum em **Novidades** toca o álbum inteiro. A barra e as cartas do `/player` mostram a capa do álbum da música.
+5. Uma música do seed, removida pelo admin, ou explícita para um menor (`heitor.costa@zovic.test`) aparece como **Indisponível**, e a fila passa para a próxima.
 
 ## Documentação
 

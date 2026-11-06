@@ -59,7 +59,7 @@ Na tela: `const { data, isPending, error } = useMyPlaylists()` e `apiErrorMessag
 | --- | --- |
 | `search.ts` | `GET /search` |
 | `playlists.ts` | `GET/POST /playlists`, `GET/PATCH/DELETE /playlists/:id` (a API ainda não devolve as músicas da playlist) |
-| `catalog.ts` | `GET /musics`, `GET /artists`, `GET /albums` (`useAlbums`), `GET /genres`, `POST /musics/:id/plays` (chamado pelo `PlaybackAudio` quando o som começa, uma vez por audição) e o caminho de `GET /musics/:id/audio` (`musicAudioPath`) |
+| `catalog.ts` | `GET /musics` (`useCatalogMusics`), `GET /artists`, `GET /albums` (`useAlbums`), `GET /genres`, `POST /musics/:id/plays` (chamado pelo `PlaybackAudio` quando o som começa, uma vez por audição) e o caminho de `GET /musics/:id/audio` (`musicAudioPath`). O `useCatalogMusics` e o `useAlbums` aceitam `{ enabled }`, para a barra só pedir o catálogo quando há uma música dele tocando |
 | `subscriptions.ts` | `GET /plans/me`, `POST /plans` (com o `kind`: `individual` ou `family`), `DELETE /plans/me`, o plano familiar (`GET /plans/me/members`, `POST /plans/me/invitations`, `DELETE /plans/me/invitations/:id`, `DELETE /plans/me/members/:userId`, `DELETE /plans/me/membership`) e os convites (`GET /invitations/:token`, `POST /invitations/:token/accept`). Veja os hooks abaixo. |
 | `history.ts` | `GET /history`: o histórico de reprodução da conta, uma entrada por música (`useHistory`). O `PlaybackAudio` invalida `historyKeys.all` a cada audição registrada. |
 | `admin.ts` | todas as de `/admin`: stats, usuários, reproduções por usuário, músicas (o cadastro em multipart, com o MP3), álbuns (o cadastro em multipart, com a capa, e a troca de capa), gêneros (só a criação) e artistas |

@@ -171,3 +171,13 @@ A equipe decidiu o escopo, o álbum opcional, o formato e o tamanho do arquivo e
 | 3 | Manda bala. | A rota `GET /api/musics/:id/audio` ([`get-music-audio.ts`](../../api/domain/use-cases/get-music-audio.ts)) com testes de integração, o `openapi.ts` e o Bruno; a fila em [`playback-store.ts`](../../frontend/src/lib/playback-store.ts); o motor [`playback-audio.tsx`](../../frontend/src/components/playback-audio.tsx) com [`audio-player.ts`](../../frontend/src/lib/audio-player.ts); a barra, o player e o botão [`add-to-queue-button.tsx`](../../frontend/src/components/add-to-queue-button.tsx) |
 
 A equipe decidiu cada regra na conversa de design e aprovou a spec e o plano antes da implementação. A IA conferiu cada passo com os testes, rodou a coleção do Bruno contra a API no Docker e deixou a conferência do som no navegador para o Victor.
+
+### 06/11/2026: tela inicial e páginas de gênero e álbum (HU-33)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Precisamos de uma landing page para o usuário depois do login: hoje é a tela de playlists, o que é ruim, já que um usuário novo não tem playlists nem nada do tipo. | Conversa de design: as seções (mais tocadas, ouvidas recentemente, playlists, novidades e gêneros), o endereço `/inicio`, o layout editorial e as páginas de gênero e de álbum, só no front. Resultado: a [spec](../superpowers/specs/2026-11-06-tela-inicial-design.md) |
+| 2 | Pode seguir, mas a miniatura da música no player deve ser a capa do álbum da música, assim como nas cartas. | A capa do álbum na barra e no `/player` entrou na spec e no [plano de implementação](../superpowers/plans/2026-11-06-tela-inicial.md), em 7 tarefas com os testes antes do código |
+| 3 | Manda bala. | As regras de seleção em [`home.ts`](../../frontend/src/lib/home.ts) e a capa da faixa em [`track-cover.ts`](../../frontend/src/lib/track-cover.ts), com testes; as páginas [`inicio/`](../../frontend/src/app/inicio/), [`genero/`](../../frontend/src/app/genero/) e [`album/`](../../frontend/src/app/album/); o redirecionamento depois do login e a capa na [barra](../../frontend/src/components/playback-bar.tsx) e no [player](../../frontend/src/app/player/page.tsx) |
+
+A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de artista e o número da faixa), e aprovou a spec e o plano antes da implementação. A IA conferiu cada tela por capturas do Chrome, com uma conta nova e com a do seed, e deixou a conferência no Opera para o Victor.
