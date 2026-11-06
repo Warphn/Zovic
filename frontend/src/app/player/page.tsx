@@ -18,7 +18,8 @@ import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 
 // Depth of the row: each track further down sits this much deeper and turns this much away
 const DEPTH_STEP_PX = 90
-const CURRENT_TILT_DEG = 8
+// Enough for the title and the play mark to follow the card's turn, not only its long edges
+const CURRENT_TILT_DEG = 16
 const QUEUE_TILT_DEG = 14
 // The current card is this many slots wide; the others are drawn at its size and scaled down
 // by it (square cards, so 2 slots fill the row's height)
