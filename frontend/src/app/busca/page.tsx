@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import Header from "@/components/header"
 import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SuggestionView } from "@/components/search/suggestion-renderers"
 import { PauseIcon, PlayIcon } from "@/components/icons"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
@@ -72,7 +73,7 @@ function SearchResults() {
     [search.results, search.resultsQuery]
   )
   const answered = Boolean(query.trim()) && search.resultsQuery === query.trim()
-  // What the last "Adicionar à playlist" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [added, setAdded] = React.useState<{ message: string; ok: boolean } | null>(null)
   const playback = usePlayback()
 
@@ -124,11 +125,14 @@ function SearchResults() {
                           onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                           title={result.title}
                           actions={
-                            <AddToPlaylistMenu
-                              musicId={Number(result.id)}
-                              title={result.title}
-                              onResult={(message, ok) => setAdded({ message, ok })}
-                            />
+                            <>
+                              <AddToQueueButton track={result.track} onResult={(message, ok) => setAdded({ message, ok })} />
+                              <AddToPlaylistMenu
+                                musicId={Number(result.id)}
+                                title={result.title}
+                                onResult={(message, ok) => setAdded({ message, ok })}
+                              />
+                            </>
                           }
                         >
                           <SuggestionView suggestion={result} query={search.resultsQuery} showKind={false} />

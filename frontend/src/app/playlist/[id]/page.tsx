@@ -37,6 +37,7 @@ import type { UserProfile } from "@/lib/comments-store"
 import { TrackComments } from "@/components/comments/track-comments"
 import { useLikedTracks } from "@/lib/likes-store"
 import { cn } from "@/lib/utils"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { LevelBars } from "@/components/playback-marks"
@@ -85,6 +86,8 @@ export default function PlaylistDetailPage() {
   // color is previewed on the page; nothing is saved until "Salvar"
   const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
+  // What the last "Adicionar à fila" did, announced to screen readers too
+  const [queued, setQueued] = React.useState<string | null>(null)
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
   // from this playlist, and starts this playlist when one of its tracks is played
@@ -328,6 +331,8 @@ export default function PlaylistDetailPage() {
               </div>
             </div>
 
+            {/* Always rendered, so the live region exists before the first message */}
+            <output className={queued ? "block py-2 text-xs text-muted-foreground" : "sr-only"}>{queued}</output>
             {reorderTracks.isError && (
               <p role="alert" className="py-2 text-xs text-destructive">
                 Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
@@ -441,6 +446,11 @@ export default function PlaylistDetailPage() {
                       <div className="pointer-events-none relative flex shrink-0 items-center gap-3">
                         <span className="w-10 text-right font-mono text-xs tabular-nums text-muted-foreground">
                           {track.duration}
+                        </span>
+
+                        {/* Content is click-through to the row; this button opts back in */}
+                        <span className="pointer-events-auto">
+                          <AddToQueueButton track={track} onResult={setQueued} />
                         </span>
 
                         {/* Comentários: visível para maiores de 18 */}
