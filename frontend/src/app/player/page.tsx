@@ -6,9 +6,12 @@ import Header from "@/components/header"
 import { getPlaylistAccentStyle } from "@/components/color-picker"
 import { ArrowRightIcon, CloseIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
+import { useAlbums, useCatalogMusics } from "@/lib/api/catalog"
+import { apiUrl } from "@/lib/api/client"
 import { useAudioPlayer } from "@/lib/audio-player"
 import { removeFromQueueAt, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
+import { coverUrlOfTrack } from "@/lib/track-cover"
 import { cn } from "@/lib/utils"
 import { LevelBars } from "@/components/playback-marks"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -44,6 +47,10 @@ export default function PlayerPage() {
   const currentIndex = playback?.currentIndex ?? 0
   const isPlaying = Boolean(playback?.isPlaying)
   const { unavailableTrackIds } = useAudioPlayer()
+  // One read of the cached catalog for every card; a queue of sample tracks needs none
+  const hasCatalogTrack = tracks.some((track) => /^\d+$/.test(track.id))
+  const { data: catalogMusics } = useCatalogMusics({ enabled: hasCatalogTrack })
+  const { data: albums } = useAlbums({ enabled: hasCatalogTrack })
 
   // Clicking the current track plays or pauses it; clicking any other track plays that one
   const onCardClick = (index: number) => {
@@ -212,6 +219,7 @@ export default function PlayerPage() {
                   // The same music can be queued twice: its position tells the cards apart
                   key={`${index}-${track.id}`}
                   track={track}
+                  coverUrl={coverUrlOfTrack(track.id, catalogMusics ?? [], albums ?? [])}
                   distance={index - currentIndex}
                   isPlaying={isPlaying && index === currentIndex}
                   isUnavailable={unavailableTrackIds.has(track.id)}
@@ -245,6 +253,8 @@ export default function PlayerPage() {
 
 interface TrackCardProps {
   track: Track
+  /** API path of the cover of the track's album; without one, the card shows the initials */
+  coverUrl: string | null
   /** Position relative to the current track: 0 is current, negative already went by */
   distance: number
   isPlaying: boolean
@@ -255,7 +265,7 @@ interface TrackCardProps {
   onRemove?: () => void
 }
 
-function TrackCard({ track, distance, isPlaying, isUnavailable, onClick, onRemove }: TrackCardProps) {
+function TrackCard({ track, coverUrl, distance, isPlaying, isUnavailable, onClick, onRemove }: TrackCardProps) {
   const isCurrent = distance === 0
   const isPast = distance < 0
   const isPrevious = distance === -1
@@ -280,7 +290,8 @@ function TrackCard({ track, distance, isPlaying, isUnavailable, onClick, onRemov
         // Older tracks left the row; keep them out of reach until they come back
         inert={isPast && !isPrevious}
         className={cn(
-          "group absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8 text-primary-foreground",
+          "group absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8",
+          coverUrl ? "text-white" : "text-primary-foreground",
           "shadow-[0_32px_60px_-24px_rgba(23,21,18,0.55)] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isPast && (isPrevious ? "opacity-0 sm:opacity-55 sm:hover:opacity-80" : "opacity-0")
         )}
@@ -291,8 +302,18 @@ function TrackCard({ track, distance, isPlaying, isUnavailable, onClick, onRemov
           opacity,
         }}
       >
-        {/* Printed frame, the same rule as on the sleeves of the playlist pages */}
-        <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
+        {coverUrl ? (
+          <>
+            {/* The album's cover fills the card; decoded off the main thread, so the cards keep moving */}
+            {/* oxlint-disable-next-line nextjs/no-img-element */}
+            <img src={apiUrl(coverUrl)} alt="" decoding="async" className="pointer-events-none absolute inset-0 size-full object-cover" />
+            {/* Darkens the bottom, where the title sits, so it reads over any cover */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+          </>
+        ) : (
+          // Printed frame, the same rule as on the sleeves of the playlist pages
+          <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
+        )}
 
         {/* Card-wide button: a click anywhere plays or pauses this track */}
         <button
@@ -321,8 +342,9 @@ function TrackCard({ track, distance, isPlaying, isUnavailable, onClick, onRemov
 
         {/* One layout for every card, at the current card's size; small cards are this at half size */}
         <div className="pointer-events-none relative flex h-full flex-col justify-between">
+          {/* With a cover, the cover is the art; the empty span keeps the title at the bottom */}
           <span className="select-none text-6xl leading-none font-medium tracking-[-0.03em]">
-            {getPlaylistInitials(track.album || track.title)}
+            {coverUrl ? null : getPlaylistInitials(track.album || track.title)}
           </span>
 
           <div className="flex items-end justify-between gap-4">

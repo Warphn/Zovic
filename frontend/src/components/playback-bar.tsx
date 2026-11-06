@@ -4,10 +4,12 @@ import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
+import { apiUrl } from "@/lib/api/client"
 import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { seekTo, setVolume, toggleMute, useAudioPlayer } from "@/lib/audio-player"
 import { formatDuration } from "@/lib/format-duration"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
+import { useTrackCover } from "@/lib/track-cover"
 import { cn } from "@/lib/utils"
 
 // Tracks played on their own use the default accent (--color-red in globals.css)
@@ -25,8 +27,10 @@ let playerReturnPath: string | null = null
 
 interface PlaybackBarProps {
   track: Track | undefined
-  /** Text on the mini cover (initials) */
+  /** Text on the mini cover (initials), shown when the track's album has no cover */
   coverLabel: string
+  /** API path of the cover of the track's album, if it has one */
+  coverUrl: string | null
   /** Color of the mini cover, the scrubber and the volume slider */
   color: string
   isPlaying: boolean
@@ -52,13 +56,13 @@ export function AppPlaybackBar() {
   const pagePlaylistId = /^\/playlist\/([^/]+)$/.exec(pathname)?.[1]
   const sourceId = playback ? (playback.origin?.playlistId ?? null) : pagePlaylistId
   const { data: sourcePlaylist } = usePlaylistData(sourceId)
-  if (HIDDEN_ON.has(pathname)) return null
-
   const pagePlaylist = playback ? null : sourcePlaylist
   const playlist = sourcePlaylist ?? null
   const tracks = playback ? playback.queue : (pagePlaylist?.tracks ?? [])
   const currentIndex = playback?.currentIndex ?? 0
   const track = tracks[currentIndex]
+  const coverUrl = useTrackCover(track?.id)
+  if (HIDDEN_ON.has(pathname)) return null
 
   // Moves within the queue (wrapping); with nothing playing yet, starts the page's playlist there
   const goTo = (index: number) => {
@@ -72,6 +76,7 @@ export function AppPlaybackBar() {
     <PlaybackBar
       track={track}
       coverLabel={getPlaylistInitials(playlist?.name ?? (track?.album || track?.title || ""))}
+      coverUrl={coverUrl}
       color={playlist?.color ?? DEFAULT_COLOR}
       isPlaying={Boolean(playback?.isPlaying)}
       onTogglePlay={() => (playback ? togglePlayback() : goTo(currentIndex))}
@@ -92,6 +97,7 @@ export function AppPlaybackBar() {
 export function PlaybackBar({
   track,
   coverLabel,
+  coverUrl,
   color,
   isPlaying,
   onTogglePlay,
@@ -130,12 +136,23 @@ export function PlaybackBar({
       {/* Left: Track Name & Mini Cover */}
       {/* Phones show only the cover, so the column reserves its width from sm up */}
       <div className="flex items-center gap-3 shrink-0 sm:w-1/4 sm:min-w-[140px]">
-        <div
-          className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
-          style={{ backgroundColor: color }}
-        >
-          <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
-        </div>
+        {coverUrl ? (
+          // Decorative: the track's title is printed right beside it
+          // oxlint-disable-next-line nextjs/no-img-element
+          <img
+            src={apiUrl(coverUrl)}
+            alt=""
+            decoding="async"
+            className="size-10 rounded-lg object-cover shrink-0 border border-black/10 shadow-2xs"
+          />
+        ) : (
+          <div
+            className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
+            style={{ backgroundColor: color }}
+          >
+            <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
+          </div>
+        )}
         <div className="min-w-0 hidden sm:block">
           <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
           <div className="text-[11px] text-muted-foreground truncate">{isUnavailable ? "Indisponível" : track?.artist}</div>
