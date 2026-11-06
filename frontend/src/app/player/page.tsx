@@ -209,9 +209,11 @@ export default function PlayerPage() {
             style={{ perspectiveOrigin: "calc(var(--pad) + var(--step) * var(--prev-slots)) 50%" }}
           >
             {/* Fixed height, the current card's size: the cards sit absolutely over their slots,
-                so the row would otherwise be only as tall as a slot */}
+                so the row would otherwise be only as tall as a slot. The row and the slots take
+                no clicks: they share the cards' 3D space, and the half of a card turned away
+                (behind the row's plane) would hand its clicks to the row instead of the card. */}
             <ul
-              className="h-80 sm:h-96 flex items-center gap-(--gap) transform-3d transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+              className="pointer-events-none h-80 sm:h-96 flex items-center gap-(--gap) transform-3d transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
               style={{ transform: `translateX(calc(var(--step) * (var(--prev-slots) - ${currentIndex})))` }}
             >
               {tracks.map((track, index) => (
@@ -285,12 +287,12 @@ function TrackCard({ track, coverUrl, distance, isPlaying, isUnavailable, onClic
 
   return (
     // The slot: keeps the row's spacing; its card is positioned over it
-    <li className="relative size-(--slot) shrink-0 transform-3d [--slot:calc(var(--step)-var(--gap))]">
+    <li className="pointer-events-none relative size-(--slot) shrink-0 transform-3d [--slot:calc(var(--step)-var(--gap))]">
       <div
         // Older tracks left the row; keep them out of reach until they come back
         inert={isPast && !isPrevious}
         className={cn(
-          "group absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8",
+          "group pointer-events-auto absolute top-1/2 left-0 -mt-(--slot) size-[calc(var(--slot)*2)] overflow-hidden rounded-[24px] border border-black/10 bg-primary p-8",
           coverUrl ? "text-white" : "text-primary-foreground",
           "shadow-[0_32px_60px_-24px_rgba(23,21,18,0.55)] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isPast && (isPrevious ? "opacity-0 sm:opacity-55 sm:hover:opacity-80" : "opacity-0")
