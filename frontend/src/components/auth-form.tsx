@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { getPlaylistInitials, INITIAL_PLAYLISTS } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { AlertIcon } from "@/components/icons"
+import { ZovicCat } from "@/components/zovic-cat"
 
 interface AuthShellProps {
   title: string
@@ -37,6 +38,8 @@ function Shelf() {
         <Sleeve color={back.color} initials={back.initials} className="absolute top-0 left-0 size-48 -translate-x-16 -translate-y-16 md:size-52" />
         <Sleeve color={middle.color} initials={middle.initials} className="absolute top-0 left-0 size-48 -translate-x-8 -translate-y-8 md:size-52" />
         <div className="relative">
+          {/* The cat lies on top of the front sleeve, its paws over the edge */}
+          <ZovicCat priority className="absolute bottom-full left-6 z-20 h-28 translate-y-3 md:h-32" />
           <RecordSleeve color={FRONT.color} initials={getPlaylistInitials(FRONT.name)} playing={false} />
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -233,9 +234,12 @@ export default function Header() {
             <div className="flex items-center gap-6">
               <Link
                 href={session ? "/inicio" : "/"}
-                className="rounded-sm text-lg font-semibold tracking-tight text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
-                Zovic
+                {/* Two drawings of the same logo: over a dark section the lettering turns to paper.
+                    Both load up front, so the swap never waits on a download */}
+                <Image src="/zovic-header.png" alt="Zovic" width={660} height={240} priority className="h-9 w-auto in-data-[over-dark]:hidden" />
+                <Image src="/zovic-header-dark.png" alt="Zovic" width={660} height={240} priority className="hidden h-9 w-auto in-data-[over-dark]:block" />
               </Link>
               {showMainNav && <MainNavBar className="hidden lg:flex" />}
             </div>
