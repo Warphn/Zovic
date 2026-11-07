@@ -3,13 +3,14 @@
 import * as React from "react"
 import { Check, Plus } from "lucide-react"
 import { Field, Notice } from "@/components/admin/panel"
+import { AlbumCoverImage } from "@/components/album-cover-image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { albumsOfArtists, MAX_COVER_BYTES, useCreateAlbum } from "@/lib/api/admin"
 import type { Album } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { cn } from "@/lib/utils"
-import { AlbumCoverImage, CoverField } from "./album-cover"
+import { CoverField } from "./album-cover"
 
 /** The API's lower bound for an album year (Album.MIN_YEAR); the upper one is the current year. */
 const MIN_ALBUM_YEAR = 1900

@@ -8,7 +8,8 @@ import { useSubscription } from "@/lib/api/subscriptions";
 import { planType } from "@/lib/subscription/rules";
 import { SiteLink } from "@/components/section-link";
 import { Menu } from "@base-ui/react/menu";
-import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, QueueIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { CloseIcon, ListIcon, LogOutIcon, MenuIcon, ShieldIcon, UserIcon } from "@/components/icons";
+import { MainNavBar, MainNavList } from "@/components/main-nav";
 import { SearchBar } from "@/components/search/search-bar";
 
 const NAV_LINKS = [
@@ -91,8 +92,6 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
   // --primary: on a playlist page --primary follows the playlist accent, and the admin cue should
   // look the same everywhere.
   const isAdmin = session.user.role === "admin";
-  // The history is part of the catalog, which is only open to subscribers and platform admins
-  const canUseHistory = Boolean(subscription) || isAdmin;
   const adminDot = <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--color-red)]" />;
 
   return (
@@ -138,18 +137,6 @@ function SessionControls({ onNavigate, className }: { onNavigate?: () => void; c
                 >
                   <ShieldIcon size={16} className="text-muted-foreground" />
                   Painel de admin
-                </Menu.Item>
-              )}
-              {canUseHistory && (
-                <Menu.Item
-                  onClick={() => {
-                    onNavigate?.();
-                    router.push("/historico");
-                  }}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-muted/40"
-                >
-                  <QueueIcon size={16} className="text-muted-foreground" />
-                  Histórico
                 </Menu.Item>
               )}
               <Menu.Item
@@ -203,6 +190,11 @@ export default function Header() {
   const showSearch = !isLanding && canSearch;
   // Signed out on an auth page the menu would be empty (no links, no search, no "Entrar")
   const hasMenu = isLanding || Boolean(session) || !AUTH_PATHS.has(pathname);
+  // The main links open the same catalog as the search. Below 1024 px they live in the menu,
+  // so the menu stays up to there; between 768 and 1023 px it holds only them, since the
+  // search and the account still fit in the bar.
+  const showMainNav = showSearch;
+  const menuHiddenFrom = showMainNav ? "lg:hidden" : "md:hidden";
 
   const menuAnimationClasses = open
     ? "animate-in fade-in fill-mode-forwards"
@@ -214,7 +206,7 @@ export default function Header() {
         <div
           aria-hidden="true"
           onClick={closeMenu}
-          className={`fixed inset-0 z-40 bg-black/50 duration-200 md:hidden ${menuAnimationClasses}`}
+          className={`fixed inset-0 z-40 bg-black/50 duration-200 ${menuHiddenFrom} ${menuAnimationClasses}`}
         />
       )}
 
@@ -236,48 +228,55 @@ export default function Header() {
 
         <div className={`relative z-10 ${menuMounted ? "" : "glass"}`}>
           <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6 md:px-8">
-            {/* Signed in, the logo leads home to the playlists; signed out, to the landing page,
-                since playlists are behind login */}
-            <Link
-              href={session ? "/playlist" : "/"}
-              className="rounded-sm text-lg font-semibold tracking-tight text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-            >
-              Zovic
-            </Link>
+            {/* Signed in, the logo leads to the home page (/inicio); signed out, to the landing page,
+                since the home page is behind login */}
+            <div className="flex items-center gap-6">
+              <Link
+                href={session ? "/inicio" : "/"}
+                className="rounded-sm text-lg font-semibold tracking-tight text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                Zovic
+              </Link>
+              {showMainNav && <MainNavBar className="hidden lg:flex" />}
+            </div>
 
             {/* Centered on the page, not between the logo and the session controls */}
             {showSearch && (
               <SearchBar className="absolute left-1/2 hidden w-full max-w-xs -translate-x-1/2 md:block lg:max-w-md" />
             )}
 
-            <nav className="hidden items-center gap-8 md:flex">
-              {isLanding &&
-                NAV_LINKS.map((link) => (
-                  <SiteLink key={link.href} href={link.href} className={navLinkClasses}>
-                    {link.label}
-                  </SiteLink>
-                ))}
-              {/* A straight divider of its own: a border on the link would follow its rounded focus corners */}
-              {isLanding && <span aria-hidden="true" className="h-4 w-px bg-border" />}
-              <SessionControls />
-            </nav>
+            {/* The account and the ☰ stay together on the right; between 768 and 1023 px both show */}
+            <div className="flex items-center gap-2">
+              <nav className="hidden items-center gap-8 md:flex">
+                {isLanding &&
+                  NAV_LINKS.map((link) => (
+                    <SiteLink key={link.href} href={link.href} className={navLinkClasses}>
+                      {link.label}
+                    </SiteLink>
+                  ))}
+                {/* A straight divider of its own: a border on the link would follow its rounded focus corners */}
+                {isLanding && <span aria-hidden="true" className="h-4 w-px bg-border" />}
+                <SessionControls />
+              </nav>
 
-            {hasMenu && (
-              <button
-                type="button"
-                onClick={toggleMenu}
-                aria-label={open ? "Fechar menu" : "Abrir menu"}
-                aria-expanded={open}
-                className="flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:hidden"
-              >
-                {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
-              </button>
-            )}
+              {hasMenu && (
+                <button
+                  type="button"
+                  onClick={toggleMenu}
+                  aria-label={open ? "Fechar menu" : "Abrir menu"}
+                  aria-expanded={open}
+                  className={`flex h-9 w-9 items-center justify-center rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${menuHiddenFrom}`}
+                >
+                  {open ? <CloseIcon size={20} /> : <MenuIcon size={20} />}
+                </button>
+              )}
+            </div>
           </div>
 
           {menuMounted && (
-            <div className={`px-6 pb-6 pt-2 duration-200 md:hidden ${menuAnimationClasses} space-y-4`}>
-              {showSearch && <SearchBar className="mb-2" />}
+            <div className={`px-6 pb-6 pt-2 duration-200 ${menuHiddenFrom} ${menuAnimationClasses} space-y-4`}>
+              {showSearch && <SearchBar className="mb-2 md:hidden" />}
+              {showMainNav && <MainNavList onNavigate={closeMenu} />}
               <nav className="flex flex-col">
                 {isLanding &&
                   NAV_LINKS.map((link) => (
@@ -290,7 +289,8 @@ export default function Header() {
                       {link.label}
                     </SiteLink>
                   ))}
-                <SessionControls onNavigate={closeMenu} className="py-3" />
+                {/* From 768 px the account sits in the bar */}
+                <SessionControls onNavigate={closeMenu} className="py-3 md:hidden" />
               </nav>
             </div>
           )}

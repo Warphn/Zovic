@@ -188,3 +188,14 @@ Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do 
 |---|---|---|
 | 1 | Gerar o diagrama ER a partir do banco, com tabelas agrupadas por área, PK, FK e pé de galinha, sem alterar a imagem feita à mão | Protótipo com tbls e D2, aprovado pelo usuário |
 | 2 | Implementar o `db:erd`: ler o Postgres com o `pg`, escrever o `.d2` e desenhar o `.svg` com o D2 em Docker, de forma determinística | [`api/scripts/db-erd.ts`](../../api/scripts/db-erd.ts), [`modelo-er-gerado.d2`](../assets/modelo-er-gerado.d2) e [`modelo-er-gerado.svg`](../assets/modelo-er-gerado.svg) |
+
+### 06/11/2026: tela inicial e páginas de gênero e álbum (HU-33)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Precisamos de uma landing page para o usuário depois do login: hoje é a tela de playlists, o que é ruim, já que um usuário novo não tem playlists nem nada do tipo. | Conversa de design: as seções (mais tocadas, ouvidas recentemente, playlists, novidades e gêneros), o endereço `/inicio`, o layout editorial e as páginas de gênero e de álbum, só no front. Resultado: a [spec](../superpowers/specs/2026-11-06-tela-inicial-design.md) |
+| 2 | Pode seguir, mas a miniatura da música no player deve ser a capa do álbum da música, assim como nas cartas. | A capa do álbum na barra e no `/player` entrou na spec e no [plano de implementação](../superpowers/plans/2026-11-06-tela-inicial.md), em 7 tarefas com os testes antes do código |
+| 3 | Manda bala. | As regras de seleção em [`home.ts`](../../frontend/src/lib/home.ts) e a capa da faixa em [`track-cover.ts`](../../frontend/src/lib/track-cover.ts), com testes; as páginas [`inicio/`](../../frontend/src/app/inicio/), [`genero/`](../../frontend/src/app/genero/) e [`album/`](../../frontend/src/app/album/); o redirecionamento depois do login e a capa na [barra](../../frontend/src/components/playback-bar.tsx) e no [player](../../frontend/src/app/player/page.tsx) |
+| 4 | Precisamos de uma barra de opções para ser possível navegar entre as páginas importantes do site (com a busca mantida como está hoje). | A navegação principal no cabeçalho, em [`main-nav.tsx`](../../frontend/src/components/main-nav.tsx): Início, Playlists, Histórico e Tocando. Ela mostra ícones a partir de 1024 px, porque os nomes não cabem ao lado da busca centralizada, e fica no menu ☰ em telas menores. O destaque da página atual tem teste em [`main-nav.ts`](../../frontend/src/lib/main-nav.ts) |
+
+A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de artista e o número da faixa), e aprovou a spec e o plano antes da implementação. A IA conferiu cada tela por capturas do Chrome, com uma conta nova e com a do seed, e deixou a conferência no Opera para o Victor.

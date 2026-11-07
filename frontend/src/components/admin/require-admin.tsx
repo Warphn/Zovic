@@ -14,7 +14,7 @@ function AdminOnly({ children }: { children: React.ReactNode }) {
   const isAdmin = session?.user.role === "admin"
 
   React.useEffect(() => {
-    if (session && !isAdmin) router.replace("/playlist")
+    if (session && !isAdmin) router.replace("/inicio")
   }, [session, isAdmin, router])
 
   if (!isAdmin) return <div className="min-h-screen bg-background" />

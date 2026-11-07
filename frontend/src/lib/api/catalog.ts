@@ -60,12 +60,18 @@ export const catalogKeys = {
   albums: () => [...catalogKeys.all, "albums"] as const,
 }
 
+/** Lets a caller hold a query back, e.g. until it knows the viewer may read the catalog. */
+interface CatalogQueryOptions {
+  enabled?: boolean
+}
+
 /** The whole catalog; it changes rarely (admin edits invalidate it), so it stays fresh until then. */
-export function useCatalogMusics() {
+export function useCatalogMusics({ enabled }: CatalogQueryOptions = {}) {
   return useQuery({
     queryKey: catalogKeys.musics(),
     queryFn: ({ signal }) => catalogApi.musics(undefined, signal),
     staleTime: Infinity,
+    enabled,
   })
 }
 
@@ -73,8 +79,8 @@ export function useArtists() {
   return useQuery({ queryKey: catalogKeys.artists(), queryFn: ({ signal }) => catalogApi.artists(signal) })
 }
 
-export function useAlbums() {
-  return useQuery({ queryKey: catalogKeys.albums(), queryFn: ({ signal }) => catalogApi.albums(signal) })
+export function useAlbums({ enabled }: CatalogQueryOptions = {}) {
+  return useQuery({ queryKey: catalogKeys.albums(), queryFn: ({ signal }) => catalogApi.albums(signal), enabled })
 }
 
 export function useGenres() {

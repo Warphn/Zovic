@@ -68,7 +68,7 @@ export function validateSignUp(input: SignUpInput, today: Date = new Date()): Fi
   })
 }
 
-export const DEFAULT_AFTER_LOGIN = "/playlist"
+export const DEFAULT_AFTER_LOGIN = "/inicio"
 
 // `next` comes from the URL, so only same-site paths are followed (no open redirect).
 export function safeRedirectPath(next: string | null): string {

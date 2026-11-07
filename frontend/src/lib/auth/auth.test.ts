@@ -41,10 +41,10 @@ describe("auth validation", () => {
 
   it("only follows same-site relative redirects", () => {
     expect(safeRedirectPath("/playlist/pl-1")).toBe("/playlist/pl-1")
-    expect(safeRedirectPath(null)).toBe("/playlist")
-    expect(safeRedirectPath("https://evil.example")).toBe("/playlist")
-    expect(safeRedirectPath("//evil.example")).toBe("/playlist")
-    expect(safeRedirectPath("/\\evil.example")).toBe("/playlist")
+    expect(safeRedirectPath(null)).toBe("/inicio")
+    expect(safeRedirectPath("https://evil.example")).toBe("/inicio")
+    expect(safeRedirectPath("//evil.example")).toBe("/inicio")
+    expect(safeRedirectPath("/\\evil.example")).toBe("/inicio")
     expect(safeRedirectPath("/convite/K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA")).toBe(
       "/convite/K3o1g8m2uJ0w5kq9Zc4vYd7R1sHn6LxPa2TbEfWiQMA"
     )
