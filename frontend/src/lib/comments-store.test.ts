@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { calculateIsUnderage } from "./user-store.ts"
-import { formatTime } from "./comments-store.ts"
+import { calculateIsUnderage, formatTime } from "./comments-store.ts"
 
 describe("Frontend Stores & Helpers", () => {
   it("formata segundos em mm:ss", () => {
@@ -26,4 +25,3 @@ describe("Frontend Stores & Helpers", () => {
     expect(calculateIsUnderage("invalido")).toBe(true)
   })
 })
-

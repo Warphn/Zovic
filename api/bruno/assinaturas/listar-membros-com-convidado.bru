@@ -1,0 +1,24 @@
+meta {
+  name: Listar membros (com o convidado)
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{baseUrl}}/api/plans/me/members
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const member = res.getBody().members.find((item) => !item.isManager);
+  bru.setVar("removedUserId", member.id);
+}
+
+tests {
+  test("responde 200 com 2 membros e 2 vagas livres", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().members).to.have.length(2);
+    expect(res.getBody().freeSlots).to.equal(2);
+  });
+}

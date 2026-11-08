@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label"
 import {
   getPlaylistInitials,
   MAX_PLAYLIST_NAME_LENGTH,
+  type PlaylistDraft,
   playlistChanges,
   usePlaylistData,
 } from "@/lib/playlist-store"
@@ -47,13 +48,6 @@ import {
   SearchIcon,
 } from "@/components/icons"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
-
-// The editable fields of a playlist while the edit dialog is open
-type PlaylistDraft = {
-  name: string
-  isPrivate: boolean
-  color: React.ComponentProps<typeof ColorPicker>["color"]
-}
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()

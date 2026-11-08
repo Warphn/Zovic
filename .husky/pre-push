@@ -1,0 +1,33 @@
+# Roda antes de todo `git push` e cancela o push se algo falhar.
+# Numa emergência dá para pular com `git push --no-verify`, mas evite.
+set -e
+
+step() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
+skip() { printf '\n\033[33m⚠ %s\033[0m\n' "$1"; }
+
+if [ -d api/node_modules ]; then
+  step "api: typecheck"
+  bun run --cwd api typecheck
+
+  step "api: testes de domínio"
+  bun run --cwd api test
+
+  # Os testes de integração precisam do banco: só rodam se o container db estiver no ar.
+  if docker compose ps --status running --services 2>/dev/null | grep -qx db; then
+    step "api: testes de integração"
+    bun run --cwd api test:integration
+  else
+    skip "api: banco fora do ar, testes de integração pulados (suba com: docker compose up -d db)"
+  fi
+else
+  skip "api: dependências não instaladas, testes pulados (rode bun install em api/)"
+fi
+
+if [ -d frontend/node_modules ]; then
+  step "frontend: testes"
+  bun run --cwd frontend test
+else
+  skip "frontend: dependências não instaladas, testes pulados (rode bun install em frontend/)"
+fi
+
+printf '\n\033[32m✔ Tudo certo: typecheck e testes passaram. Seguindo com o push.\033[0m\n\n'

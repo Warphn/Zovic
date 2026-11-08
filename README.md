@@ -1,107 +1,182 @@
 # Zovic
 
-O projeto consiste em um site para streaming de músicas.
+Plataforma de streaming de música. API em Bun + Express + PostgreSQL e front em Next.js.
 
-## Tecnologias
+O repositório tem dois projetos, `api/` e `frontend/`. A raiz guarda o que é comum aos dois: o `docker-compose.yml`, o `.env` e os scripts `bun start` e `bun stop`.
 
-- **Backend:** TypeScript, Express, Joi
-- **Frontend:** TypeScript, Next.js
-- **Banco de dados:** PostgreSQL
-- **Migrations:** Flyway
-- **ORM:** Prisma (só o client; a estrutura do banco é do Flyway)
-- **Ferramentas:** Bun (runtime e pacotes), Docker, Oxlint
+## Pré-requisitos
 
-## Rodando o projeto
+- [Bun](https://bun.sh), na versão do campo `packageManager` do `package.json`.
+- Um runtime de Docker aberto: Docker Desktop, OrbStack ou Colima.
 
-Pré-requisitos: [Bun](https://bun.sh) e um runtime de Docker (OrbStack, Docker Desktop ou Colima).
+## Primeira vez
 
-O repositório tem dois projetos independentes, `api/` e `frontend/`. O `docker compose` roda sempre **na raiz**; o `bun dev` roda **dentro da pasta** do projeto.
-
-### Jeito rápido
-
-Logo depois de clonar, na raiz, uma vez só:
+Na raiz, logo depois de clonar:
 
 ```bash
-bun install    # hooks de git e o menu do bun start
+bun install          # instala os hooks de git e o menu do bun start
+bun start            # responda "Sim" em "É o seu primeiro acesso?"
 ```
 
-Depois, sempre que for trabalhar, também na raiz:
+No primeiro acesso, o `bun start` cria o `.env` a partir do `.env.example`, roda o `bun install` em `api/` e `frontend/`, gera o client do Prisma, sobe o Docker e popula o banco com dados de teste.
+
+## Dia a dia
 
 ```bash
-bun start      # pergunta o ambiente, se é o primeiro acesso e se quer popular o banco
-bun stop       # para todos os containers (o banco continua salvo)
+bun start            # sobe o ambiente
+bun stop             # para todos os containers (o banco continua salvo)
 ```
 
-O `bun start` faz três perguntas:
+O `bun start` pergunta três coisas:
 
-| Pergunta | Opções |
-| --- | --- |
-| Cê vai fazer o que, Zé? | `frontend`, `backend` ou `full` |
-| É o seu primeiro acesso? | Se sim, cria o `.env`, roda o `bun install` do que for preciso e gera o client do Prisma |
-| Quer popular o banco? | **Não**, **LOCAL** (dados de teste; apaga o banco local antes) ou **PROD** (só os dados reais, sem apagar nada) |
+1. **O que você vai fazer?** Escolha o que vai editar. Isso roda na sua máquina, e o resto roda no Docker:
 
-Depois ele sobe o Docker e, se você escolheu um seed, espera as migrations terminarem e popula o banco. No primeiro acesso, a resposta padrão do seed é LOCAL, já que o banco começa vazio.
+   | Opção | O Docker sobe | Você roda depois |
+   | --- | --- | --- |
+   | `backend` | banco e migrations | `cd api && bun dev` |
+   | `frontend` | banco, migrations e API | `cd frontend && bun dev` |
+   | `full` | o sistema inteiro | nada, é só abrir o site |
+   | `banco de produção` | nada: abre o acesso ao banco do servidor (o mesmo que `bun db:connect`) | o DBeaver ou o `psql` |
 
-Para pular as perguntas, passe tudo nos argumentos: `bun start backend`, `bun start backend --first` ou `bun start frontend --seed=local`. Sem `--seed`, nada é populado.
+2. **É o seu primeiro acesso?** "Sim" roda o `bun install` e gera o client do Prisma. Nas outras vezes, responda "Não". O `.env` é criado a partir do `.env.example` sempre que ainda não existir.
+3. **Quer popular o banco?** **Não** mantém os dados. **LOCAL** apaga o banco local e insere os dados de teste. **PROD** insere só os dados reais (tipos de plano e gêneros), sem apagar nada.
 
-As seções abaixo mostram o que o script faz por baixo, para quem preferir rodar à mão.
-
-### Primeira vez
-
-```bash
-cp .env.example .env
-bun install                      # na raiz: hooks de git e o menu do bun start
-```
-
-### Backend
-
-```bash
-cd api && bun install            # 1ª vez e quando o api/bun.lock mudar
-bun run db:generate              # em api/: gera o client do Prisma (1ª vez e quando o schema mudar)
-```
-
-```bash
-docker compose up                # terminal 1, na raiz: banco + migrations
-bun run db:seed                  # terminal 2, em api/ (opcional): popula o banco com dados de teste
-bun dev                          # terminal 2, em api/: API com reload
-```
-
-### Frontend
-
-```bash
-cd frontend && bun install       # 1ª vez e quando o frontend/bun.lock mudar
-```
-
-```bash
-docker compose --profile frontend up --build   # terminal 1, na raiz: banco + migrations + API
-bun dev                                        # terminal 2, em frontend/: Next com hot reload
-```
-
-Para ter dados no banco, popule pela `api/`. Isso exige instalar as dependências dela uma vez:
-
-```bash
-cd api && bun install && bun run db:generate && bun run db:seed
-```
-
-O `--build` refaz a imagem da API; sem mudanças no backend, pode omitir.
+Para pular as perguntas, passe as respostas como argumentos: `bun start backend`, `bun start frontend --seed=local` ou `bun start full --first`.
 
 ### Endereços
 
-| Serviço  | URL                     |
-| -------- | ----------------------- |
-| Frontend | http://localhost:3000   |
-| API      | http://localhost:3333   |
-| Postgres | localhost:5432          |
+| Serviço | Endereço |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| API | http://localhost:3333 |
+| Swagger (documentação das rotas) | http://localhost:3333/docs |
+| Postgres | `localhost:5432` (usuário, senha e banco: `zovic`) |
 
-Mais detalhes (adicionar libs, variáveis e serviços): [docs/docker.md](docs/docker.md).
+Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
 
-Migrations, Prisma, seed e como ver o banco: [docs/banco-de-dados.md](docs/banco-de-dados.md).
+**Arquivos enviados pelo painel.** Os MP3 das músicas ficam em `AUDIO_DIR`, e as capas dos álbuns em `COVER_DIR`. Com `bun dev`, os padrões são `api/storage/audio/` e `api/storage/covers/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam nos volumes `audio` e `covers`, em `/data/audio` e `/data/covers`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esses volumes junto com o banco.
 
-### Lint
+## Comandos
 
-Os dois projetos usam [Oxlint](https://oxc.rs), configurado no `.oxlintrc.json` de cada pasta. Ele roda sozinho no pre-commit, só nos arquivos do commit, e bloqueia o commit se houver erro.
+### Na raiz
 
-```bash
-bun run lint       # em api/ ou frontend/
-bun run lint:fix   # corrige o que for automático
-```
+| Comando | O que faz |
+| --- | --- |
+| `bun start` | Sobe o ambiente de desenvolvimento (veja [Dia a dia](#dia-a-dia)) |
+| `bun stop` | Para todos os containers. Os dados do banco continuam salvos. |
+| `bun admin:promote <email>` | Torna um usuário admin. Com `--revoke`, volta a ser assinante. Grava no banco do `.env`. |
+| `bun db:connect` | Abre o acesso ao banco de produção em `localhost:15432` (veja [Banco de produção](docs/banco-de-dados.md#banco-de-produção)) |
+| `bun server` | Opera o servidor de produção. Só faz sentido no servidor (veja [Servidor de produção](docs/servidor.md)). |
+| `bun db:member` | Cria e remove os usuários da equipe no banco de produção. Também só roda no servidor. |
+
+### Em `api/`
+
+| Comando | O que faz | Quando rodar |
+| --- | --- | --- |
+| `bun dev` | Sobe a API em http://localhost:3333 e reinicia a cada mudança | Para trabalhar no backend |
+| `bun install` | Instala as dependências | Depois de um `git pull` que muda o `api/bun.lock` |
+| `bun run db:sync` | Lê o banco, atualiza o `schema.prisma` e gera o client do Prisma | Depois de criar ou receber uma migration |
+| `bun run db:erd` | Lê o banco e gera o diagrama ER em `docs/assets/modelo-er-gerado.svg`. Precisa do Docker. | Opcional localmente (o CI gera e commita sozinho no push) |
+| `bun run db:generate` | Só gera o client do Prisma, sem consultar o banco | Depois do `bun install` |
+| `bun run db:seed` | Apaga o banco local e insere os dados de teste | Para ter dados para testar ou para voltar a um estado limpo |
+| `bun run test` | Testes do domínio, sem banco | Antes de commitar |
+| `bun run test:integration` | Testes das rotas e dos repositórios, no Postgres (precisa do banco no ar e do seed, LOCAL ou PROD) | Antes de commitar uma mudança no banco ou nas rotas |
+| `bun run typecheck` | Confere os tipos do TypeScript | Antes de commitar |
+| `bun run lint` | Procura problemas no código. `lint:fix` corrige o que for automático. | Antes de commitar |
+
+### Em `frontend/`
+
+| Comando | O que faz | Quando rodar |
+| --- | --- | --- |
+| `bun dev` | Sobe o Next em http://localhost:3000, com hot reload | Para trabalhar no front |
+| `bun install` | Instala as dependências | Depois de um `git pull` que muda o `frontend/bun.lock` |
+| `bun run test` | Testes do front | Antes de commitar |
+| `bun run lint` | Procura problemas no código. `lint:fix` corrige o que for automático. | Antes de commitar |
+
+### Docker (na raiz)
+
+O `bun start` e o `bun stop` já chamam o Docker por você. Estes comandos servem para investigar algum problema:
+
+| Comando | O que faz |
+| --- | --- |
+| `docker compose ps` | Mostra o que está rodando |
+| `docker compose logs -f api` | Acompanha os logs de um serviço (`db`, `flyway`, `api` ou `web`) |
+| `docker compose up flyway` | Aplica as migrations novas no banco local |
+| `docker compose down -v` | Para tudo e **apaga o banco local**. O próximo `bun start` recria o banco do zero. |
+
+## Situações comuns
+
+**Fiz `git pull` e algo parou de funcionar.** Rode `bun install` na pasta cujo `bun.lock` mudou. Se chegou uma migration nova, rode `bun start`, que a aplica no banco, e depois `bun run db:generate` em `api/`, para o client do Prisma acompanhar o `schema.prisma` novo. Se a mudança foi no backend e você usa o `frontend`, rode `bun start frontend` de novo, porque ele refaz a imagem da API.
+
+**Quero o banco limpo, com os dados de teste.** Rode `bun start` e escolha **LOCAL**. Se o banco estiver quebrado (uma migration que falhou pela metade, por exemplo), rode `docker compose down -v` antes.
+
+**Criei uma migration.** Crie o arquivo em `db/migrations/` com o nome no padrão, rode `docker compose up flyway` e depois `bun run db:sync` em `api/`. As regras estão em [Banco de dados](docs/banco-de-dados.md#migrations-flyway).
+
+**Vou adicionar uma biblioteca.** Na pasta do projeto, `bun add nome-da-lib`, e commite o `package.json` e o `bun.lock` juntos. Combine a dependência nova com o time antes.
+
+**O `git push` foi cancelado.** Antes de todo push, o hook roda o typecheck e os testes. Os testes de integração só rodam se o banco estiver no ar. Corrija o que falhou e tente de novo. O `git push --no-verify` pula o hook, mas é só para emergências.
+
+**O commit foi bloqueado.** O pre-commit roda o lint nos arquivos do commit. Rode `bun run lint:fix` na pasta do projeto e corrija o resto à mão.
+
+## Contas de teste e fluxo do admin
+
+Depois do seed LOCAL, toda conta de teste entra com o email `nome.sobrenome@zovic.test`, em minúsculas e sem acentos, e a senha `zovic123`.
+
+| Conta | Para que serve |
+| --- | --- |
+| `admin@zovic.test`, senha `admin` | Admin padrão, sem plano. Só existe no seed LOCAL. |
+| `elisa.andrade@zovic.test` | Admin com plano (Individual Elisa) |
+| `ana.andrade@zovic.test` | Gestora da Família Andrade (plano cheio, 4 pessoas) |
+| `bruno.andrade@zovic.test` | Membro da Família Andrade |
+| `felipe.costa@zovic.test` | Gestor da Família Costa |
+| `gabriela.costa@zovic.test` | Membro da Família Costa |
+| `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade, membros da Família Costa (plano cheio) |
+
+Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três abas:
+
+- **Visão geral:** usuários, reproduções, as 10 músicas mais tocadas e as reproduções por gênero.
+- **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
+- **Conteúdo:** cria, edita e remove músicas, álbuns e artistas.
+  - **Música:** o cadastro pede o arquivo MP3 (até 20 MB), e a duração é lida do arquivo. Ela também tem álbum (opcional), gêneros e a marca de conteúdo explícito. As músicas do seed não têm áudio e aparecem como "sem áudio".
+  - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
+  - **Álbuns:** aparecem em cards, com a capa, o ano, os artistas e quantas faixas têm. Todo álbum novo pede nome, artistas, ano e a imagem de capa (JPEG, PNG ou WebP, até 2 MB), que pode ser trocada depois. Os álbuns do seed não têm capa e mostram as iniciais.
+  - **Álbum da música:** o formulário de música mostra as capas dos álbuns dos artistas marcados, e dá para criar um álbum novo ali mesmo.
+
+Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
+
+Depois do login, quem tem assinatura (ou é admin) cai na tela inicial, `/inicio`: as 10 músicas mais tocadas, as últimas ouvidas, as playlists da conta, os álbuns mais recentes e os gêneros. O álbum e o gênero abrem as páginas `/album/<id>` e `/genero/<id>`. Uma conta nova, sem histórico nem playlists, vê a parada e o convite para criar a primeira playlist.
+
+Para essas contas, o cabeçalho traz a navegação principal: **Início**, **Playlists**, **Histórico** e **Tocando** (`/player`). A partir de 1024 px, os links aparecem como ícones ao lado do logo, e o nome aparece ao passar o mouse. Em telas menores, eles ficam no menu ☰.
+
+Quem tem assinatura (ou é admin) vê as músicas já ouvidas em `/historico`, pelo link **Histórico** do cabeçalho. Cada música aparece uma vez, com a última reprodução no topo. Uma música removida pelo admin continua na lista como **Indisponível**.
+
+Para demonstrar a assinatura, comece pela página inicial sem entrar: a seção **Planos** mostra o Individual e o Família, com preço e número de pessoas. Depois cadastre uma conta nova, porque todo usuário do seed já tem plano: ela cai em `/planos` ao abrir o catálogo, assina e passa a acessá-lo. Para ver os dois papéis do plano familiar, entre como `ana.andrade@zovic.test` (gestora) ou `bruno.andrade@zovic.test` (membro).
+
+### Demo do plano Família
+
+1. Cadastre uma conta de maior de idade e, em `/planos`, assine o **Família**. Em `/meu-plano` você é o gestor, com 1 de 4 vagas ocupadas.
+2. Em **Convidar**, informe o email de quem vai entrar. O sistema não envia email: copie o link (`/convite/<token>`) do diálogo. Ele aparece só nessa hora. Se perder, cancele o convite e convide de novo.
+3. Abra o link numa janela anônima. Sem conta, **Criar conta** abre o cadastro com o email do convite já preenchido e sem poder trocá-lo. A conta nasce como membro do plano e abre o catálogo. Quem já tem conta com esse email entra e clica em **Aceitar**.
+4. Para ver a regra dos menores, use uma data de nascimento de menor de 18 anos no cadastro do convite: só assim a conta é criada. Sem convite, o cadastro de um menor é recusado.
+5. De volta ao gestor, **Remover** tira o membro, e o membro pode **Sair do plano**. Nos dois casos o acesso acaba na hora e a vaga volta.
+
+Menor de idade só se cadastra por convite do plano familiar. Quem já tem assinatura ativa não aceita um convite.
+
+### Demo do player
+
+1. Como `admin@zovic.test`, cadastre em **Conteúdo** uma ou mais músicas com um MP3 de verdade. As músicas do seed não têm áudio.
+2. Entre com uma conta com plano, busque a música e toque. A barra mostra o tempo real, pula para o ponto clicado (ou 5 s pelas setas) e controla o volume.
+3. **Adicionar à fila** (o ícone ao lado de "Adicionar à playlist") põe a música no fim da fila. No `/player`, o × de uma carta a tira da fila. No fim de uma música, a próxima começa sozinha.
+4. Na tela inicial, o ▶ sobre a capa de um álbum em **Novidades** toca o álbum inteiro. A barra e as cartas do `/player` mostram a capa do álbum da música.
+5. Uma música do seed, removida pelo admin, ou explícita para um menor (`heitor.costa@zovic.test`) aparece como **Indisponível**, e a fila passa para a próxima.
+
+## Documentação
+
+| Documento | O que tem |
+| --- | --- |
+| [API](docs/api.md) | Login, variáveis do `.env`, rotas e regras da busca e das playlists |
+| [Banco de dados](docs/banco-de-dados.md) | Migrations, Prisma, seed e como acessar o banco local e o de produção |
+| [Ambiente com Docker](docs/docker.md) | Como adicionar uma biblioteca, uma variável de ambiente ou um serviço |
+| [Servidor de produção](docs/servidor.md) | Como o servidor funciona e como operá-lo |
+| [Modelo ER](docs/modelo-er.md) e [Models](docs/models.md) | O modelo de dados e as entidades do domínio |
+| [CLAUDE.md](CLAUDE.md) | Padrões de código, commits, branches, PRs e o board |

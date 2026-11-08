@@ -43,7 +43,8 @@ export const seedPlaylists: Seeder["run"] = async (tx) => {
             ...playlist.members.map((name) => ({ userId: idOf(userIds, name), isAdmin: false })),
           ],
         },
-        musics: { create: musics.map((musicId) => ({ musicId })) },
+        // Na ordem sorteada, entrando no dia em que a playlist foi criada.
+        musics: { create: musics.map((musicId, position) => ({ musicId, position, addedAt: day(20 + i) })) },
       },
     });
   }

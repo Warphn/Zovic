@@ -1,0 +1,17 @@
+meta {
+  name: Consultar convite usado
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/invitations/{{leaverToken}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404, porque o link é de uso único", function () {
+    expect(res.getStatus()).to.equal(404);
+  });
+}

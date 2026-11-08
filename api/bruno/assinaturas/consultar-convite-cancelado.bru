@@ -1,0 +1,18 @@
+meta {
+  name: Consultar convite cancelado
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/invitations/{{canceledToken}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 404, porque o link morreu", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().error).to.equal("NOT_FOUND");
+  });
+}

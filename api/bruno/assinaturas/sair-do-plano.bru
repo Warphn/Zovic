@@ -1,0 +1,17 @@
+meta {
+  name: Sair do plano
+  type: http
+  seq: 22
+}
+
+delete {
+  url: {{baseUrl}}/api/plans/me/membership
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Pôr música sem ser admin
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicId": {{musicB}}
+  }
+}
+
+docs {
+  A playlist é pública, então o Bruno Andrade a vê (e vê as músicas), mas não é admin dela.
+}
+
+tests {
+  test("responde 403", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().error).to.equal("FORBIDDEN");
+  });
+}

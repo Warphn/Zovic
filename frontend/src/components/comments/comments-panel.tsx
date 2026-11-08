@@ -5,12 +5,10 @@ import { CommentIcon } from "@/components/comments/comment-icon"
 import { TrackComments } from "@/components/comments/track-comments"
 import { PauseIcon, PlayIcon } from "@/components/icons"
 import { useSession } from "@/lib/auth/client"
+import type { UserProfile } from "@/lib/comments-store"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import type { Track } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
-
-// The user shape <TrackComments> expects
-type UserProfile = NonNullable<React.ComponentProps<typeof TrackComments>["user"]>
 
 const DEFAULT_PANEL_HEIGHT = 540
 const MIN_PANEL_HEIGHT = 260

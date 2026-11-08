@@ -130,7 +130,7 @@ export default function AlbumPage() {
                     <TrackLikeButton trackId={track.id} />
                   </>
                 }
-                >
+              >
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
                   <span className="block min-w-0">

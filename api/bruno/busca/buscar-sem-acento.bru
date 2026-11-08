@@ -1,0 +1,40 @@
+meta {
+  name: Buscar sem acento
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=MARE
+  body: none
+  auth: none
+}
+
+params:query {
+  q: MARE
+}
+
+docs {
+  "MARE" acha o artista "Maré Alta". Nas músicas, "Maresia" vem primeiro (o nome começa com o termo);
+  depois as do Maré Alta, como "Ressaca", encontradas pelo nome do artista.
+}
+
+tests {
+  test("responde 200 com os três grupos", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.all.keys("musics", "artists", "playlists");
+  });
+
+  test("acha o artista apesar do acento e das maiúsculas", function () {
+    expect(res.getBody().artists[0]).to.include({ name: "Maré Alta" });
+  });
+
+  test("põe primeiro a música cujo nome começa com o termo", function () {
+    expect(res.getBody().musics[0]).to.include({ name: "Maresia" });
+  });
+
+  test("acha música pelo nome do artista", function () {
+    const ressaca = res.getBody().musics.find((m) => m.name === "Ressaca");
+    expect(ressaca.artists.map((a) => a.name)).to.deep.equal(["Maré Alta"]);
+  });
+}

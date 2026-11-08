@@ -1,0 +1,28 @@
+meta {
+  name: Login do admin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "email": "admin@zovic.test",
+    "password": "admin"
+  }
+}
+
+tests {
+  test("responde 200 e guarda o cookie de sessão", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

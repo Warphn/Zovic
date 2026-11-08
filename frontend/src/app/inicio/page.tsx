@@ -161,12 +161,12 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
                 actions={
-                <>
-                  <AddToQueueButton track={track} onResult={onAnnounce} />
-                  <TrackCommentsButton track={track} />
-                  <TrackLikeButton trackId={track.id} />
-                </>
-              }
+                  <>
+                    <AddToQueueButton track={track} onResult={onAnnounce} />
+                    <TrackCommentsButton track={track} />
+                    <TrackLikeButton trackId={track.id} />
+                  </>
+                }
               >
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">

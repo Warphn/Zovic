@@ -1,0 +1,26 @@
+meta {
+  name: Trocar a capa do álbum
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/admin/albums/{{albumId}}/cover
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:multipart-form {
+  cover: @file(fixtures/capa.png)
+}
+
+tests {
+  test("responde 200 com a capa", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().hasCover).to.equal(true);
+  });
+}

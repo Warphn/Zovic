@@ -1,4 +1,9 @@
-/** Usuários fictícios (LOCAL). Os dois últimos têm soft delete. */
+/**
+ * Usuários fictícios (LOCAL). Os dois últimos têm soft delete. Elisa é admin; Heitor e Isabela
+ * são menores de idade.
+ * Todos ganham credenciais: email `nome.sobrenome@zovic.test` (sem acentos) e senha `zovic123`.
+ */
+import { hashPassword } from "better-auth/crypto";
 import { day, type Seeder } from "./support.ts";
 
 export const USERS = [
@@ -6,7 +11,7 @@ export const USERS = [
   { name: "Bruno Andrade", birthdate: "1992-07-30" },
   { name: "Carla Andrade", birthdate: "2001-11-05" },
   { name: "Diego Andrade", birthdate: "2004-02-19" },
-  { name: "Elisa Andrade", birthdate: "1968-09-23" },
+  { name: "Elisa Andrade", birthdate: "1968-09-23", role: "admin" },
   { name: "Felipe Costa", birthdate: "1990-05-14" },
   { name: "Gabriela Costa", birthdate: "1993-12-02" },
   { name: "Heitor Costa", birthdate: "2010-06-28" },
@@ -24,15 +29,43 @@ export const USERS = [
   { name: "Vitória Campos", birthdate: "1997-01-21", deleted: true },
 ] as const;
 
+export const SEED_PASSWORD = "zovic123";
+
+/** "Olívia Santos" → "olivia.santos@zovic.test". */
+export function seedEmail(name: string): string {
+  const local = name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, ".");
+  return `${local}@zovic.test`;
+}
+
 export const seedUsers: Seeder["run"] = async (tx) => {
   await tx.user.createMany({
     data: USERS.map((user, i) => ({
       name: user.name,
+      email: seedEmail(user.name),
       birthdate: new Date(user.birthdate),
+      role: "role" in user ? user.role : "assinante",
       createdAt: day(i),
       deletedAt: "deleted" in user ? day(60 + i) : null,
     })),
   });
+
+  // Conta de credencial do jeito que o Better Auth espera (provider "credential" e accountId
+  // igual ao id do usuário). O hash usa a função do próprio Better Auth e é calculado uma vez.
+  const passwordHash = await hashPassword(SEED_PASSWORD);
+  const created = await tx.user.findMany({ select: { id: true } });
+  await tx.account.createMany({
+    data: created.map((user) => ({
+      userId: user.id,
+      accountId: String(user.id),
+      providerId: "credential",
+      password: passwordHash,
+    })),
+  });
+
   const deleted = USERS.filter((user) => "deleted" in user).length;
-  return `${USERS.length} usuários (${deleted} com soft delete)`;
+  return `${USERS.length} usuários (${deleted} com soft delete, 1 admin), todos com login (senha ${SEED_PASSWORD})`;
 };

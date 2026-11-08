@@ -14,19 +14,27 @@
     "db:validate": "prisma validate",
     "db:format": "prisma format",
     "db:sync": "bun scripts/db-sync.ts",
-    "db:seed": "bun prisma/seed/index.ts"
+    "db:seed": "bun prisma/seed/index.ts",
+    "admin:promote": "bun --env-file=../.env scripts/admin-promote.ts",
+    "db:member": "bun --env-file=../.env scripts/db-member.ts",
+    "db:erd": "bun --env-file=../.env scripts/db-erd.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "better-auth": "^1.7.12",
+    "cors": "^2.8.5",
     "express": "^5.2.1",
     "joi": "^18.2.9",
+    "multer": "^2.5.0",
     "pg": "^8.23.1",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
     "@types/pg": "^8.23.1",
     "@types/swagger-ui-express": "^4.1.8",
     "oxlint": "^1.86.0",

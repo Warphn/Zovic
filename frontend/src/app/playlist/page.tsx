@@ -3,23 +3,28 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { ResponsiveGridLayout, getBreakpointFromWidth, useContainerWidth } from "react-grid-layout"
+import "react-grid-layout/css/styles.css"
 import Header from "@/components/header"
 import {
   ColorPicker,
   PRESET_COLORS,
-  getColorName,
   getContrastTextColor,
+  getPlaylistAccentStyle,
 } from "@/components/color-picker"
+import { apiErrorMessage } from "@/lib/api/client"
+import { useCreatePlaylist, useDeletePlaylist } from "@/lib/api/playlists"
+import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
 import {
-  DEFAULT_TRACKS,
+  MAX_PLAYLIST_NAME_LENGTH,
   type PlaylistData,
   getPlaylistInitials,
-  useStoredPlaylists,
+  useMyPlaylistsData,
 } from "@/lib/playlist-store"
+import { GRID_BREAKPOINTS, GRID_COLS, usePlaylistLayouts } from "@/lib/playlist-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -29,283 +34,420 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { SortableList } from "@/components/sortable-list"
+import { CloseIcon, GridIcon, ListIcon, PlusIcon } from "@/components/icons"
+import { LevelBars } from "@/components/playback-marks"
+import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
+import { isPlayingFrom, usePlayback } from "@/lib/playback-store"
+
+type CatalogView = "grid" | "list"
+
+
+// Track count and length, while the API does not send a playlist's musics: nothing to show yet
+function trackSummary(playlist: PlaylistData, withDuration: boolean): string | null {
+  const count = playlist.tracks.length
+  if (count === 0) return null
+  const label = `${count} ${count === 1 ? "faixa" : "faixas"}`
+  return withDuration ? `${label} · ${formatTotalDuration(sumDurationSec(playlist.tracks))}` : label
+}
+const VIEW_STORAGE_KEY = "zovic_playlist_view"
+const VIEW_CHANGE_EVENT = "zovic_playlist_view_updated"
+
+// The server always renders the grid (server snapshot); the client then switches to the saved view.
+function subscribeView(callback: () => void) {
+  window.addEventListener("storage", callback)
+  window.addEventListener(VIEW_CHANGE_EVENT, callback)
+  return () => {
+    window.removeEventListener("storage", callback)
+    window.removeEventListener(VIEW_CHANGE_EVENT, callback)
+  }
+}
+
+function getViewSnapshot(): CatalogView {
+  try {
+    return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "grid"
+  } catch {
+    return "grid"
+  }
+}
+
+function changeView(next: CatalogView) {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, next)
+  } catch {
+    // storage unavailable: the toggle has nowhere to remember the choice
+  }
+  window.dispatchEvent(new Event(VIEW_CHANGE_EVENT))
+}
+
+const VIEW_OPTIONS = [
+  { value: "grid", Icon: GridIcon },
+  { value: "list", Icon: ListIcon },
+] as const
 
 export default function PlaylistPage() {
   const router = useRouter()
-  const { playlists, persistPlaylists } = useStoredPlaylists()
+  const { data: playlists, isPending, error } = useMyPlaylistsData()
+  const createPlaylist = useCreatePlaylist()
+  const deletePlaylist = useDeletePlaylist()
 
   // Modal State for Creating a Playlist
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
   const [newPlaylistName, setNewPlaylistName] = React.useState("")
-  const [newPlaylistColor, setNewPlaylistColor] = React.useState(PRESET_COLORS[0]?.color ?? "#1e7f82")
+  const [newPlaylistColor, setNewPlaylistColor] = React.useState(PRESET_COLORS[0]?.color ?? "#d33a2c")
+  const [newPlaylistPrivate, setNewPlaylistPrivate] = React.useState(false)
 
   // Handle Form Submit (Create Playlist)
   const handleCreatePlaylist = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = newPlaylistName.trim()
-    if (!trimmed) return
+    if (!trimmed || createPlaylist.isPending) return
 
-    const newPl: PlaylistData = {
-      id: "pl-" + Date.now(),
-      name: trimmed,
-      color: newPlaylistColor,
-      isPrivate: false,
-      createdAt: "Hoje",
-      tracks: DEFAULT_TRACKS,
-    }
-
-    const updated = [newPl, ...playlists]
-    persistPlaylists(updated)
-    setIsCreateModalOpen(false)
-    setNewPlaylistName("")
-    router.push(`/playlist/${newPl.id}`)
+    createPlaylist.mutate(
+      { name: trimmed, color: newPlaylistColor, isPrivate: newPlaylistPrivate },
+      {
+        onSuccess: (created) => {
+          setIsCreateModalOpen(false)
+          setNewPlaylistName("")
+          router.push(`/playlist/${created.id}`)
+        },
+      }
+    )
   }
+
+  // Bento grid layout (drag to reorder, resize from the corner)
+  const { width: gridWidth, containerRef: gridRef, mounted: gridMounted } = useContainerWidth({ measureBeforeMount: true })
+  const { order, layouts, reorder, moveCards, resizeSlot, shuffleSizes } = usePlaylistLayouts(playlists.map((p) => p.id))
+  // A drag or resize ends with a click on the card; this flag keeps that click from opening the playlist
+  const isArrangingRef = React.useRef(false)
+  const startArranging = () => {
+    isArrangingRef.current = true
+  }
+  const stopArranging = () => {
+    setTimeout(() => {
+      isArrangingRef.current = false
+    }, 0)
+  }
+
+  // Catalog view: bento grid or a plain list, remembered per viewer
+  const view = React.useSyncExternalStore(subscribeView, getViewSnapshot, () => "grid" as const)
+  const orderedPlaylists = order
+    .map((id) => playlists.find((p) => p.id === id))
+    .filter((p): p is PlaylistData => Boolean(p))
+
+  // The playlist being played (or paused) shows it in the list: a rule in its color and level bars
+  const playback = usePlayback()
+  const playbackOf = (id: string) => ({
+    isSource: isPlayingFrom(playback, id),
+    isPlaying: isPlayingFrom(playback, id) && Boolean(playback?.isPlaying),
+  })
+  const shelfDurationSec = playlists.reduce((acc, p) => acc + sumDurationSec(p.tracks), 0)
 
   // Handle Playlist Delete
   const handleDeletePlaylist = (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const updated = playlists.filter((p) => p.id !== id)
-    persistPlaylists(updated)
+    deletePlaylist.mutate(Number(id))
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative">
+    <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
       <Header />
 
       <main className="flex-1 pt-16 flex flex-col">
-        {/* =========================================================================
-            BENTO GRID VIEW (CATALOG OF PLAYLISTS)
-            ========================================================================= */}
-        <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-10 flex-1 flex flex-col">
-          {/* Page Header */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-border">
+        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
+          {/* Page header: title and shelf totals, then the actions */}
+          <div className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="size-2 rounded-full bg-primary" />
-                <span className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-                  Catálogo de Vinil Zovic
-                </span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
-                Playlists
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1 font-light">
-                Coleções sonoras e prensagens em vinil com identificação cromática.
+              <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl">Playlists</h1>
+              <p className="mt-3 font-mono text-xs text-muted-foreground tabular-nums">
+                {isPending
+                  ? "Carregando…"
+                  : `${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
+                {shelfDurationSec > 0 && ` · ${formatTotalDuration(shelfDurationSec)}`}
               </p>
             </div>
 
-            {/* Action: Open Modal to Create Playlist */}
-            <Button
-              variant="default"
-              size="lg"
-              onClick={() => {
-                setNewPlaylistName("")
-                setNewPlaylistColor(PRESET_COLORS[0]?.color ?? "#1e7f82")
-                setIsCreateModalOpen(true)
-              }}
-              className="h-10 px-5 text-sm rounded-lg font-semibold shadow-xs cursor-pointer gap-2"
-            >
-              <span className="text-base font-bold leading-none">+</span> Criar Playlist
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Shuffle slot sizes (keeps playlist order). Hidden but kept in the flow in list view,
+                  so the buttons around it do not jump when switching. */}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => shuffleSizes(GRID_COLS[getBreakpointFromWidth(GRID_BREAKPOINTS, gridWidth)])}
+                disabled={view !== "grid"}
+                aria-hidden={view !== "grid"}
+                tabIndex={view === "grid" ? undefined : -1}
+                className={cn(
+                  // No transition: hiding/showing on view change should be instant, not a fade
+                  "h-9 px-4 text-sm transition-none",
+                  view !== "grid" && "invisible"
+                )}
+              >
+                Sortear layout
+              </Button>
+
+              {/* View toggle: one button, a press anywhere flips between bento grid and list */}
+              <button
+                type="button"
+                onClick={() => changeView(view === "grid" ? "list" : "grid")}
+                aria-label={`Modo de exibição: ${view === "grid" ? "grade" : "lista"}. Alternar para ${view === "grid" ? "lista" : "grade"}`}
+                title={view === "grid" ? "Exibir em lista" : "Exibir em grade"}
+                className="flex cursor-pointer items-center rounded-lg border border-border bg-surface p-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                {VIEW_OPTIONS.map((option) => (
+                  <span
+                    key={option.value}
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-md transition-colors duration-150",
+                      view === option.value ? "bg-foreground text-background" : "text-muted-foreground"
+                    )}
+                  >
+                    {/* Only the view you would switch to animates on hover */}
+                    <option.Icon animateOnHover={view !== option.value} />
+                  </span>
+                ))}
+              </button>
+
+              <Button
+                variant="default"
+                size="lg"
+                onClick={() => {
+                  setNewPlaylistName("")
+                  setNewPlaylistColor(PRESET_COLORS[0]?.color ?? "#d33a2c")
+                  setNewPlaylistPrivate(false)
+                  createPlaylist.reset()
+                  setIsCreateModalOpen(true)
+                }}
+                className="h-9 gap-2 px-4 text-sm"
+              >
+                <PlusIcon size={16} /> Criar playlist
+              </Button>
+            </div>
           </div>
 
-          {/* Bento Grid */}
-          <div className="pt-8 flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-[240px]">
-              {/* Playlist Bento Cards */}
-              {playlists.map((playlist, idx) => {
-                const cardInitials = getPlaylistInitials(playlist.name)
-                const contrastClass = getContrastTextColor(playlist.color)
-                const playlistDuration = Math.round(
-                  playlist.tracks.reduce((acc, t) => acc + t.durationSec, 0) / 60
-                )
-                const isFeatured = idx === 0 || idx === 4
+          {(error || deletePlaylist.isError) && (
+            <p role="alert" className="pb-6 text-sm text-destructive">
+              {error ?? `Não deu para excluir a playlist. ${apiErrorMessage(deletePlaylist.error)}`}
+            </p>
+          )}
+          {!isPending && !error && playlists.length === 0 && (
+            <p className="py-12 text-center font-mono text-xs text-muted-foreground">
+              Nenhuma playlist ainda. Crie a primeira.
+            </p>
+          )}
 
-                return (
-                  <div
-                    key={playlist.id}
-                    className={cn(
-                      "group relative rounded-2xl overflow-hidden border border-black/10 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between p-6 select-none",
-                      isFeatured ? "sm:col-span-2" : "col-span-1"
-                    )}
-                    style={{
-                      backgroundColor: playlist.color,
-                    }}
-                  >
-                    {/* Subtle Tactile Vinyl Groove & Grain Texture */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-black/35 via-transparent to-white/20 pointer-events-none" />
-                    <div className="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
-
-                    {/* Top Header of the Card (NO IDs shown) */}
-                    <div className="relative z-10 flex items-center justify-between">
-                      <span
-                        className={cn(
-                          "text-[10px] font-mono tracking-widest uppercase font-bold px-2 py-0.5 rounded bg-black/25 backdrop-blur-xs",
-                          contrastClass
-                        )}
-                      >
-                        {playlist.isPrivate ? "Privada" : "PúblicaÁAAA"}
-                      </span>
-                      <span className={cn("text-[10px] font-mono tracking-wider opacity-75", contrastClass)}>
-                        33⅓ RPM
-                      </span>
-                    </div>
-
-                    {/* Center: Monogram / Large Initials (Displayed beautifully without hover) */}
-                    <div className="relative z-10 my-auto text-center transition-transform duration-300 group-hover:scale-95">
-                      <span
-                        className={cn(
-                          "font-black tracking-tighter drop-shadow-sm transition-all duration-300 block",
-                          isFeatured ? "text-7xl sm:text-8xl" : "text-6xl sm:text-7xl",
-                          contrastClass
-                        )}
-                      >
-                        {cardInitials}
-                      </span>
-                    </div>
-
-                    {/* Bottom Footer (Static indicator before hover - PT-BR color name & tracks) */}
-                    <div className="relative z-10 flex items-center justify-between opacity-80 group-hover:opacity-0 transition-opacity duration-200">
-                      {getColorName(playlist.color) ? (
-                        <span className={cn("text-[9px] font-mono tracking-wider uppercase", contrastClass)}>
-                          {getColorName(playlist.color)}
-                        </span>
-                      ) : (
-                        <span />
-                      )}
-                      <span className={cn("text-[9px] font-mono", contrastClass)}>
-                        {playlist.tracks.length} FAIXAS
-                      </span>
-                    </div>
-
-                    {/* Semantic Card Link Overlay: Clicking anywhere on the card or its initials/icon opens /playlist/:id */}
-                    <Link
-                      href={`/playlist/${playlist.id}`}
-                      aria-label={`Abrir playlist ${playlist.name}`}
-                      className="absolute inset-0 z-20 w-full h-full cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-ring rounded-2xl"
-                    />
-
-                    {/* HOVER REVEAL OVERLAY (Shows full info upon hover with pointer-events-none so click passes through to Link) */}
+          <div ref={gridRef} className="flex-1">
+            {/* List: the shelf inventory, one row per playlist (drag to reorder) */}
+            {view === "list" && (
+              <SortableList ids={order} rowHeight={56} gap={2} onReorder={reorder}>
+                {orderedPlaylists.map((playlist) => {
+                  const { isSource, isPlaying } = playbackOf(playlist.id)
+                  return (
                     <div
+                      key={playlist.id}
+                      // The row's accent is its playlist color, as on the playlist page
+                      style={getPlaylistAccentStyle(playlist.color)}
                       className={cn(
-                        "absolute inset-0 z-25 pointer-events-none p-6 flex flex-col justify-between transition-all duration-300 ease-out",
-                        "opacity-0 group-hover:opacity-100 backdrop-blur-md bg-black/60 text-white"
+                        "group relative flex h-full cursor-grab select-none items-center gap-3 rounded-lg px-3 transition-colors duration-150 active:cursor-grabbing",
+                        isSource ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
-                      {/* Hover Top Details */}
-                      <div className="flex items-center justify-between">
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] py-0 border-white/30 text-white font-mono"
-                        >
-                          {playlist.isPrivate ? "Privada" : "Pública"}
-                        </Badge>
+                      {/* The playlist in playback carries a thin rule in its color on the left edge */}
+                      {isSource && (
+                        <span className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary" />
+                      )}
 
-                        {/* Delete Playlist Button - interactive with pointer-events-auto */}
+                      {/* Mini sleeve */}
+                      <div
+                        className={cn(
+                          "pointer-events-none flex size-10 shrink-0 items-center justify-center rounded-sm text-sm font-medium",
+                          getContrastTextColor(playlist.color)
+                        )}
+                        style={{ backgroundColor: playlist.color }}
+                      >
+                        {getPlaylistInitials(playlist.name)}
+                      </div>
+
+                      <div className="pointer-events-none min-w-0 flex-1">
+                        <div className={cn("truncate text-sm font-medium", isSource && "text-primary")}>
+                          {playlist.name}
+                        </div>
+                        {trackSummary(playlist, true) && (
+                          <div className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+                            {trackSummary(playlist, true)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Whole row opens /playlist/:id */}
+                      <Link
+                        href={`/playlist/${playlist.id}`}
+                        aria-label={`Abrir playlist ${playlist.name}`}
+                        draggable={false}
+                        className="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      />
+
+                      <div className="relative flex shrink-0 items-center gap-3">
+                        {isSource && (
+                          <span className="pointer-events-none text-primary" title={isPlaying ? "Tocando" : "Pausada"}>
+                            <LevelBars playing={isPlaying} />
+                            <span className="sr-only">{isPlaying ? "Tocando" : "Pausada"}</span>
+                          </span>
+                        )}
+                        <span className="pointer-events-none w-14 text-right font-mono text-xs text-muted-foreground">
+                          {playlist.isPrivate ? "Privada" : "Pública"}
+                        </span>
+                        {playlist.canEdit && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeletePlaylist(playlist.id, e)}
+                            aria-label={`Excluir playlist ${playlist.name}`}
+                            title="Excluir playlist"
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring [@media(hover:none)]:opacity-100"
+                          >
+                            <CloseIcon size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </SortableList>
+            )}
+
+            {/* Grid: the sleeves facing out (drag to reorder, resize from the corner) */}
+            {view === "grid" && gridMounted && (
+              <ResponsiveGridLayout
+                width={gridWidth}
+                layouts={layouts}
+                breakpoints={GRID_BREAKPOINTS}
+                cols={GRID_COLS}
+                rowHeight={240}
+                margin={[20, 20]}
+                containerPadding={[0, 0]}
+                dragConfig={{ cancel: ".no-drag" }}
+                onDrag={startArranging}
+                onDragStop={(layout) => {
+                  moveCards(layout)
+                  stopArranging()
+                }}
+                onResize={startArranging}
+                onResizeStop={(_, __, newItem) => {
+                  resizeSlot(newItem, GRID_COLS[getBreakpointFromWidth(GRID_BREAKPOINTS, gridWidth)])
+                  stopArranging()
+                }}
+              >
+                {playlists.map((playlist) => {
+                  const contrastClass = getContrastTextColor(playlist.color)
+
+                  return (
+                    <div
+                      key={playlist.id}
+                      className={cn(
+                        "@container group relative flex cursor-grab select-none flex-col overflow-hidden rounded-xl p-7 active:cursor-grabbing",
+                        "shadow-[0_1px_2px_rgba(23,21,18,0.12)] transition-shadow duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        "hover:shadow-[0_1px_2px_rgba(23,21,18,0.12),0_16px_32px_-16px_rgba(23,21,18,0.45)]",
+                        contrastClass
+                      )}
+                      style={{ backgroundColor: playlist.color }}
+                    >
+                      {/* Printed frame, the same rule as on the playlist page's sleeve; 12px in, so the 28px padding leaves 16px between it and the text */}
+                      <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
+
+                      {/* Top: the name, on the top edge of the delete button (same 28px from the card edge),
+                          leaving room for it on the right; the row keeps the button's 32px so the art does not shift */}
+                      <div className="pointer-events-none relative z-10 flex h-8 items-start pr-10">
+                        <h2 className="min-w-0 truncate text-base leading-snug font-medium @xs:text-lg">{playlist.name}</h2>
+                      </div>
+
+                      {/* Art: the initials */}
+                      <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-center">
+                        <span className="text-6xl leading-none font-medium tracking-[-0.03em] @xs:text-7xl @lg:text-8xl">
+                          {getPlaylistInitials(playlist.name)}
+                        </span>
+                      </div>
+
+                      {/* Bottom: visibility on the left, track count on the right */}
+                      <div className="pointer-events-none relative z-10 flex items-end justify-between gap-3 font-mono text-xs opacity-75 tabular-nums">
+                        <span>{playlist.isPrivate ? "Privada" : "Pública"}</span>
+                        <span>{trackSummary(playlist, false)}</span>
+                      </div>
+
+                      {/* Whole card opens /playlist/:id, except right after a drag or resize */}
+                      <Link
+                        href={`/playlist/${playlist.id}`}
+                        aria-label={`Abrir playlist ${playlist.name}`}
+                        draggable={false}
+                        onClick={(e) => {
+                          if (isArrangingRef.current) e.preventDefault()
+                        }}
+                        className="absolute inset-0 z-20 rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-current"
+                      />
+
+                      {playlist.canEdit && (
                         <button
                           type="button"
                           onClick={(e) => handleDeletePlaylist(playlist.id, e)}
                           aria-label={`Excluir playlist ${playlist.name}`}
                           title="Excluir playlist"
-                          className="pointer-events-auto relative z-30 size-7 rounded-full bg-white/10 hover:bg-red-600 hover:text-white text-white/80 flex items-center justify-center transition-colors cursor-pointer"
+                          className="no-drag absolute top-7 right-7 z-30 flex size-8 cursor-pointer items-center justify-center rounded-md bg-black/15 opacity-0 transition-[background-color,opacity] duration-150 group-hover:opacity-100 hover:bg-black/30 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-current [@media(hover:none)]:opacity-100"
                         >
-                          ✕
+                          <CloseIcon size={16} />
                         </button>
-                      </div>
-
-                      {/* Hover Center: Playlist Icon + Full Title & Specs */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-3">
-                          {/* Visual Playlist Monogram Icon */}
-                          <div
-                            className="size-11 rounded-xl border border-white/20 flex items-center justify-center font-black text-base shrink-0 shadow-xs"
-                            style={{ backgroundColor: playlist.color }}
-                          >
-                            {cardInitials}
-                          </div>
-                          <div className="min-w-0">
-                            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight line-clamp-1">
-                              {playlist.name}
-                            </h2>
-                            <div className="flex items-center gap-2 text-xs text-white/80 font-mono mt-0.5">
-                              <span>{playlist.tracks.length} músicas</span>
-                              <span>•</span>
-                              <span>{playlistDuration} min</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Hover Bottom Action */}
-                      <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                        {getColorName(playlist.color) ? (
-                          <span className="text-[11px] font-mono text-white/70">
-                            {getColorName(playlist.color)}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
-                        <span className="text-xs font-bold text-white flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                          Abrir Playlist →
-                        </span>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </ResponsiveGridLayout>
+            )}
           </div>
         </div>
       </main>
 
-      {/* =========================================================
-          MODAL: CRIAR PLAYLIST (Clean, focused, no excess boxes)
-          ========================================================= */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Criar Nova Playlist</DialogTitle>
-            <DialogDescription>
-              Defina o nome da sua seleção e a cor da identidade cromática do vinil.
-            </DialogDescription>
+            <DialogTitle>Nova playlist</DialogTitle>
+            <DialogDescription>Dê um nome, escolha a cor do encarte e quem pode ver</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreatePlaylist} className="space-y-5 pt-1">
             <div className="space-y-2">
-              <Label htmlFor="create-playlist-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nome da Playlist
+              <Label htmlFor="create-playlist-name" className="text-sm font-medium">
+                Nome
               </Label>
               <Input
                 id="create-playlist-name"
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="Ex: MPB de Domingo, Sintetizadores Noturnos..."
+                placeholder="Ex.: MPB de domingo"
+                maxLength={MAX_PLAYLIST_NAME_LENGTH}
                 required
               />
             </div>
 
-            <ColorPicker
-              color={newPlaylistColor}
-              onChange={setNewPlaylistColor}
-            />
+            <ColorPicker color={newPlaylistColor} onChange={setNewPlaylistColor} />
+
+            <PlaylistPrivacyField isPrivate={newPlaylistPrivate} onChange={setNewPlaylistPrivate} />
+
+            {createPlaylist.isError && (
+              <p role="alert" className="text-sm text-destructive">
+                {apiErrorMessage(createPlaylist.error)}
+              </p>
+            )}
 
             <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="h-9 text-xs"
-              >
+              <Button type="button" variant="outline" size="lg" onClick={() => setIsCreateModalOpen(false)}>
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 variant="default"
-                disabled={!newPlaylistName.trim()}
-                className="h-9 text-xs font-bold"
+                size="lg"
+                disabled={!newPlaylistName.trim() || createPlaylist.isPending}
               >
-                Criar Playlist
+                {createPlaylist.isPending ? "Criando…" : "Criar playlist"}
               </Button>
             </DialogFooter>
           </form>

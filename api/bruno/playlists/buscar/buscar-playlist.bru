@@ -1,0 +1,23 @@
+meta {
+  name: Buscar playlist
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  playlistId: 2
+}
+
+tests {
+  test("responde 200 com a playlist criada", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.equal(bru.getVar("playlistId"));
+    expect(res.getBody().name).to.equal("Rock nacional");
+  });
+}

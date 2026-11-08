@@ -1,0 +1,27 @@
+meta {
+  name: Criar playlist para apagar
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/playlists
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Para apagar"
+  }
+}
+
+script:post-response {
+  bru.setVar("deletePlaylistId", res.getBody().id);
+}
+
+tests {
+  test("responde 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Listar playlist sem músicas
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com a lista vazia", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}

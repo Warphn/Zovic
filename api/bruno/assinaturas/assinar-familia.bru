@@ -1,0 +1,24 @@
+meta {
+  name: Assinar o plano Família
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/plans
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "kind": "family"
+  }
+}
+
+tests {
+  test("responde 201 com a assinatura de gestor do Família", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()).to.include({ kind: "family", isManager: true });
+  });
+}

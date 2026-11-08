@@ -1,0 +1,29 @@
+meta {
+  name: Logout
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-out
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("responde 200 e limpa o cookie", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().success).to.equal(true);
+    const cookie = [].concat(res.getHeader("set-cookie"))[0];
+    expect(cookie).to.match(/^zovic\.session_token=;/);
+    expect(cookie).to.match(/Max-Age=0/i);
+  });
+}

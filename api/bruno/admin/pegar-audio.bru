@@ -1,0 +1,19 @@
+meta {
+  name: Pegar o áudio da música
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/musics/{{musicId}}/audio
+  body: none
+  auth: none
+}
+
+tests {
+  test("entrega o MP3, com cache que o navegador confirma antes de usar", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.equal("audio/mpeg");
+    expect(res.getHeader("cache-control")).to.equal("private, no-cache");
+  });
+}

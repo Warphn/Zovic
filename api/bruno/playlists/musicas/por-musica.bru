@@ -1,0 +1,30 @@
+meta {
+  name: Pôr música
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicId": {{musicA}}
+  }
+}
+
+tests {
+  test("responde 201 com a lista inteira", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().map((m) => m.id)).to.deep.equal([bru.getVar("musicA")]);
+  });
+
+  test("traz artistas, álbum e data de entrada", function () {
+    const [music] = res.getBody();
+    expect(music).to.have.all.keys("id", "name", "duration", "artists", "album", "addedAt");
+    expect(music.artists.length).to.be.at.least(1);
+  });
+}

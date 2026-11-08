@@ -1,16 +1,20 @@
 import * as React from "react"
+import { type Playlist, type PlaylistInput, type PlaylistMusic, parsePlaylistId, useMyPlaylists, usePlaylist, usePlaylistMusics } from "@/lib/api/playlists"
+import { apiErrorMessage } from "@/lib/api/client"
+import type { SearchMusic } from "@/lib/api/search"
+import { formatDuration } from "@/lib/format-duration"
+
+// What the pages draw for a playlist (sleeve, tracklist, playback queue), built from the API.
+// INITIAL_PLAYLISTS/DEFAULT_TRACKS are sample data for the landing preview only.
 
 export interface Track {
   id: string
-  side: "A" | "B"
-  trackNum: string
   title: string
   artist: string
   album: string
   duration: string
   durationSec: number
   year: string
-  bpm?: number
   quality?: "FLAC" | "HI-RES" | "VINYL-RIP"
 }
 
@@ -20,86 +24,74 @@ export interface PlaylistData {
   color: string
   isPrivate: boolean
   createdAt: string
+  /** In the playlist's order; empty until its musics load. */
   tracks: Track[]
+  /** Whether the viewer can edit and delete it (the API's isAdmin). */
+  canEdit?: boolean
 }
+
+/** Cover color of a playlist that has none. */
+export const DEFAULT_PLAYLIST_COLOR = "#565043"
 
 export const DEFAULT_TRACKS: Track[] = [
   {
     id: "t1",
-    side: "A",
-    trackNum: "A1",
     title: "Construção",
     artist: "Chico Buarque",
     album: "Construção",
     duration: "4:18",
     durationSec: 258,
     year: "1971",
-    bpm: 118,
     quality: "FLAC",
   },
   {
     id: "t2",
-    side: "A",
-    trackNum: "A2",
     title: "Águas de Março",
     artist: "Elis Regina, Tom Jobim",
     album: "Elis & Tom",
     duration: "3:32",
     durationSec: 212,
     year: "1974",
-    bpm: 124,
     quality: "HI-RES",
   },
   {
     id: "t3",
-    side: "A",
-    trackNum: "A3",
     title: "Clube da Esquina Nº 2",
     artist: "Milton Nascimento, Lô Borges",
     album: "Clube da Esquina",
     duration: "3:38",
     durationSec: 218,
     year: "1972",
-    bpm: 104,
     quality: "VINYL-RIP",
   },
   {
     id: "t4",
-    side: "B",
-    trackNum: "B1",
     title: "Resonance",
     artist: "HOME",
     album: "Odyssey",
     duration: "3:32",
     durationSec: 212,
     year: "2014",
-    bpm: 130,
     quality: "HI-RES",
   },
   {
     id: "t5",
-    side: "B",
-    trackNum: "B2",
     title: "Midnight City",
     artist: "M83",
     album: "Hurry Up, We're Dreaming",
     duration: "4:03",
     durationSec: 243,
     year: "2011",
-    bpm: 105,
     quality: "FLAC",
   },
   {
     id: "t6",
-    side: "B",
-    trackNum: "B3",
     title: "Tudo o Que Você Podia Ser",
     artist: "Lô Borges",
     album: "Clube da Esquina",
     duration: "2:57",
     durationSec: 177,
     year: "1972",
-    bpm: 122,
     quality: "VINYL-RIP",
   },
 ]
@@ -171,25 +163,6 @@ export const INITIAL_PLAYLISTS: PlaylistData[] = [
   },
 ]
 
-export const STORAGE_KEY = "zovic_playlists_bento_v2"
-const PLAYLISTS_CHANGE_EVENT = "zovic_playlists_updated"
-
-export function isPlaylistDataArray(items: unknown): items is PlaylistData[] {
-  if (!Array.isArray(items)) return false
-  return items.every((item) => {
-    return Boolean(
-      item &&
-      typeof item === "object" &&
-      "name" in item &&
-      typeof item.name === "string" &&
-      "color" in item &&
-      typeof item.color === "string" &&
-      "tracks" in item &&
-      Array.isArray(item.tracks)
-    )
-  })
-}
-
 export function getPlaylistInitials(name: string): string {
   const parts = name.trim().split(" ").filter(Boolean)
   if (parts.length === 0) return "Z"
@@ -204,66 +177,88 @@ export function getPlaylistInitials(name: string): string {
   return `${initialA ?? "Z"}${initialB ?? ""}`.toUpperCase()
 }
 
-// In-memory cache for useSyncExternalStore referential stability
-let cachedRawValue: string | null = null
-let cachedPlaylistsSnapshot: PlaylistData[] = INITIAL_PLAYLISTS
-
-function subscribe(callback: () => void) {
-  if (typeof window === "undefined") return () => {}
-  window.addEventListener("storage", callback)
-  window.addEventListener(PLAYLISTS_CHANGE_EVENT, callback)
-  return () => {
-    window.removeEventListener("storage", callback)
-    window.removeEventListener(PLAYLISTS_CHANGE_EVENT, callback)
+/**
+ * A catalog music (from a playlist or the search) as a track the player can queue. The API has
+ * no year yet, and the search no album: those stay empty, and covers fall back to the title.
+ */
+export function musicToTrack(music: SearchMusic & { album?: PlaylistMusic["album"] }): Track {
+  return {
+    id: String(music.id),
+    title: music.name,
+    artist: music.artists.map((a) => a.name).join(", "),
+    album: music.album?.name ?? "",
+    duration: formatDuration(music.duration),
+    durationSec: music.duration,
+    year: "",
   }
 }
 
-function getClientSnapshot(): PlaylistData[] {
-  if (typeof window === "undefined") {
-    return INITIAL_PLAYLISTS
-  }
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === cachedRawValue) {
-      return cachedPlaylistsSnapshot
-    }
-    cachedRawValue = raw
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw)
-      if (isPlaylistDataArray(parsed) && parsed.length > 0) {
-        cachedPlaylistsSnapshot = parsed
-        return cachedPlaylistsSnapshot
-      }
-    }
-  } catch {
-    // fallback to initial
-  }
-  cachedPlaylistsSnapshot = INITIAL_PLAYLISTS
-  return cachedPlaylistsSnapshot
+/** Playlist.MAX_NAME_LENGTH in the API. */
+export const MAX_PLAYLIST_NAME_LENGTH = 150
+
+export interface PlaylistDraft {
+  name: string
+  isPrivate: boolean
+  color: string
 }
 
-function getServerSnapshot(): PlaylistData[] {
-  return INITIAL_PLAYLISTS
+/**
+ * The PATCH body for going from `current` to `draft`: only the fields that changed, the name
+ * trimmed. Null when nothing changed or the name is blank (the API refuses an empty name).
+ */
+export function playlistChanges(current: PlaylistDraft, draft: PlaylistDraft): PlaylistInput | null {
+  const name = draft.name.trim()
+  if (!name) return null
+  const changes: PlaylistInput = {}
+  if (name !== current.name) changes.name = name
+  if (draft.isPrivate !== current.isPrivate) changes.isPrivate = draft.isPrivate
+  if (draft.color.toLowerCase() !== current.color.toLowerCase()) changes.color = draft.color
+  return Object.keys(changes).length > 0 ? changes : null
 }
 
-export function persistPlaylists(updated: PlaylistData[]) {
-  if (typeof window === "undefined") return
-  try {
-    const serialized = JSON.stringify(updated)
-    cachedRawValue = serialized
-    cachedPlaylistsSnapshot = updated
-    localStorage.setItem(STORAGE_KEY, serialized)
-    window.dispatchEvent(new Event(PLAYLISTS_CHANGE_EVENT))
-  } catch {
-    // ignore
+export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = []): PlaylistData {
+  return {
+    id: String(playlist.id),
+    name: playlist.name,
+    color: playlist.color ?? DEFAULT_PLAYLIST_COLOR,
+    isPrivate: playlist.isPrivate,
+    createdAt: playlist.createdAt,
+    tracks: musics.map(musicToTrack),
+    canEdit: playlist.isAdmin,
   }
 }
 
-export function useStoredPlaylists() {
-  const playlists = React.useSyncExternalStore(
-    subscribe,
-    getClientSnapshot,
-    getServerSnapshot
+export interface PlaylistsView<T> {
+  data: T
+  isPending: boolean
+  error: string | null
+}
+
+/** The viewer's playlists, newest first. */
+export function useMyPlaylistsData(): PlaylistsView<PlaylistData[]> {
+  const query = useMyPlaylists()
+  const data = React.useMemo(() => (query.data ?? []).map((playlist) => toPlaylistData(playlist)), [query.data])
+  return { data, isPending: query.isPending, error: query.isError ? apiErrorMessage(query.error) : null }
+}
+
+/**
+ * The playlist with this route id, with its tracks; null while loading, when not found, or for a
+ * non-numeric id. `tracksError` says why the tracks did not load when the playlist itself did.
+ */
+export function usePlaylistData(
+  idParam: string | null | undefined
+): PlaylistsView<PlaylistData | null> & { tracksError: string | null } {
+  const id = parsePlaylistId(idParam)
+  const playlist = usePlaylist(id)
+  const musics = usePlaylistMusics(id)
+  const data = React.useMemo(
+    () => (playlist.data ? toPlaylistData(playlist.data, musics.data) : null),
+    [playlist.data, musics.data]
   )
-  return { playlists, persistPlaylists }
+  return {
+    data,
+    isPending: id !== null && (playlist.isPending || (musics.isPending && !musics.isError)),
+    error: playlist.isError ? apiErrorMessage(playlist.error) : null,
+    tracksError: musics.isError ? apiErrorMessage(musics.error) : null,
+  }
 }

@@ -1,0 +1,22 @@
+meta {
+  name: Editar sem nenhum campo
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("responde 400", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().error).to.equal("VALIDATION_ERROR");
+  });
+}

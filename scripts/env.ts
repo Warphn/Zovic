@@ -3,15 +3,20 @@
  *
  *   bun start                                   → pergunta o ambiente, se é o primeiro acesso e o seed
  *   bun start backend [--first] [--seed=local]  → pula as perguntas (--seed=local ou --seed=prod)
+ *   bun start banco                             → abre o acesso ao banco de produção (mesmo que bun db:connect)
  *   bun stop                                    → derruba todos os containers (o banco continua salvo)
  */
 import * as p from "@clack/prompts";
 import { $, type ShellPromise } from "bun";
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import pkg from "../package.json";
+import { openProductionDb } from "./db-connect.ts";
 
 type Env = "backend" | "frontend" | "full";
+
+/** "banco" não sobe ambiente: abre o acesso ao banco de produção, e as outras perguntas não se aplicam. */
+type Choice = Env | "banco";
 
 /** Seed do banco: nenhum, LOCAL (dados de teste) ou PROD (só os dados reais). Ver docs/banco-de-dados.md. */
 type Seed = "none" | "local" | "prod";
@@ -45,6 +50,7 @@ const PLANS: Record<Env, EnvPlan> = {
 
 const ROOT = join(import.meta.dir, "..");
 const API = join(ROOT, "api");
+const ENV_PATH = join(ROOT, ".env");
 $.cwd(ROOT);
 
 /** Encerra com mensagem amigável quando o usuário aperta Ctrl+C num prompt. */
@@ -84,12 +90,26 @@ async function step(label: string, done: string, command: ShellPromise) {
   s.stop(done);
 }
 
-async function firstAccess(plan: EnvPlan) {
-  if (!existsSync(join(ROOT, ".env"))) {
-    copyFileSync(join(ROOT, ".env.example"), join(ROOT, ".env"));
-    p.log.success(".env criado a partir do .env.example");
-  }
+/**
+ * O COMPOSE_PROJECT_NAME do .env separa o ambiente de desenvolvimento do servidor. Sem .env, o
+ * Compose usa o nome da pasta, que numa pasta "Zovic" é o mesmo projeto do servidor de produção.
+ */
+function ensureEnvFile() {
+  if (existsSync(ENV_PATH)) return;
+  copyFileSync(join(ROOT, ".env.example"), ENV_PATH);
+  p.log.success(".env criado a partir do .env.example");
+}
 
+/** No clone do servidor (~/zovic), o bun start e o bun stop mexeriam nos containers de produção. */
+function refuseServerClone() {
+  const isServerClone = existsSync(ENV_PATH) && /^CLOUDFLARE_TUNNEL_TOKEN=\S/m.test(readFileSync(ENV_PATH, "utf8"));
+  if (isServerClone) {
+    p.log.error("Este é o clone do servidor (o .env tem o token do túnel). Aqui, use bun server.");
+    process.exit(1);
+  }
+}
+
+async function firstAccess(plan: EnvPlan) {
   for (const dir of [".", ...plan.installs]) {
     const name = dir === "." ? "raiz" : `${dir}/`;
     await step(`bun install em ${name}`, `Dependências instaladas em ${name}`, $`bun install`.cwd(join(ROOT, dir)));
@@ -146,19 +166,29 @@ function seedFromArgs(args: string[]): Seed | undefined {
 async function start(args: string[]) {
   p.intro("Zovic · dev bros");
 
-  const fromArgs = args.find((a): a is Env => a in PLANS);
+  const fromArgs = args.find((a): a is Choice => a in PLANS || a === "banco");
 
-  const env = fromArgs ?? orExit(
-    await p.select<Env>({
+  const choice = fromArgs ?? orExit(
+    await p.select<Choice>({
       message: "Cê vai fazer o que, Zé?",
       showInstructions: false,
       options: [
         { value: "frontend", label: "frontend", hint: "Docker: banco + migrations + API" },
         { value: "backend", label: "backend", hint: "Docker: banco + migrations" },
         { value: "full", label: "full", hint: "Docker: o sistema inteiro" },
+        { value: "banco", label: "banco de produção", hint: "consulta o banco do servidor pelo Cloudflare Access" },
       ],
     }),
   );
+
+  if (choice === "banco") {
+    await openProductionDb();
+    p.outro("Caminho até o banco fechado.");
+    return;
+  }
+  const env = choice;
+  refuseServerClone();
+  ensureEnvFile();
 
   const isFirst = fromArgs
     ? args.includes("--first")
@@ -203,9 +233,14 @@ async function start(args: string[]) {
 
 async function stop() {
   p.intro("Zovic · parando o ambiente");
+  refuseServerClone();
+  if (!existsSync(ENV_PATH)) {
+    p.log.error("Não há .env: não existe ambiente de desenvolvimento para parar.");
+    process.exit(1);
+  }
   await ensureDocker();
-  // --profile full inclui todos os serviços, qualquer que tenha sido o ambiente.
-  await $`docker compose --profile full down`;
+  // full e prod juntos incluem todos os serviços, qualquer que tenha sido o ambiente.
+  await $`docker compose --profile full --profile prod down`;
   p.outro("Containers parados. O banco continua salvo no volume.");
 }
 
