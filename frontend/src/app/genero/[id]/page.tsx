@@ -15,6 +15,8 @@ import { formatDuration, formatTotalDuration, sumDurationSec } from "@/lib/forma
 import { musicsOfGenre, parseRouteId } from "@/lib/home"
 import { currentTrackOf, playOrToggleQueueTrack, playQueue, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
+import { TrackLikeButton } from "@/components/track-like-button"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
@@ -117,6 +119,8 @@ export default function GenrePage() {
                   actions={
                     <>
                       <AddToQueueButton track={track} onResult={announce} />
+                      <TrackCommentsButton track={track} />
+                      <TrackLikeButton trackId={track.id} />
                       <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={announce} />
                     </>
                   }

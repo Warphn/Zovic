@@ -35,6 +35,8 @@ import {
   usePlayback,
 } from "@/lib/playback-store"
 import { musicToTrack, useMyPlaylistsData } from "@/lib/playlist-store"
+import { TrackLikeButton } from "@/components/track-like-button"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
 type Announce = (message: string, ok: boolean) => void
 
@@ -158,7 +160,13 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
-                actions={<AddToQueueButton track={track} onResult={onAnnounce} />}
+                actions={
+                  <>
+                    <AddToQueueButton track={track} onResult={onAnnounce} />
+                    <TrackCommentsButton track={track} />
+                    <TrackLikeButton trackId={track.id} />
+                  </>
+                }
               >
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
@@ -193,7 +201,13 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleTrack(track.id, [track, ...catalogTracks])}
                 title={entry.name}
-                actions={<AddToQueueButton track={track} onResult={onAnnounce} />}
+                actions={
+                  <>
+                    <AddToQueueButton track={track} onResult={onAnnounce} />
+                    <TrackCommentsButton track={track} />
+                    <TrackLikeButton trackId={track.id} />
+                  </>
+                }
               >
                 <TrackText title={entry.name} meta={artistNames(entry.artists)} />
               </TrackRow>

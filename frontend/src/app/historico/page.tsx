@@ -11,6 +11,7 @@ import { formatDayAndTime } from "@/lib/format-date-time"
 import { formatDuration } from "@/lib/format-duration"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
+import { TrackLikeButton } from "@/components/track-like-button"
 
 function entryMeta(entry: HistoryEntry): string {
   const artists = entry.artists.map((artist) => artist.name).join(", ")
@@ -102,6 +103,7 @@ function HistoryList() {
                   />
                   {/* Beside the row, never inside it: the row is a button of its own */}
                   <AddToQueueButton track={track} onResult={setQueued} />
+                  <TrackLikeButton trackId={track.id} />
                 </>
               ) : (
                 <UnavailableRow entry={entry} />

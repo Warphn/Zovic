@@ -15,6 +15,8 @@ import { formatDuration, formatTotalDuration, sumDurationSec } from "@/lib/forma
 import { parseRouteId, tracksOfAlbum } from "@/lib/home"
 import { currentTrackOf, playOrToggleQueueTrack, playQueue, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
+import { TrackLikeButton } from "@/components/track-like-button"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
@@ -121,7 +123,13 @@ export default function AlbumPage() {
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
-                actions={<AddToQueueButton track={track} onResult={announce} />}
+                actions={
+                  <>
+                    <AddToQueueButton track={track} onResult={announce} />
+                    <TrackCommentsButton track={track} />
+                    <TrackLikeButton trackId={track.id} />
+                  </>
+                }
               >
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>

@@ -2112,7 +2112,7 @@ export const openApiDocument = {
           },
         },
       },
-      Error: errorResponse("VALIDATION_ERROR", "Playlist name cannot be empty"),
+      Error: errorResponse("VALIDATION_ERROR", "Validation failed"),
     },
   },
 };

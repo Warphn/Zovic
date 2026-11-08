@@ -25,4 +25,3 @@ describe("Frontend Stores & Helpers", () => {
     expect(calculateIsUnderage("invalido")).toBe(true)
   })
 })
-
