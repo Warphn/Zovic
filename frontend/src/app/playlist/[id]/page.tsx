@@ -4,10 +4,11 @@ import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
-import { ColorPicker, getColorName, getContrastTextColor } from "@/components/color-picker"
-import { Button } from "@/components/ui/button"
+import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
+import { RecordSleeve } from "@/components/record-sleeve"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { TrackLikeButton } from "@/components/track-like-button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -16,130 +17,129 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { apiErrorMessage } from "@/lib/api/client"
+import {
+  parsePlaylistId,
+  useRemovePlaylistMusic,
+  useReorderPlaylistMusics,
+  useUpdatePlaylist,
+} from "@/lib/api/playlists"
+import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
+import { Label } from "@/components/ui/label"
 import {
   getPlaylistInitials,
-  useStoredPlaylists,
+  MAX_PLAYLIST_NAME_LENGTH,
+  playlistChanges,
+  usePlaylistData,
 } from "@/lib/playlist-store"
-import { useActiveUser } from "@/lib/user-store"
-import { TrackComments } from "@/components/comments/track-comments"
 import { cn } from "@/lib/utils"
-import { useLikedTracks } from "@/lib/likes-store"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
+import { SortableList } from "@/components/sortable-list"
+import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
+import { LevelBars } from "@/components/playback-marks"
+import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, usePlayback } from "@/lib/playback-store"
+import {
+  ArrowLeftIcon,
+  ListMinusIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+  SearchIcon,
+} from "@/components/icons"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
-const PLAYER_BAR_HEIGHT = 80       // h-20
-const DEFAULT_PANEL_HEIGHT = 540
-const MIN_PANEL_HEIGHT = 260       // soltar abaixo disso fecha os comentários
+// The editable fields of a playlist while the edit dialog is open
+type PlaylistDraft = {
+  name: string
+  isPrivate: boolean
+  color: React.ComponentProps<typeof ColorPicker>["color"]
+}
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
   const playlistId = params?.id
 
-  // Active user profile (Ana Andrade, Heitor Costa, etc.)
-  const { user: currentUser } = useActiveUser()
+  // The playlist and its musics, in the playlist's order, from the API
+  const { data: currentPlaylist, isPending, error, tracksError } = usePlaylistData(playlistId)
+  const updatePlaylist = useUpdatePlaylist()
+  const reorderTracks = useReorderPlaylistMusics()
+  const removeTrack = useRemovePlaylistMusic()
 
-  // Liked tracks state for the current user)
-  const { isLiked: isTrackLiked, toggleLike } = useLikedTracks(currentUser.id)
-
-  // All playlists in memory / localStorage with hydration safety
-  const { playlists, persistPlaylists } = useStoredPlaylists()
-
-  // Modal State for Editing Color
-  const [isColorModalOpen, setIsColorModalOpen] = React.useState(false)
-
-  // Expandable Comments Panel State (faz subir a parte de música)
-  const [isCommentsExpanded, setIsCommentsExpanded] = React.useState(false)
-
-  // Derivação segura: menores de idade nunca têm comentários abertos
-  const isCommentsOpen = isCommentsExpanded && !currentUser.isUnderage
-
-  // Fecha os comentários ao pressionar Escape
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isCommentsOpen) {
-        setIsCommentsExpanded(false)
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isCommentsOpen])
-
-  // Track search filter
+  // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
+  // color is previewed on the page; nothing is saved until "Salvar"
+  const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
+  // What the last "Adicionar à fila" did, announced to screen readers too
+  const [queued, setQueued] = React.useState<string | null>(null)
 
-  // Audio Playback state
-  const [isPlaying, setIsPlaying] = React.useState(false)
-  const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
-  const [playbackSec, setPlaybackSec] = React.useState(0)
+  // Playback is shared by every page (see playback-store); this page shows it when it comes
+  // from this playlist, and starts this playlist when one of its tracks is played
+  const playback = usePlayback()
+  const isThisPlaylist = isPlayingFrom(playback, playlistId ?? "")
 
-  // Find the playlist
-  const currentPlaylist = playlists.find((p) => p.id === playlistId) ?? null
-
-  // Update Color handler
-  const handleUpdateColor = (newColor: string) => {
+  const openEditor = () => {
     if (!currentPlaylist) return
-    const updated = playlists.map((p) =>
-      p.id === currentPlaylist.id ? { ...p, color: newColor } : p
+    updatePlaylist.reset()
+    setDraft({ name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color })
+  }
+
+  // Closing without saving drops the draft, color preview included
+  const closeEditor = () => setDraft(null)
+
+  // One PATCH with only what changed; on failure the dialog stays open with the reason
+  const saveEditor = (e: React.FormEvent) => {
+    e.preventDefault()
+    const id = parsePlaylistId(playlistId)
+    if (!currentPlaylist || !draft || id === null) return
+    const changes = playlistChanges(
+      { name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color },
+      draft
     )
-    persistPlaylists(updated)
-  }
-
-  const [panelHeight, setPanelHeight] = React.useState(DEFAULT_PANEL_HEIGHT)
-  const [isDragging, setIsDragging] = React.useState(false)
-  const dragRef = React.useRef<{ startY: number; startHeight: number } | null>(null)
-
-  const handleResizeStart = (e: React.PointerEvent<HTMLButtonElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId)
-    dragRef.current = { startY: e.clientY, startHeight: panelHeight }
-    setIsDragging(true)
-  }
-
-  const handleResizeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current
-    if (!drag) return
-    const next = drag.startHeight + (drag.startY - e.clientY) // arrastar p/ cima aumenta
-    const max = Math.round(window.innerHeight * 0.85)
-    setPanelHeight(Math.max(PLAYER_BAR_HEIGHT, Math.min(max, next)))
-  }
-
-  const handleResizeEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!dragRef.current) return
-    dragRef.current = null
-    setIsDragging(false)
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId)
+    if (!changes) {
+      if (draft.name.trim()) closeEditor()
+      return
     }
-    if (panelHeight < MIN_PANEL_HEIGHT) {
-      setIsCommentsExpanded(false)
-      setPanelHeight(DEFAULT_PANEL_HEIGHT)
-    }
+    updatePlaylist.mutate({ id, input: changes }, { onSuccess: closeEditor })
   }
 
-  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setPanelHeight((h) => Math.min(Math.round(window.innerHeight * 0.85), h + 24))
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setPanelHeight((h) => Math.max(MIN_PANEL_HEIGHT, h - 24))
-    }
+  // Takes a track out of the playlist (admins only); the list refreshes from the API
+  const handleRemoveTrack = (trackId: string) => {
+    const id = parsePlaylistId(playlistId)
+    if (id !== null) removeTrack.mutate({ id, musicId: Number(trackId) })
   }
 
-  // If playlist not found
+  // Reorder tracks (drag in the tracklist): saved for everyone who sees the playlist. The list
+  // moves at once and goes back if the API refuses; playback follows the track id, so the playing
+  // track stays the same one
+  const handleReorderTracks = (ids: string[]) => {
+    const id = parsePlaylistId(playlistId)
+    if (id !== null) reorderTracks.mutate({ id, musicIds: ids.map(Number) })
+  }
+
+  if (isPending) {
+    return (
+      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
+        <Header />
+        <main className="flex-1 pt-24 px-6 flex items-center justify-center">
+          <p className="font-mono text-xs text-muted-foreground">Carregando playlist…</p>
+        </main>
+      </div>
+    )
+  }
+
   if (!currentPlaylist) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
         <Header />
         <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
-          <div className="size-16 rounded-2xl border border-border bg-surface flex items-center justify-center text-2xl mb-4 font-mono shadow-xs">
-            ∅
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Playlist não encontrada</h1>
-          <p className="text-sm text-muted-foreground mb-6 font-light max-w-sm">
-            Esta playlist não foi encontrada ou pode ter sido removida.
+          {/* An empty sleeve: just its printed frame */}
+          <div className="mb-6 size-20 rounded-md border border-dashed border-border" aria-hidden="true" />
+          <h1 className="text-2xl font-medium mb-2">Playlist não encontrada</h1>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+            {error ?? "Ela pode ter sido removida, ser privada ou o link está incorreto"}
           </p>
-          <Link href="/playlist">
-            <Button variant="default" className="text-xs font-semibold cursor-pointer">
-              ← Voltar ao Catálogo
-            </Button>
+          <Link href="/playlist" className={cn(buttonVariants({ size: "lg" }), "gap-2")}>
+            <ArrowLeftIcon size={16} /> Voltar às playlists
           </Link>
         </main>
       </div>
@@ -147,12 +147,16 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = currentPlaylist.tracks
-  const contrastText = getContrastTextColor(currentPlaylist.color)
-  const totalDurationMin = Math.round(
-    tracks.reduce((acc, t) => acc + t.durationSec, 0) / 60
-  )
+  const color = draft?.color ?? currentPlaylist.color
+  // The current track of this playlist is marked even while paused, so the list shows where
+  // playback stands
+  const currentTrackId = isThisPlaylist ? currentTrackOf(playback)?.id : undefined
+  const currentTrackIndex = currentTrackId ? tracks.findIndex((track) => track.id === currentTrackId) : -1
+  const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
+  const playlistAccent = getPlaylistAccentStyle(color)
+  const totalDuration = formatTotalDuration(sumDurationSec(tracks))
+  const isSearching = searchQuery.trim() !== ""
 
-  // Filtered tracks by search query only
   const filteredTracks = tracks.filter((track) => {
     const query = searchQuery.toLowerCase().trim()
     if (!query) return true
@@ -163,521 +167,269 @@ export default function PlaylistDetailPage() {
     )
   })
 
-  const currentPlayingTrack = tracks[currentTrackIndex]
-
-  const currentDurationSec = currentPlayingTrack?.durationSec || 240
-  const currentElapsedSec = Math.min(playbackSec, currentDurationSec)
-  const playbackProgress = (currentElapsedSec / currentDurationSec) * 100
-  const elapsedMin = Math.floor(currentElapsedSec / 60)
-  const elapsedSecFormatted = (currentElapsedSec % 60).toString().padStart(2, "0")
-
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground relative">
+    <div
+      className="flex-1 bg-background text-foreground flex flex-col font-sans"
+      style={playlistAccent}
+    >
       <Header />
 
-      <main className="flex-1 pt-16 flex flex-col relative overflow-hidden">
-        {/* 
-          FULL-WIDTH DYNAMIC COLOR WASH ACROSS THE ENTIRE SCREEN:
-          Extends across 100% of the viewport width, bathing the entire page header smoothly.
-        */}
-        <div
-          className="absolute inset-x-0 top-0 w-full h-[540px] pointer-events-none transition-all duration-700 ease-out"
-          style={{
-            background: `linear-gradient(180deg, ${currentPlaylist.color}45 0%, ${currentPlaylist.color}15 360px, transparent 100%)`,
-          }}
-        />
-        {/* Full-width ambient glow filling the whole viewport width symmetrically */}
-        <div
-          className="absolute inset-x-0 top-0 w-full h-[460px] pointer-events-none blur-3xl opacity-35 transition-all duration-700 ease-out"
-          style={{
-            background: `radial-gradient(ellipse 100% 70% at 50% 0%, ${currentPlaylist.color} 0%, transparent 100%)`,
-          }}
-        />
-
-        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 flex-1 flex flex-col relative z-10">
-          {/* Navigation & Header Actions */}
-          <div className="flex items-center justify-between pb-6">
+      <main className="flex-1 pt-16 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
+          {/* Back and the one setting this page has */}
+          <div className="flex h-8 items-center justify-between">
             <Link
               href="/playlist"
-              className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer group"
+              className="inline-flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              <span className="group-hover:-translate-x-1 transition-transform">←</span>
-              <span>Voltar ao Catálogo de Playlists</span>
+              <ArrowLeftIcon size={16} />
+              <span>Playlists</span>
             </Link>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsColorModalOpen(true)}
-                className="h-8 text-xs border-border bg-surface/80 hover:bg-surface gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <span
-                  className="size-3 rounded-full border border-black/20"
-                  style={{ backgroundColor: currentPlaylist.color }}
-                />
-                Alterar Cor
+            {/* Only a playlist admin can edit it; the API refuses anyone else */}
+            {currentPlaylist.canEdit && (
+              <Button variant="outline" size="lg" onClick={openEditor} className="gap-2">
+                <PencilIcon size={16} className="text-muted-foreground" />
+                Editar playlist
               </Button>
-            </div>
+            )}
           </div>
 
-          {/* =========================================================================
-              HERO SECTION: VINYL OBJECT + DISPLAY TYPOGRAPHY
-              ========================================================================= */}
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-8 pb-8 border-b border-border/80">
-            {/* Tactile Vinyl Sleeve & Peeking Disc (No hover movement) */}
-            <div className="group relative shrink-0">
-              {/* Static Peeking Vinyl Disc */}
-              <div
-                className="absolute top-2 right-0 size-48 md:size-52 rounded-full bg-[#111] border border-white/10 shadow-2xl pointer-events-none flex items-center justify-center -z-10 translate-x-4"
-                style={{
-                  backgroundImage: `repeating-radial-gradient(circle, #1a1a1a 0px, #111 2px, #262626 4px, #111 6px)`,
-                }}
-              >
-                <div
-                  className="size-16 rounded-full border border-black/40 flex flex-col items-center justify-center text-center p-1 shadow-inner"
-                  style={{ backgroundColor: currentPlaylist.color }}
-                >
-                  <div className={cn("text-[7px] font-mono font-bold leading-tight uppercase", contrastText)}>
-                    ZOVIC LP
-                  </div>
-                  <div className={cn("text-[6px] font-mono opacity-80 leading-tight", contrastText)}>
-                    33⅓ RPM
-                  </div>
-                </div>
-              </div>
+          {/* Sleeve and title, aligned on their bottom edge like an album page */}
+          <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
+            <RecordSleeve
+              color={color}
+              initials={getPlaylistInitials(currentPlaylist.name)}
+              playing={isPlaying}
+            />
 
-              {/* Front Jacket Card */}
-              <div
-                className="size-48 md:size-52 rounded-xl shadow-xl border border-black/10 p-5 flex flex-col justify-between relative overflow-hidden transition-all duration-500"
-                style={{
-                  backgroundColor: currentPlaylist.color,
-                  boxShadow: `0 16px 36px -12px ${currentPlaylist.color}66, 0 8px 16px -4px rgba(0,0,0,0.12)`,
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/35 via-transparent to-white/20 pointer-events-none" />
-                <div className="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
-
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className={cn("text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-black/20", contrastText)}>
-                    {currentPlaylist.isPrivate ? "PRIVADA" : "PÚBLICA"}
-                  </span>
-                  {getColorName(currentPlaylist.color) ? (
-                    <span className={cn("text-[10px] font-mono opacity-80", contrastText)}>
-                      {getColorName(currentPlaylist.color)}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="relative z-10 my-auto text-center">
-                  <div className={cn("text-6xl font-black tracking-tighter drop-shadow-sm select-none", contrastText)}>
-                    {getPlaylistInitials(currentPlaylist.name)}
-                  </div>
-                </div>
-
-                <div className="relative z-10 flex items-end justify-between">
-                  <div className={cn("text-xs font-bold leading-tight truncate max-w-[120px]", contrastText)}>
-                    {currentPlaylist.name}
-                  </div>
-                  <div className={cn("text-[9px] font-mono opacity-75", contrastText)}>
-                    STEREO
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Title & Objective Metadata Only */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-widest text-muted-foreground">
-                  Coleção Prensada em Vinil
-                </span>
-                <span className="text-muted-foreground/40">•</span>
-                <Badge variant="outline" className="text-[10px] py-0 border-border">
-                  {currentPlaylist.isPrivate ? "Privada" : "Pública"}
-                </Badge>
-              </div>
-
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-foreground leading-none mb-3 break-words">
+            <div className="min-w-0 flex-1 md:pb-2">
+              <p className="mb-3 font-mono text-xs text-muted-foreground">
+                Playlist {currentPlaylist.isPrivate ? "privada" : "pública"}
+              </p>
+              <h1 className="mb-4 break-words text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl md:text-6xl">
                 {currentPlaylist.name}
               </h1>
-
-              {/* Objective specs only: track count and total duration */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                <span>{tracks.length} {tracks.length === 1 ? "faixa" : "faixas"}</span>
-                <span>•</span>
-                <span>{totalDurationMin} min total</span>
-              </div>
+              {tracks.length > 0 && (
+                <p className="font-mono text-xs text-muted-foreground tabular-nums">
+                  {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {totalDuration}
+                </p>
+              )}
             </div>
-          </div>
+          </section>
 
-          {/* =========================================================================
-              TRACKLIST SECTION
-              ========================================================================= */}
-          <div className="pb-36 pt-6">
-            {/* Search Bar without emoji */}
-            <div className="flex items-center justify-end mb-6 pb-3 border-b border-border">
-              <div className="relative w-full sm:w-72">
+          {/* Tracklist, set like the back of a record */}
+          <section>
+            <div className="mb-2 flex items-center justify-between gap-4 border-b border-ink/10 pb-3">
+              {/* Same 32px box as the search field, so the label sits on its middle */}
+              <h2 className="flex h-8 items-center text-sm font-medium">Faixas</h2>
+              <div className="relative w-full max-w-64">
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar faixa, artista..."
-                  className="h-8 text-xs bg-surface pl-8"
+                  placeholder="Buscar na playlist"
+                  aria-label="Buscar na playlist"
+                  className="h-8 bg-surface pl-8 text-sm"
                 />
-                <svg
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
+                <SearchIcon
+                  size={16}
+                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
               </div>
             </div>
 
-            {/* Tracklist Items */}
-            <div className="space-y-2.5">
-              {filteredTracks.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-xs font-mono">
-                  Nenhuma faixa encontrada na busca.
-                </div>
-              ) : (
-                filteredTracks.map((track) => {
+            {/* Always rendered, so the live region exists before the first message */}
+            <output className={queued ? "block py-2 text-xs text-muted-foreground" : "sr-only"}>{queued}</output>
+            {reorderTracks.isError && (
+              <p role="alert" className="py-2 text-xs text-destructive">
+                Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
+              </p>
+            )}
+            {removeTrack.isError && (
+              <p role="alert" className="py-2 text-xs text-destructive">
+                Não deu para tirar a faixa. {apiErrorMessage(removeTrack.error)}
+              </p>
+            )}
+
+            {/* Drag to reorder (playlist admins only); off while searching, since only part of the list shows */}
+            {tracksError ? (
+              <p role="alert" className="py-12 text-center text-xs text-destructive">
+                Não deu para carregar as faixas. {tracksError}
+              </p>
+            ) : tracks.length === 0 ? (
+              // An empty playlist: admins get the way to fill it, everyone else just an empty list
+              currentPlaylist.canEdit && (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Busque uma música e use{" "}
+                  <Link href="/busca" className="text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground">
+                    Adicionar à playlist
+                  </Link>
+                </p>
+              )
+            ) : filteredTracks.length === 0 ? (
+              <p className="py-12 text-center font-mono text-xs text-muted-foreground">
+                Nenhuma faixa com “{searchQuery.trim()}”
+              </p>
+            ) : (
+              <SortableList
+                ids={filteredTracks.map((t) => t.id)}
+                rowHeight={56}
+                gap={2}
+                disabled={isSearching || !currentPlaylist.canEdit}
+                onReorder={handleReorderTracks}
+              >
+                {filteredTracks.map((track) => {
                   const actualIdx = tracks.findIndex((t) => t.id === track.id)
-                  const isTrackActive = isPlaying && currentTrackIndex === actualIdx
-                  const isLiked = isTrackLiked(track.id)
+                  const isCurrent = currentTrackIndex === actualIdx
+                  const isTrackPlaying = isCurrent && isPlaying
+
+                  // Clicking the current track pauses or resumes it; any other click plays the clicked track
+                  const playOrPauseRow = () => playOrTogglePlaylistTrack(currentPlaylist, actualIdx)
 
                   return (
                     <div
                       key={track.id}
                       className={cn(
-                        "group rounded-xl border p-3.5 transition-all flex items-center justify-between gap-4",
-                        isTrackActive
-                          ? "border-primary bg-primary/5 shadow-xs"
-                          : "border-border/70 bg-surface/70 hover:bg-surface hover:border-border"
+                        // Pointer: a click plays the track; grabbing only while a drag is held
+                        "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
+                        !isSearching && currentPlaylist.canEdit && "active:cursor-grabbing",
+                        isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
-                      {/* Left: Track Number, Title & Artist */}
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        {/* Side & Track Badge */}
-                        <div
+                      {/* Row-wide play button */}
+                      <button
+                        type="button"
+                        data-row-action
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        onClick={playOrPauseRow}
+                        className="absolute inset-0 rounded-lg cursor-[inherit]"
+                      />
+
+                      {/* The current track carries a thin rule in the accent on its left edge */}
+                      {isCurrent && (
+                        <span className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary" />
+                      )}
+
+                      {/* Number, or the play state: level bars while playing, pause on hover */}
+                      <div className="pointer-events-none relative flex w-6 shrink-0 justify-end font-mono text-xs tabular-nums text-muted-foreground">
+                        {isTrackPlaying ? (
+                          <>
+                            <span className="text-primary group-hover:hidden"><LevelBars playing /></span>
+                            <PauseIcon size={16} className="hidden text-foreground group-hover:block" />
+                          </>
+                        ) : (
+                          <>
+                            <span className={cn("group-hover:hidden", isCurrent && "text-primary")}>
+                              {String(actualIdx + 1).padStart(2, "0")}
+                            </span>
+                            <PlayIcon size={16} className="hidden text-foreground group-hover:block" />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
+                      <div className="pointer-events-none relative min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={playOrPauseRow}
+                          aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
                           className={cn(
-                            "size-8 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 border transition-colors",
-                            isTrackActive
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-border group-hover:text-foreground"
+                            "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
+                            isCurrent ? "text-primary" : "text-foreground"
                           )}
                         >
-                          {isTrackActive ? "▶" : track.trackNum}
-                        </div>
-
-                        <div className="min-w-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCurrentTrackIndex(actualIdx)
-                              setIsPlaying(true)
-                            }}
-                            className={cn(
-                              "font-bold text-sm text-left truncate cursor-pointer hover:underline block",
-                              isTrackActive ? "text-primary" : "text-foreground"
-                            )}
-                          >
-                            {track.title}
-                          </button>
-
-                          <div className="text-xs text-muted-foreground truncate">
-                            {track.artist} <span className="opacity-40">•</span> {track.album} ({track.year})
-                          </div>
+                          {track.title}
+                        </button>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[track.artist, [track.album, track.year].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
                         </div>
                       </div>
 
-                      {/* Right: BPM, Equalizer, Comments (Adults only), Duration & Actions */}
-                      <div className="flex items-center gap-3 shrink-0 font-mono text-xs">
-                        <span className="hidden md:inline-block text-[10px] text-muted-foreground/80 font-mono">
-                          {track.bpm} BPM
-                        </span>
-
-                        {/* Inline Equalizer Animation when playing */}
-                        {isTrackActive && (
-                          <div className="flex items-end gap-0.5 h-3.5">
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.3s] h-2.5" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.1s] h-3.5" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.2s] h-2" />
-                            <span className="w-1 bg-primary rounded-full animate-bounce [animation-delay:-0.4s] h-3" />
-                          </div>
-                        )}
-
-                        <span className="text-muted-foreground font-mono">
+                      <div className="pointer-events-none relative flex shrink-0 items-center gap-3">
+                        <span className="w-10 text-right font-mono text-xs tabular-nums text-muted-foreground">
                           {track.duration}
                         </span>
 
-                        {/* Comentários: VISÍVEL APENAS PARA MAIORES DE 18 */}
-                        {!currentUser.isUnderage && (
+                        {/* Content is click-through to the row; this button opts back in */}
+                        <span className="pointer-events-auto">
+                          <AddToQueueButton track={track} onResult={setQueued} />
+                        </span>
+
+                        {/* Comentários: o botão só aparece para maiores de 18; o painel é o do layout */}
+                        <span className="pointer-events-auto">
+                          <TrackCommentsButton track={track} onPlay={playOrPauseRow} />
+                        </span>
+
+                        <span className="pointer-events-auto">
+                          <TrackLikeButton trackId={track.id} />
+                        </span>
+
+                        {currentPlaylist.canEdit && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setCurrentTrackIndex(actualIdx)
-                              setIsCommentsExpanded(true)
-                            }}
-                            aria-label={`Comentários de ${track.title}`}
-                            className={cn(
-                              "size-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer text-xs",
-                              isCommentsExpanded && currentTrackIndex === actualIdx
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border text-muted-foreground hover:text-foreground hover:bg-surface"
-                            )}
-                            title="Comentários desta faixa"
+                            onClick={() => handleRemoveTrack(track.id)}
+                            disabled={removeTrack.isPending && removeTrack.variables?.musicId === Number(track.id)}
+                            aria-label={`Tirar ${track.title} da playlist`}
+                            title="Tirar da playlist"
+                            // Shown on the row's hover or focus, like delete on the shelf; always on touch screens
+                            className="pointer-events-auto flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,opacity] duration-150 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 disabled:opacity-40 [@media(hover:none)]:opacity-100"
                           >
-                            💬
+                            <ListMinusIcon size={16} />
                           </button>
                         )}
-
-                        {/* Play / Pause button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isTrackActive) {
-                              setIsPlaying(!isPlaying)
-                            } else {
-                              setCurrentTrackIndex(actualIdx)
-                              setIsPlaying(true)
-                            }
-                          }}
-                          className={cn(
-                            "size-7 rounded-lg border border-border flex items-center justify-center transition-all cursor-pointer",
-                            isTrackActive
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground hover:text-foreground hover:bg-surface"
-                          )}
-                          aria-label={isTrackActive ? `Pausar ${track.title}` : `Tocar ${track.title}`}
-                        >
-                          {isTrackActive ? "❚❚" : "▶"}
-                        </button>
-
-                        {/* Like bookmark */}
-                        <button
-                          type="button"
-                          onClick={() => toggleLike(track.id)}
-                          aria-label={isLiked ? "Descurtir faixa" : "Curtir faixa"}
-                          className={cn(
-                            "text-sm transition-colors cursor-pointer",
-                            isLiked ? "text-primary" : "text-muted-foreground/40 hover:text-foreground"
-                          )}
-                        >
-                          ♥
-                        </button>
                       </div>
                     </div>
                   )
-                })
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* =========================================================================
-            PERSISTENT BOTTOM AUDIO CONTROLLER + SLIDE-UP COMMENTS PANEL
-            Quando o usuário clica em Comentários, a barra de música sobe suavemente
-            e revela os comentários e o campo para comentar logo abaixo.
-            ========================================================================= */}
-        <div
-          className={cn(
-            "fixed bottom-0 inset-x-0 bg-surface/98 backdrop-blur-md border-t border-border z-50 shadow-2xl ease-in-out flex flex-col overflow-hidden",
-            !isDragging && "transition-all duration-300",
-            isCommentsOpen ? "rounded-t-2xl border-t-2 border-primary/30" : "h-20"
-          )}
-          style={isCommentsOpen ? { height: `min(${panelHeight}px, 85vh)` } : undefined}
-        >
-          {isCommentsOpen && (
-            <button
-              type="button"
-              aria-label="Redimensionar painel de comentários"
-              onPointerDown={handleResizeStart}
-              onPointerMove={handleResizeMove}
-              onPointerUp={handleResizeEnd}
-              onPointerCancel={handleResizeEnd}
-              onKeyDown={handleResizeKeyDown}
-              className="group w-full h-5 shrink-0 flex items-center justify-center cursor-row-resize touch-none select-none focus-visible:outline-none"
-            >
-              <div className="w-12 h-1 rounded-full bg-border group-hover:bg-muted-foreground/60 group-focus-visible:bg-primary transition-colors" />
-            </button>
-          )}
-
-          {/* Barra de Áudio / Controles (altura fixa h-20) */}
-          <div className="h-20 min-h-[5rem] px-6 flex items-center justify-between shrink-0">
-          {/* Left: Track Name & Mini Cover */}
-          <div className="flex items-center gap-3 w-1/4 min-w-[140px]">
-            <div
-              className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
-              style={{ backgroundColor: currentPlaylist.color }}
-            >
-              <span className={cn(contrastText)}>
-                {currentPlayingTrack?.side}
-                {currentPlayingTrack?.trackNum}
-              </span>
-            </div>
-            <div className="min-w-0 hidden sm:block">
-              <div className="font-bold text-xs text-foreground truncate">
-                {currentPlayingTrack?.title}
-              </div>
-              <div className="text-[11px] text-muted-foreground truncate">
-                {currentPlayingTrack?.artist}
-              </div>
-            </div>
-          </div>
-
-          {/* Center: Playback Controls & Progress Scrubber */}
-          <div className="flex flex-col items-center gap-1.5 flex-1 max-w-md px-2">
-            <div className="flex items-center gap-4 text-sm">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentTrackIndex((prev) => (prev > 0 ? prev - 1 : tracks.length - 1))
-                }}
-                aria-label="Faixa anterior"
-                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                ⏮
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
-                aria-label={isPlaying ? "Pausar reprodução" : "Iniciar reprodução"}
-                className="size-8 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
-              >
-                {isPlaying ? "❚❚" : "▶"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentTrackIndex((prev) => (prev < tracks.length - 1 ? prev + 1 : 0))
-                }}
-                aria-label="Próxima faixa"
-                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                ⏭
-              </button>
-            </div>
-
-            {/* Dynamic Scrubber colored with the playlist color */}
-            <div className="w-full flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-              <span>{`${elapsedMin}:${elapsedSecFormatted}`}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-                setPlaybackSec(Math.round(ratio * currentDurationSec))
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    setPlaybackSec((s) => Math.min(currentDurationSec, s + 5))
-                  } else if (e.key === "ArrowLeft") {
-                    setPlaybackSec((s) => Math.max(0, s - 5))
-                  }
-                }}
-                aria-label="Avançar ou retroceder na reprodução"
-                className="relative flex-1 h-3 flex items-center cursor-pointer group focus:outline-none"
-              >
-                <span className="w-full h-1.5 bg-border rounded-full overflow-hidden block">
-                  <span
-                    className="h-full rounded-full transition-all block"
-                    style={{
-                      width: `${playbackProgress}%`,
-                      backgroundColor: currentPlaylist.color,
-                    }}
-                  />
-                </span>
-              </button>
-              <span>{currentPlayingTrack?.duration || "0:00"}</span>
-            </div>
-          </div>
-
-          {/* Right: Sound Spec & Quick Comments Button (Adults only) */}
-          <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px] text-xs font-mono text-muted-foreground">
-            {!currentUser.isUnderage && currentPlayingTrack && (
-              <button
-                type="button"
-                onClick={() => setIsCommentsExpanded((prev) => !prev)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs cursor-pointer transition-colors shadow-2xs font-sans",
-                  isCommentsExpanded
-                    ? "border-primary bg-primary/10 text-primary font-semibold"
-                    : "border-border bg-background/80 hover:bg-surface text-foreground"
-                )}
-                title={isCommentsExpanded ? "Fechar painel de comentários" : "Comentários da faixa atual"}
-              >
-                <span>{isCommentsExpanded ? "✕" : "💬"}</span>
-                <span className="hidden md:inline font-medium text-[11px]">
-                  {isCommentsExpanded ? "Fechar" : "Comentários"}
-                </span>
-              </button>
+                })}
+              </SortableList>
             )}
-            <span className="hidden sm:inline">STEREO</span>
-            <span>🔊</span>
-          </div>
+          </section>
         </div>
-
-        {/* Seção de comentários integrada: revelada quando a barra de música sobe */}
-        {isCommentsExpanded && !currentUser.isUnderage && currentPlayingTrack && (
-          <TrackComments
-            key={currentPlayingTrack.id}
-            track={currentPlayingTrack}
-            user={currentUser}
-            currentPlaybackSec={currentElapsedSec}
-            onSeek={(seconds) => {
-            setPlaybackSec(Math.max(0, Math.min(currentDurationSec, Math.round(seconds))))
-            setIsPlaying(true)
-            }}
-          />
-        )}
-      </div>
       </main>
 
-      {/* Backdrop ao expandir comentários */}
-      {isCommentsExpanded && !currentUser.isUnderage && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-300"
-          onClick={() => setIsCommentsExpanded(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* =========================================================================
-          EDIT COLOR MODAL
-          ========================================================================= */}
-      <Dialog open={isColorModalOpen} onOpenChange={setIsColorModalOpen}>
+      <Dialog open={draft !== null} onOpenChange={(open) => (open ? openEditor() : closeEditor())}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Alterar Cor da Playlist</DialogTitle>
-            <DialogDescription>
-              A cor selecionada atualiza o encarte e o fundo dinâmico da página.
-            </DialogDescription>
+            <DialogTitle>Editar playlist</DialogTitle>
+            <DialogDescription>A cor vale para o encarte, o disco e os destaques desta página</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-1">
-            <ColorPicker
-              color={currentPlaylist.color}
-              onChange={handleUpdateColor}
-            />
+          {draft && (
+            <form onSubmit={saveEditor} className="space-y-5 pt-1">
+              <div className="space-y-2">
+                <Label htmlFor="edit-playlist-name" className="text-sm font-medium">
+                  Nome
+                </Label>
+                <Input
+                  id="edit-playlist-name"
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  maxLength={MAX_PLAYLIST_NAME_LENGTH}
+                  required
+                />
+              </div>
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                onClick={() => setIsColorModalOpen(false)}
-                className="h-9 text-xs font-bold"
-              >
-                Concluir
-              </Button>
-            </DialogFooter>
-          </div>
+              <ColorPicker color={draft.color} onChange={(next) => setDraft({ ...draft, color: next })} />
+
+              <PlaylistPrivacyField isPrivate={draft.isPrivate} onChange={(next) => setDraft({ ...draft, isPrivate: next })} />
+
+              {updatePlaylist.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {apiErrorMessage(updatePlaylist.error)}
+                </p>
+              )}
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" size="lg" onClick={closeEditor}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="lg" disabled={!draft.name.trim() || updatePlaylist.isPending}>
+                  {updatePlaylist.isPending ? "Salvando…" : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
