@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { Album, CatalogMusic } from "./api/catalog"
 import type { HistoryEntry } from "./api/history"
 import {
+  albumsOfArtist,
   countByGenre,
   firstName,
   greetingFor,
@@ -9,6 +10,7 @@ import {
   newestAlbums,
   parseRouteId,
   recentlyPlayed,
+  singlesOfArtist,
   topPlayed,
   tracksOfAlbum,
 } from "./home"
@@ -37,8 +39,12 @@ function genre(id: number) {
   return { id, name: `Gênero ${id}`, color: "#123456" }
 }
 
-function album(id: number): Album {
-  return { id, name: `Álbum ${id}`, year: 2024, artists: [], musicCount: 1, coverUrl: null }
+function album(id: number, overrides: Partial<Album> = {}): Album {
+  return { id, name: `Álbum ${id}`, year: 2024, artists: [], musicCount: 1, coverUrl: null, ...overrides }
+}
+
+function artist(id: number) {
+  return { id, name: `Artista ${id}` }
 }
 
 function historyEntry(musicId: number, isAvailable: boolean): HistoryEntry {
@@ -114,6 +120,39 @@ describe("tracksOfAlbum", () => {
       music(7, { album: inAlbum(4) }),
     ]
     expect(idsOf(tracksOfAlbum(musics, 4))).toEqual([9, 3, 7])
+  })
+})
+
+describe("albumsOfArtist", () => {
+  it("keeps the artist's albums, newest year first and without a year last", () => {
+    const albums = [
+      album(1, { year: 2019, artists: [artist(7)] }),
+      album(2, { year: 2021, artists: [artist(8), artist(7)] }),
+      album(3, { year: null, artists: [artist(7)] }),
+      album(4, { year: 2023, artists: [artist(8)] }),
+    ]
+    expect(idsOf(albumsOfArtist(albums, 7))).toEqual([2, 1, 3])
+  })
+
+  it("orders albums of the same year by name", () => {
+    const albums = [
+      album(1, { name: "Zênite", year: 2020, artists: [artist(7)] }),
+      album(2, { name: "Aurora", year: 2020, artists: [artist(7)] }),
+    ]
+    expect(idsOf(albumsOfArtist(albums, 7))).toEqual([2, 1])
+  })
+})
+
+describe("singlesOfArtist", () => {
+  it("keeps the artist's active musics outside any album, most played first", () => {
+    const musics = [
+      music(1, { artists: [artist(7)], plays: 3 }),
+      music(2, { artists: [artist(8), artist(7)], plays: 9 }),
+      music(3, { artists: [artist(7)], album: inAlbum(1) }),
+      music(5, { artists: [artist(7)], deletedAt: REMOVED_AT }),
+      music(6, { artists: [artist(8)] }),
+    ]
+    expect(idsOf(singlesOfArtist(musics, 7))).toEqual([2, 1])
   })
 })
 

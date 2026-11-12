@@ -228,6 +228,18 @@ describe("catálogo e reproduções", () => {
     expect(await json(renamed)).toMatchObject({ name: `${PREFIX} artista 2` });
   });
 
+  it("artista removido some da lista do assinante (HU-10)", async () => {
+    const artist = await json<{ id: number }>(await call("/admin/artists", adminCookie, { method: "POST", body: { name: `${PREFIX} removível` } }));
+    created.artist.push(artist.id);
+    const before = await json<{ id: number }[]>(await call("/artists", userCookie));
+    expect(before.some((listed) => listed.id === artist.id)).toBe(true);
+
+    expect((await call(`/admin/artists/${artist.id}`, adminCookie, { method: "DELETE" })).status).toBe(204);
+
+    const after = await json<{ id: number }[]>(await call("/artists", userCookie));
+    expect(after.some((listed) => listed.id === artist.id)).toBe(false);
+  });
+
   it("assinante não edita o catálogo", async () => {
     expect((await call(`/admin/musics/${musicId}`, userCookie, { method: "PATCH", body: { name: "Invadida" } })).status).toBe(403);
   });

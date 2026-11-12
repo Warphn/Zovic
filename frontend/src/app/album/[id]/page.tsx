@@ -76,7 +76,6 @@ export default function AlbumPage() {
     )
   }
 
-  const artists = album.artists.map((artist) => artist.name).join(", ")
   const meta = [
     album.year,
     `${tracks.length} ${tracks.length === 1 ? "faixa" : "faixas"}`,
@@ -92,7 +91,21 @@ export default function AlbumPage() {
         <div className="min-w-0 flex-1">
           <p className="font-mono text-xs text-muted-foreground">Álbum</p>
           <h1 className="mt-2 text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">{album.name}</h1>
-          {artists && <p className="mt-2 text-sm text-muted-foreground">{artists}</p>}
+          {album.artists.length > 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {album.artists.map((artist, index) => (
+                <React.Fragment key={artist.id}>
+                  {index > 0 && ", "}
+                  <Link
+                    href={`/artista/${artist.id}`}
+                    className="rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    {artist.name}
+                  </Link>
+                </React.Fragment>
+              ))}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
             <p className="font-mono text-xs text-muted-foreground tabular-nums">{meta}</p>
             <Button size="lg" className="gap-2" disabled={tracks.length === 0} onClick={() => playQueue(tracks, 0)}>
