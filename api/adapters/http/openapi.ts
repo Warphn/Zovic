@@ -42,7 +42,7 @@ export const openApiDocument = {
     { name: "Comentários", description: "Comentários e denúncias em músicas" },
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Histórico", description: "Músicas que o usuário ouviu" },
-    { name: "Busca", description: "Busca de músicas, artistas e playlists" },
+    { name: "Busca", description: "Busca de músicas, artistas, álbuns e playlists" },
     { name: "Catálogo", description: "Listas de músicas e álbuns" },
     { name: "Admin", description: "Painel dos admins da plataforma: cadastro de músicas (com o áudio) e de álbuns" },
     { name: "Infra", description: "Estado da API" },
@@ -1015,9 +1015,9 @@ export const openApiDocument = {
     "/api/search": {
       get: {
         tags: ["Busca"],
-        summary: "Busca músicas, artistas e playlists",
+        summary: "Busca músicas, artistas, álbuns e playlists",
         description:
-          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece.",
+          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas; álbuns, só pelo nome deles. Para um menor de idade (ou conta sem data de nascimento), as músicas explícitas não aparecem nem entram nas contagens. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece.",
         operationId: "search",
         security: [{ cookieAuth: [] }],
         parameters: [
@@ -1931,10 +1931,11 @@ export const openApiDocument = {
       },
       SearchResults: {
         type: "object",
-        required: ["musics", "artists", "playlists"],
+        required: ["musics", "artists", "albums", "playlists"],
         properties: {
           musics: { type: "array", items: { $ref: "#/components/schemas/MusicHit" } },
           artists: { type: "array", items: { $ref: "#/components/schemas/ArtistHit" } },
+          albums: { type: "array", items: { $ref: "#/components/schemas/AlbumListItem" } },
           playlists: { type: "array", items: { $ref: "#/components/schemas/PlaylistHit" } },
         },
       },

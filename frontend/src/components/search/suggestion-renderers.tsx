@@ -2,13 +2,14 @@
 
 import * as React from "react"
 import { SearchIcon } from "@/components/icons"
+import { AlbumCoverImage } from "@/components/album-cover-image"
 import { getContrastTextColor } from "@/components/color-picker"
 import { getPlaylistInitials } from "@/lib/playlist-store"
 import { normalize, type SearchSuggestion, type SuggestionKind } from "@/lib/search/suggestions"
 import { cn } from "@/lib/utils"
 
 // One component per suggestion kind. The search box only knows this registry, so a new kind
-// (album, genre…) is a new entry here plus its type in lib/search/suggestions.
+// (genre…) is a new entry here plus its type in lib/search/suggestions.
 
 type RendererProps<K extends SuggestionKind> = {
   suggestion: Extract<SearchSuggestion, { kind: K }>
@@ -96,6 +97,13 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
       media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round />}
       title={<Highlight text={suggestion.name} query={query} />}
       subtitle={subtitleOf("Artista", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`, showKind)}
+    />
+  ),
+  album: ({ suggestion, query, showKind }) => (
+    <Row
+      media={<AlbumCoverImage album={suggestion} className="size-9 shrink-0 rounded-md text-[11px]" />}
+      title={<Highlight text={suggestion.name} query={query} />}
+      subtitle={subtitleOf("Álbum", suggestion.subtitle, showKind)}
     />
   ),
   playlist: ({ suggestion, query, showKind }) => (

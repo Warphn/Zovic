@@ -12,6 +12,7 @@ export function makeSearchController(searchCatalog: SearchCatalogUseCase): Searc
       const { q, limit } = res.locals.query;
       const results = await searchCatalog.execute({
         userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
         term: String(q),
         limit: Number(limit),
       });

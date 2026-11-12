@@ -85,7 +85,7 @@ export function SearchBar({ className }: { className?: string }) {
         ref={inputRef}
         type="search"
         role="combobox"
-        aria-label="Buscar músicas, artistas e playlists"
+        aria-label="Buscar músicas, artistas, álbuns e playlists"
         aria-autocomplete="list"
         aria-expanded={showList}
         aria-controls={LISTBOX_ID}

@@ -86,7 +86,7 @@ describe("GET /api/search", () => {
     expect(res.status).toBe(401);
   });
 
-  it("devolve músicas, artistas e playlists que casam com o termo", async () => {
+  it("devolve músicas, artistas, álbuns e playlists que casam com o termo", async () => {
     const res = await get(`?q=${encodeURIComponent(` agua${T} `)}`);
     const body = await json<SearchResults>(res);
 
@@ -97,6 +97,7 @@ describe("GET /api/search", () => {
         { id: artistIds[1]!, name: `Água${T} dois`, musicCount: 0 },
         { id: artistIds[0]!, name: `Água${T} um`, musicCount: 0 },
       ],
+      albums: [],
       playlists: [],
     });
   });

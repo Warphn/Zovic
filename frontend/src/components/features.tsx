@@ -4,7 +4,7 @@ const FEATURES = [
   {
     title: "Busca enquanto você digita",
     description:
-      "Faixas, artistas e playlists aparecem já nas primeiras letras. Clique numa faixa e ela toca ali mesmo, sem trocar de página.",
+      "Faixas, artistas, álbuns e playlists aparecem já nas primeiras letras. Clique numa faixa e ela toca ali mesmo, sem trocar de página.",
   },
   {
     title: "Player com fila de verdade",

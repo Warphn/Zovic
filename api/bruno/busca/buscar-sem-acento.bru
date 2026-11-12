@@ -20,9 +20,9 @@ docs {
 }
 
 tests {
-  test("responde 200 com os três grupos", function () {
+  test("responde 200 com os quatro grupos", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.all.keys("musics", "artists", "playlists");
+    expect(res.getBody()).to.have.all.keys("musics", "artists", "albums", "playlists");
   });
 
   test("acha o artista apesar do acento e das maiúsculas", function () {

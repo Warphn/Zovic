@@ -1,0 +1,33 @@
+meta {
+  name: Buscar álbum
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=concreto
+  body: none
+  auth: none
+}
+
+params:query {
+  q: concreto
+}
+
+docs {
+  "concreto" acha os dois álbuns do seed com a palavra no nome: "Concreto e Verso" vem primeiro
+  (o nome começa com o termo) e "Ondas de Concreto" depois (uma palavra começa com ele).
+}
+
+tests {
+  test("responde 200 com os álbuns na ordem de relevância", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().albums.map((a) => a.name)).to.deep.equal(["Concreto e Verso", "Ondas de Concreto"]);
+  });
+
+  test("traz o ano e os artistas do álbum", function () {
+    const ondas = res.getBody().albums.find((a) => a.name === "Ondas de Concreto");
+    expect(ondas).to.include({ year: 2018 });
+    expect(ondas.artists.map((a) => a.name)).to.deep.equal(["Maré Alta"]);
+  });
+}

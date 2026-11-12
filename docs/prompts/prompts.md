@@ -219,3 +219,11 @@ O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fund
 | 2 | Pode começar. | A seleção em [`home.ts`](../../frontend/src/lib/home.ts) (`albumsOfArtist` e `singlesOfArtist`), com testes; a página [`artista/`](../../frontend/src/app/artista/); o card de álbum em [`album-card.tsx`](../../frontend/src/components/album-card.tsx), compartilhado com o `/inicio`; os links no cabeçalho do álbum e nas sugestões de artista da busca ([`routes.ts`](../../frontend/src/lib/search/routes.ts)); e o teste de integração do artista removido |
 
 O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.
+
+### 12/11/2026: álbuns na busca (#89, HU-12)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Implemente essa issue: https://github.com/Warphn/Zovic/issues/89 | O grupo de álbuns em [`postgres-search-query.ts`](../../api/adapters/db/postgres-search-query.ts), achados pelo nome e com ano, capa e artistas; as músicas explícitas fora da busca de um menor, também nas contagens (regra da HU-09, decidida no caso de uso [`search-catalog.ts`](../../api/domain/use-cases/search-catalog.ts)); os álbuns na barra de busca e na página [`busca/`](../../frontend/src/app/busca/page.tsx), levando à página do álbum; testes de unidade e de integração e a requisição `busca/Buscar álbum` do Bruno |
+
+O Carlos revisou o PR antes de abrir. A IA conferiu a busca no navegador do Claude Code, com a conta do seed.

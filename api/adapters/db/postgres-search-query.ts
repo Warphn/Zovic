@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type {
+  AlbumHit,
   ArtistHit,
   MusicHit,
   MusicHitArtist,
@@ -8,6 +9,7 @@ import type {
   SearchQuery,
   SearchResults,
 } from "../../domain/ports/search-query.ts";
+import { coverUrlOf } from "./postgres-admin-queries.ts";
 
 interface MusicRow {
   id: number;
@@ -22,6 +24,15 @@ interface ArtistRow {
   music_count: number;
 }
 
+interface AlbumRow {
+  id: number;
+  name: string;
+  year: number | null;
+  cover_file: string | null;
+  artists: MusicHitArtist[];
+  music_count: number;
+}
+
 interface PlaylistRow {
   id: number;
   name: string;
@@ -30,9 +41,12 @@ interface PlaylistRow {
   music_count: number;
 }
 
-// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados e $2 é o limite.
+// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados, $2 é o limite e $3
+// diz se as músicas explícitas ficam de fora (quem busca é menor, HU-09).
 // `q.t` é o termo normalizado e `s.h` é o texto onde se procura, normalizado do mesmo jeito.
 const TERM = String.raw`CROSS JOIN (SELECT lower(unaccent($1::text)) AS t) q`;
+// A música `m` aparece e entra nas contagens: não foi apagada nem é explícita para um menor.
+const VISIBLE_MUSIC = "m.deleted_at IS NULL AND NOT ($3::boolean AND m.is_explicit)";
 const MATCHES = String.raw`s.h LIKE '%' || q.t || '%' ESCAPE '\'`;
 // 0: o texto começa com o termo; 1: uma palavra começa com ele (separadores iguais aos do
 // front: espaço , . - & /); 2: o termo está no meio de uma palavra.
@@ -54,7 +68,7 @@ const SEARCH_MUSICS = `
   ) credit
   CROSS JOIN LATERAL (SELECT lower(unaccent(m.name || coalesce(' ' || credit.names, ''))) AS h) s
   ${TERM}
-  WHERE m.deleted_at IS NULL AND ${MATCHES}
+  WHERE ${VISIBLE_MUSIC} AND ${MATCHES}
   ORDER BY ${RANK}, lower(unaccent(m.name)), m.id
   LIMIT $2`;
 
@@ -62,7 +76,7 @@ const SEARCH_ARTISTS = `
   SELECT a.id, a.name,
          (SELECT count(*)::int
           FROM artist_music am
-          JOIN musics m ON m.id = am.music_id AND m.deleted_at IS NULL
+          JOIN musics m ON m.id = am.music_id AND ${VISIBLE_MUSIC}
           WHERE am.artist_id = a.id) AS music_count
   FROM artist a
   CROSS JOIN LATERAL (SELECT lower(unaccent(a.name)) AS h) s
@@ -71,19 +85,37 @@ const SEARCH_ARTISTS = `
   ORDER BY ${RANK}, s.h, a.id
   LIMIT $2`;
 
-// Mesma regra de visibilidade do GET /playlists/:id: públicas, ou privadas de que $3 é membro.
+// O álbum é achado só pelo nome; os artistas vêm para o subtítulo do resultado.
+const SEARCH_ALBUMS = `
+  SELECT al.id, al.name, al.year, al.cover_file,
+         (SELECT coalesce(json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name, a.id), '[]')
+          FROM album_artist aa
+          JOIN artist a ON a.id = aa.artist_id AND a.deleted_at IS NULL
+          WHERE aa.album_id = al.id) AS artists,
+         (SELECT count(*)::int
+          FROM album_music amu
+          JOIN musics m ON m.id = amu.music_id AND ${VISIBLE_MUSIC}
+          WHERE amu.album_id = al.id) AS music_count
+  FROM album al
+  CROSS JOIN LATERAL (SELECT lower(unaccent(al.name)) AS h) s
+  ${TERM}
+  WHERE al.deleted_at IS NULL AND ${MATCHES}
+  ORDER BY ${RANK}, s.h, al.id
+  LIMIT $2`;
+
+// Mesma regra de visibilidade do GET /playlists/:id: públicas, ou privadas de que $4 é membro.
 const SEARCH_PLAYLISTS = `
   SELECT p.id, p.name, p.is_private, p.color,
          (SELECT count(*)::int
           FROM music_playlist mp
-          JOIN musics m ON m.id = mp.music_id AND m.deleted_at IS NULL
+          JOIN musics m ON m.id = mp.music_id AND ${VISIBLE_MUSIC}
           WHERE mp.playlist_id = p.id) AS music_count
   FROM playlists p
   CROSS JOIN LATERAL (SELECT lower(unaccent(p.name)) AS h) s
   ${TERM}
   WHERE p.deleted_at IS NULL
     AND (NOT p.is_private
-         OR EXISTS (SELECT 1 FROM playlist_user pu WHERE pu.playlist_id = p.id AND pu.user_id = $3))
+         OR EXISTS (SELECT 1 FROM playlist_user pu WHERE pu.playlist_id = p.id AND pu.user_id = $4))
     AND ${MATCHES}
   ORDER BY ${RANK}, s.h, p.id
   LIMIT $2`;
@@ -96,17 +128,19 @@ function escapeLike(term: string): string {
 export class PostgresSearchQuery implements SearchQuery {
   constructor(private readonly pool: Pool) {}
 
-  async search({ term, viewerId, limit }: SearchParams): Promise<SearchResults> {
-    const pattern = escapeLike(term);
-    const [musics, artists, playlists] = await Promise.all([
-      this.pool.query<MusicRow>(SEARCH_MUSICS, [pattern, limit]),
-      this.pool.query<ArtistRow>(SEARCH_ARTISTS, [pattern, limit]),
-      this.pool.query<PlaylistRow>(SEARCH_PLAYLISTS, [pattern, limit, viewerId]),
+  async search({ term, viewerId, hideExplicit, limit }: SearchParams): Promise<SearchResults> {
+    const params = [escapeLike(term), limit, hideExplicit];
+    const [musics, artists, albums, playlists] = await Promise.all([
+      this.pool.query<MusicRow>(SEARCH_MUSICS, params),
+      this.pool.query<ArtistRow>(SEARCH_ARTISTS, params),
+      this.pool.query<AlbumRow>(SEARCH_ALBUMS, params),
+      this.pool.query<PlaylistRow>(SEARCH_PLAYLISTS, [...params, viewerId]),
     ]);
 
     return {
       musics: musics.rows.map(toMusicHit),
       artists: artists.rows.map(toArtistHit),
+      albums: albums.rows.map(toAlbumHit),
       playlists: playlists.rows.map(toPlaylistHit),
     };
   }
@@ -118,6 +152,17 @@ function toMusicHit(row: MusicRow): MusicHit {
 
 function toArtistHit(row: ArtistRow): ArtistHit {
   return { id: row.id, name: row.name, musicCount: row.music_count };
+}
+
+function toAlbumHit(row: AlbumRow): AlbumHit {
+  return {
+    id: row.id,
+    name: row.name,
+    year: row.year,
+    coverUrl: row.cover_file === null ? null : coverUrlOf(row.id, row.cover_file),
+    artists: row.artists,
+    musicCount: row.music_count,
+  };
 }
 
 function toPlaylistHit(row: PlaylistRow): PlaylistHit {
