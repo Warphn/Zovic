@@ -23,6 +23,7 @@ const RESULT_CLASSES =
 const GROUPS = [
   { kind: "track", label: "Músicas" },
   { kind: "artist", label: "Artistas" },
+  { kind: "album", label: "Álbuns" },
   { kind: "playlist", label: "Playlists" },
 ] as const
 
@@ -64,7 +65,7 @@ function SearchResults() {
         <p className="mt-6 text-sm text-muted-foreground">Buscando…</p>
       ) : results.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">
-          Nada encontrado. Tente outro nome de música, artista ou playlist.
+          Nada encontrado. Tente outro nome de música, artista, álbum ou playlist.
         </p>
       ) : (
         <div className="mt-8 space-y-8">

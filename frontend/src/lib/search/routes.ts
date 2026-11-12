@@ -18,6 +18,8 @@ export function suggestionHref(suggestion: SearchSuggestion): string {
       return searchHref(suggestion.title)
     case "artist":
       return `/artista/${suggestion.id}`
+    case "album":
+      return `/album/${suggestion.id}`
     case "playlist":
       return `/playlist/${suggestion.id}`
   }
@@ -31,6 +33,8 @@ export function suggestionText(suggestion: SearchSuggestion): string {
     case "track":
       return suggestion.title
     case "artist":
+      return suggestion.name
+    case "album":
       return suggestion.name
     case "playlist":
       return suggestion.name

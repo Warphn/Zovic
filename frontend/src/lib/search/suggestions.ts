@@ -9,9 +9,22 @@ export type QuerySuggestion = { kind: "query"; text: string }
 /** Carries the whole track, so picking it plays it right away. */
 export type TrackSuggestion = { kind: "track"; id: string; title: string; artist: string; track: Track }
 export type ArtistSuggestion = { kind: "artist"; id: number; name: string; trackCount: number }
+export type AlbumSuggestion = {
+  kind: "album"
+  id: number
+  name: string
+  /** "Artista · ano", whichever of the two the album has. */
+  subtitle: string
+  coverUrl: string | null
+}
 export type PlaylistSuggestion = { kind: "playlist"; id: string; name: string; color: string; trackCount: number }
 
-export type SearchSuggestion = QuerySuggestion | TrackSuggestion | ArtistSuggestion | PlaylistSuggestion
+export type SearchSuggestion =
+  | QuerySuggestion
+  | TrackSuggestion
+  | ArtistSuggestion
+  | AlbumSuggestion
+  | PlaylistSuggestion
 export type SuggestionKind = SearchSuggestion["kind"]
 
 const DEFAULT_QUERY_COUNT = 3
@@ -24,7 +37,7 @@ export function normalize(text: string): string {
 /**
  * Suggestions for `rawQuery` from the API results, already ranked and capped by the API:
  * up to `queryCount` text completions (names that start with what was typed), then tracks,
- * artists and playlists.
+ * artists, albums and playlists.
  */
 export function toSuggestions(
   results: SearchResults,
@@ -44,6 +57,13 @@ export function toSuggestions(
     name: a.name,
     trackCount: a.musicCount,
   }))
+  const albums: AlbumSuggestion[] = results.albums.map((album) => ({
+    kind: "album",
+    id: album.id,
+    name: album.name,
+    subtitle: [album.artists.map((artist) => artist.name).join(", "), album.year].filter(Boolean).join(" · "),
+    coverUrl: album.coverUrl,
+  }))
   const playlists: PlaylistSuggestion[] = results.playlists.map((p) => ({
     kind: "playlist",
     id: String(p.id),
@@ -52,12 +72,17 @@ export function toSuggestions(
     trackCount: p.musicCount,
   }))
 
-  const names = [...tracks.map((t) => t.title), ...artists.map((a) => a.name), ...playlists.map((p) => p.name)]
+  const names = [
+    ...tracks.map((t) => t.title),
+    ...artists.map((a) => a.name),
+    ...albums.map((album) => album.name),
+    ...playlists.map((p) => p.name),
+  ]
   const queries: QuerySuggestion[] = [...new Set(names)]
     .filter((text) => normalize(text).startsWith(query) && normalize(text) !== query)
     .toSorted((a, b) => a.localeCompare(b, "pt-BR"))
     .slice(0, queryCount)
     .map((text) => ({ kind: "query", text }))
 
-  return [...queries, ...tracks, ...artists, ...playlists]
+  return [...queries, ...tracks, ...artists, ...albums, ...playlists]
 }

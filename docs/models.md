@@ -245,7 +245,7 @@ Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entida
 
 | Porta | Arquivo | O que faz |
 | --- | --- | --- |
-| `SearchQuery` | `search-query.ts` | A busca de músicas, artistas e playlists (`GET /api/search`) |
+| `SearchQuery` | `search-query.ts` | A busca de músicas, artistas, álbuns e playlists (`GET /api/search`) |
 | `PlaylistMusics` | `playlist-musics.ts` | Lista, põe, tira e reordena as músicas de uma playlist. As escritas mexem só em `music_playlist`. |
 | `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
 | `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
