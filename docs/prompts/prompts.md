@@ -199,3 +199,14 @@ Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do 
 | 4 | Precisamos de uma barra de opções para ser possível navegar entre as páginas importantes do site (com a busca mantida como está hoje). | A navegação principal no cabeçalho, em [`main-nav.tsx`](../../frontend/src/components/main-nav.tsx): Início, Playlists, Histórico e Tocando. Ela mostra ícones a partir de 1024 px, porque os nomes não cabem ao lado da busca centralizada, e fica no menu ☰ em telas menores. O destaque da página atual tem teste em [`main-nav.ts`](../../frontend/src/lib/main-nav.ts) |
 
 A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de artista e o número da faixa), e aprovou a spec e o plano antes da implementação. A IA conferiu cada tela por capturas do Chrome, com uma conta nova e com a do seed, e deixou a conferência no Opera para o Victor.
+
+### 07/11/2026: logo e identidade visual no front
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Me mande a paleta de cores do site. | A lista das cores de [`globals.css`](../../frontend/src/app/globals.css), com o uso de cada uma |
+| 2 | Criei esse logo, qual a sua sugestão para adaptar a paleta? Não, eu quero é adaptar o meu logo. Me mande como se fosse um prompt as sugestões que você tem. *(com a primeira versão do logo anexada)* | Um prompt para o gerador de imagem, com as cores do site: vermelho `#d33a2c`, preto `#171512`, papel `#efe7d8`, creme `#f8f3e7` e o verde-azulado `#1e7f82` nos olhos do gato. Com ele, o Felipe gerou as imagens de [`docs/images/`](../images/) |
+| 3 | Me ajude a incorporar as novas imagens no front do site. *(e, na conversa: o gato sobre um dos discos da estante do login, sobre a prévia da playlist "MPB dos Anos Dourados" na landing e, depois do login, só no header)* | O componente [`zovic-cat.tsx`](../../frontend/src/components/zovic-cat.tsx), o gato no [`hero-preview.tsx`](../../frontend/src/components/hero-preview.tsx) e no [`auth-form.tsx`](../../frontend/src/components/auth-form.tsx), o favicon `frontend/src/app/icon.png` e o título "Zovic" da aba |
+| 4 | Atualize o header do site com `docs/images/Zovic_header.png`. | O logo com o nome no [`header.tsx`](../../frontend/src/components/header.tsx), sem o fundo bege, em duas versões: letras pretas e, sobre as seções escuras da landing, letras claras (`frontend/public/zovic-header.png` e `zovic-header-dark.png`) |
+
+O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fundo das imagens e as encaixou nas telas, e conferiu a landing e o login no navegador.

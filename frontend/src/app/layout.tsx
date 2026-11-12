@@ -10,8 +10,8 @@ import { CommentsPanelProvider } from "@/components/comments/comments-panel"
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "Frontend",
-  description: "Frontend",
+  title: "Zovic",
+  description: "Streaming de música com busca, fila e playlists que têm a sua cara",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
