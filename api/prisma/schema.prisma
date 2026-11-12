@@ -182,12 +182,14 @@ model AlbumGenre {
 }
 
 model AlbumMusic {
-  albumId Int   @map("album_id")
-  musicId Int   @map("music_id")
-  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  music   Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  albumId     Int   @map("album_id")
+  musicId     Int   @map("music_id")
+  trackNumber Int   @map("track_number") @db.SmallInt
+  album       Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music       Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([albumId, musicId])
+  @@unique([albumId, trackNumber])
   @@index([musicId])
   @@map("album_music")
 }

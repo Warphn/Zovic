@@ -43,11 +43,11 @@ export function musicsOfGenre(musics: CatalogMusic[], genreId: number): CatalogM
     .toSorted(byPlaysThenName)
 }
 
-/** The album's musics in the order they were registered: albums have no track number yet. */
+/** The album's active musics in track number order (HU-10). */
 export function tracksOfAlbum(musics: CatalogMusic[], albumId: number): CatalogMusic[] {
   return musics
     .filter((music) => isActive(music) && music.album?.id === albumId)
-    .toSorted((first, second) => first.id - second.id)
+    .toSorted((first, second) => (first.album?.trackNumber ?? 0) - (second.album?.trackNumber ?? 0))
 }
 
 export function countByGenre(musics: CatalogMusic[]): Map<number, number> {

@@ -14,7 +14,7 @@ export interface MusicListItem {
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
   /** O álbum ativo da música, ou null se ela não está em nenhum. */
-  album: { id: number; name: string; year: number | null } | null;
+  album: { id: number; name: string; year: number | null; trackNumber: number } | null;
   isExplicit: boolean;
   /** As músicas anteriores ao upload não têm arquivo de áudio. */
   hasAudio: boolean;

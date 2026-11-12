@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_213000__Adiciona_capa_do_album.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261112_120000__Adiciona_numero_da_faixa.sql`).
 
 ### Diagrama gerado do banco
 
@@ -232,6 +232,7 @@ erDiagram
     album_music {
         int album_id PK, FK
         int music_id PK, FK
+        smallint track_number "1, 2, 3… dentro do álbum"
     }
     album_artist {
         int album_id PK, FK
@@ -292,7 +293,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `artist` | Os artistas | |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |
-| `album_music` | As faixas de cada álbum | |
+| `album_music` | As faixas de cada álbum | `track_number > 0`, único dentro do álbum. A música entra como a última faixa, e editá-la não muda o número. Pode ter buracos: tirar uma música do álbum não renumera as outras. |
 | `genre_music` e `album_genre` | Os gêneros de cada música e de cada álbum | |
 
 ### Autenticação (Better Auth)
