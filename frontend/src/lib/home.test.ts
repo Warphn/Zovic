@@ -100,16 +100,20 @@ describe("musicsOfGenre", () => {
   })
 })
 
+function inAlbum(trackNumber: number) {
+  return { id: 4, name: "Álbum 4", year: 2024, trackNumber }
+}
+
 describe("tracksOfAlbum", () => {
-  it("keeps the album's musics in id order", () => {
-    const inAlbum = { id: 4, name: "Álbum 4", year: 2024 }
+  it("keeps the album's active musics in track number order", () => {
     const musics = [
-      music(9, { album: inAlbum }),
-      music(3, { album: inAlbum }),
-      music(5, { album: { ...inAlbum, id: 5 } }),
-      music(6, { album: inAlbum, deletedAt: REMOVED_AT }),
+      music(3, { album: inAlbum(3) }),
+      music(9, { album: inAlbum(1) }),
+      music(5, { album: { ...inAlbum(2), id: 5 } }),
+      music(6, { album: inAlbum(2), deletedAt: REMOVED_AT }),
+      music(7, { album: inAlbum(4) }),
     ]
-    expect(idsOf(tracksOfAlbum(musics, 4))).toEqual([3, 9])
+    expect(idsOf(tracksOfAlbum(musics, 4))).toEqual([9, 3, 7])
   })
 })
 

@@ -33,7 +33,7 @@ interface MusicRow {
   plays: string;
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
-  album: { id: number; name: string; year: number | null } | null;
+  album: MusicListItem["album"];
   is_explicit: boolean;
   has_audio: boolean;
   created_at: Date;
@@ -47,7 +47,7 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     const { rows } = await this.pool.query<MusicRow>(
       `SELECT m.id, m.name, m.duration, m.streams, m.is_explicit, m.audio_file IS NOT NULL AS has_audio,
          m.created_at, m.deleted_at,
-         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year)
+         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year, 'trackNumber', amu.track_number)
             FROM album_music amu JOIN album al ON al.id = amu.album_id
             WHERE amu.music_id = m.id AND al.deleted_at IS NULL ORDER BY al.id LIMIT 1) AS album,
          (SELECT count(*) FROM user_event e WHERE e.music_id = m.id AND e.event_type = 'music_play') AS plays,

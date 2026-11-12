@@ -5,6 +5,7 @@ import { Artist } from "../../domain/entities/artist.ts";
 import { Genre } from "../../domain/entities/genre.ts";
 import { Music } from "../../domain/entities/music.ts";
 import { BusinessRuleError, NotFoundError } from "../../domain/errors/domain-error.ts";
+import { PostgresCatalogQueries } from "./postgres-admin-queries.ts";
 import { PostgresAlbumRepository } from "./postgres-album-repository.ts";
 import { PostgresArtistRepository } from "./postgres-artist-repository.ts";
 import { PostgresGenreRepository } from "./postgres-genre-repository.ts";
@@ -15,6 +16,7 @@ const genres = new PostgresGenreRepository(pool);
 const artists = new PostgresArtistRepository(pool);
 const albums = new PostgresAlbumRepository(pool);
 const musics = new PostgresMusicRepository(pool);
+const catalog = new PostgresCatalogQueries(pool);
 
 const created = { genre: [] as number[], artist: [] as number[], album: [] as number[], musics: [] as number[] };
 const MISSING_ID = 2_000_000_000;
@@ -178,6 +180,51 @@ describe("PostgresMusicRepository", () => {
     expect((await musics.findById(music.id))?.albumId).toBeNull();
   });
 
+  it("põe a música como a última faixa do álbum e mantém o número ao editar (HU-10)", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const first = await newMusic("Faixa A", [artistId]);
+    const second = await newMusic("Faixa B", [artistId]);
+    for (const track of [first, second]) {
+      track.changeAlbum(album.id);
+      await musics.save(track);
+    }
+
+    first.rename("Faixa A editada");
+    await musics.save(first);
+
+    const { rows } = await pool.query<{ music_id: number; track_number: number }>(
+      "SELECT music_id, track_number FROM album_music WHERE album_id = $1 ORDER BY track_number",
+      [album.id],
+    );
+    expect(rows).toEqual([
+      { music_id: first.id, track_number: 1 },
+      { music_id: second.id, track_number: 2 },
+    ]);
+  });
+
+  it("dá um número novo à música que muda de álbum", async () => {
+    const from = await newAlbum([artistId]);
+    const to = await newAlbum([artistId]);
+    await albums.save(from);
+    await albums.save(to);
+    const resident = await newMusic("Residente", [artistId]);
+    resident.changeAlbum(to.id);
+    await musics.save(resident);
+    const moving = await newMusic("Viajante", [artistId]);
+    moving.changeAlbum(from.id);
+    await musics.save(moving);
+
+    moving.changeAlbum(to.id);
+    await musics.save(moving);
+
+    const { rows } = await pool.query<{ album_id: number; track_number: number }>(
+      "SELECT album_id, track_number FROM album_music WHERE music_id = $1",
+      [moving.id],
+    );
+    expect(rows).toEqual([{ album_id: to.id, track_number: 2 }]);
+  });
+
   it("traduz álbum inexistente em NotFoundError", async () => {
     const music = await newMusic("Álbum fantasma", [artistId]);
     music.changeAlbum(MISSING_ID);
@@ -213,6 +260,28 @@ describe("PostgresMusicRepository", () => {
     expect(error).toBeInstanceOf(NotFoundError);
     const { rows } = await pool.query("SELECT 1 FROM musics WHERE id = $1", [music.id]);
     expect(rows).toHaveLength(0);
+  });
+});
+
+describe("PostgresCatalogQueries", () => {
+  it("lista cada música com o ano do álbum e o número da faixa (HU-10)", async () => {
+    const album = await newAlbum([artistId]);
+    await albums.save(album);
+    const name = `Faixa catálogo ${suffix}`;
+    const tracks = [await newMusic(`${name} 1`, [artistId]), await newMusic(`${name} 2`, [artistId])];
+    for (const track of tracks) {
+      track.changeAlbum(album.id);
+      await musics.save(track);
+    }
+
+    const listed = await catalog.listMusics({ search: name, includeDeleted: false });
+
+    expect(listed.map((music) => [music.id, music.album])).toEqual(
+      tracks.map((track, index) => [
+        track.id,
+        { id: album.id, name: "Integration", year: 1998, trackNumber: index + 1 },
+      ]),
+    );
   });
 });
 

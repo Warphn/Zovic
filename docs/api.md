@@ -143,7 +143,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
+| `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano e o número da faixa, `trackNumber`), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
 | `GET /api/artists` | Lista os artistas |
 | `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`) e o endereço da capa (`coverUrl`, ou `null`) |
 | `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |

@@ -1996,8 +1996,13 @@ export const openApiDocument = {
           album: {
             type: ["object", "null"],
             description: "O álbum ativo da música, ou null se ela não está em nenhum.",
-            properties: { id: { type: "integer" }, name: { type: "string" }, year: { type: ["integer", "null"] } },
-            example: { id: 3, name: "Ondas de Concreto", year: 2018 },
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              year: { type: ["integer", "null"] },
+              trackNumber: { type: "integer", minimum: 1, description: "Número da faixa no álbum. Pode ter buracos." },
+            },
+            example: { id: 3, name: "Ondas de Concreto", year: 2018, trackNumber: 2 },
           },
           isExplicit: { type: "boolean", example: false },
           hasAudio: { type: "boolean", description: "Músicas anteriores ao upload não têm arquivo de áudio.", example: true },

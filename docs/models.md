@@ -135,7 +135,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 
 Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`
 
-As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`.
+As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`. Ele também dá o número da faixa: a música entra como a última do álbum e mantém o número enquanto não muda de álbum.
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |

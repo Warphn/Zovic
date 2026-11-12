@@ -47,7 +47,11 @@ async function album(name: string, musicIds: number[], deleted = false): Promise
   await albums.save(entity);
   // Uma música em vários álbuns só existe nos dados antigos (o domínio limita a um), por isso
   // o vínculo entra direto no banco: é ele que a regra do "álbum ativo de menor id" cobre.
-  await pool.query("INSERT INTO album_music (album_id, music_id) SELECT $1, unnest($2::integer[])", [id, musicIds]);
+  await pool.query(
+    `INSERT INTO album_music (album_id, music_id, track_number)
+     SELECT $1, music_id, track_number FROM unnest($2::integer[]) WITH ORDINALITY AS track(music_id, track_number)`,
+    [id, musicIds],
+  );
   return id;
 }
 
