@@ -101,6 +101,7 @@ catalogo: "Catálogo" {
     shape: sql_table
     album_id: "integer" {constraint: [primary_key; foreign_key]}
     music_id: "integer" {constraint: [primary_key; foreign_key]}
+    track_number: "smallint"
   }
   artist_music: {
     shape: sql_table
