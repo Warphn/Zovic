@@ -210,3 +210,12 @@ A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de 
 | 4 | Atualize o header do site com `docs/images/Zovic_header.png`. | O logo com o nome no [`header.tsx`](../../frontend/src/components/header.tsx), sem o fundo bege, em duas versões: letras pretas e, sobre as seções escuras da landing, letras claras (`frontend/public/zovic-header.png` e `zovic-header-dark.png`) |
 
 O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fundo das imagens e as encaixou nas telas, e conferiu a landing e o login no navegador.
+
+### 12/11/2026: página do artista (#88, HU-10)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | https://github.com/Warphn/Zovic/issues/88 Faça um plano local de implementação para essa task. | Plano em três PRs: o número da faixa, a página do artista e a ficha da música, com as dependências das curtidas (#94) e do filtro de menores (#87) |
+| 2 | Pode começar. | A seleção em [`home.ts`](../../frontend/src/lib/home.ts) (`albumsOfArtist` e `singlesOfArtist`), com testes; a página [`artista/`](../../frontend/src/app/artista/); o card de álbum em [`album-card.tsx`](../../frontend/src/components/album-card.tsx), compartilhado com o `/inicio`; os links no cabeçalho do álbum e nas sugestões de artista da busca ([`routes.ts`](../../frontend/src/lib/search/routes.ts)); e o teste de integração do artista removido |
+
+O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.

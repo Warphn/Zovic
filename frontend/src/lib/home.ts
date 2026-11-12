@@ -1,7 +1,7 @@
 import type { Album, CatalogMusic } from "./api/catalog"
 import type { HistoryEntry } from "./api/history"
 
-// What the home page (/inicio) and the genre and album pages show, picked from the queries the
+// What the home page (/inicio) and the genre, album and artist pages show, picked from the queries the
 // front already has. The API decides what each account may see; these functions only select and
 // order. The one exception is the removed musics, which only an admin receives and nobody plays.
 
@@ -48,6 +48,25 @@ export function tracksOfAlbum(musics: CatalogMusic[], albumId: number): CatalogM
   return musics
     .filter((music) => isActive(music) && music.album?.id === albumId)
     .toSorted((first, second) => (first.album?.trackNumber ?? 0) - (second.album?.trackNumber ?? 0))
+}
+
+/** The artist's albums, newest year first; albums without a year go last. Ties by name. */
+export function albumsOfArtist(albums: Album[], artistId: number): Album[] {
+  return albums
+    .filter((album) => album.artists.some((artist) => artist.id === artistId))
+    .toSorted(
+      (first, second) =>
+        (second.year ?? 0) - (first.year ?? 0) || first.name.localeCompare(second.name, "pt-BR")
+    )
+}
+
+/** The artist's musics outside any album (singles and features), most played first. */
+export function singlesOfArtist(musics: CatalogMusic[], artistId: number): CatalogMusic[] {
+  return musics
+    .filter(
+      (music) => isActive(music) && music.album === null && music.artists.some((artist) => artist.id === artistId)
+    )
+    .toSorted(byPlaysThenName)
 }
 
 export function countByGenre(musics: CatalogMusic[]): Map<number, number> {

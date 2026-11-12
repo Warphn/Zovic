@@ -3,12 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
-import { AlbumCoverImage } from "@/components/album-cover-image"
+import { AlbumCard } from "@/components/album-card"
 import Header from "@/components/header"
-import { PlayIcon } from "@/components/icons"
 import { PlaylistTile } from "@/components/playlist-tile"
 import { TrackRow } from "@/components/track-row"
-import { type Album, type CatalogMusic, useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
+import { useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useHistory } from "@/lib/api/history"
 import { useSession } from "@/lib/auth/client"
@@ -24,13 +23,11 @@ import {
   recentlyPlayed,
   TOP_PLAYED_COUNT,
   topPlayed,
-  tracksOfAlbum,
 } from "@/lib/home"
 import {
   currentTrackOf,
   playOrToggleQueueTrack,
   playOrToggleTrack,
-  playQueue,
   useCatalogTracks,
   usePlayback,
 } from "@/lib/playback-store"
@@ -241,36 +238,6 @@ function YourPlaylists() {
         </div>
       )}
     </HomeSection>
-  )
-}
-
-function AlbumCard({ album, musics }: { album: Album; musics: CatalogMusic[] }) {
-  const tracks = tracksOfAlbum(musics, album.id).map(musicToTrack)
-  const meta = [artistNames(album.artists), album.year].filter(Boolean).join(" · ")
-
-  return (
-    <div className="group relative">
-      <Link
-        href={`/album/${album.id}`}
-        className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
-      >
-        <AlbumCoverImage album={album} className="aspect-square w-full text-3xl" />
-        <span className="mt-3 block truncate text-sm font-medium">{album.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">{meta}</span>
-      </Link>
-      {/* Beside the link, never inside it: the card opens the album, the button plays it */}
-      {tracks.length > 0 && (
-        <button
-          type="button"
-          onClick={() => playQueue(tracks, 0)}
-          aria-label={`Tocar ${album.name}`}
-          title={`Tocar ${album.name}`}
-          className="absolute top-3 right-3 flex size-10 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [@media(hover:none)]:opacity-100"
-        >
-          <PlayIcon size={16} />
-        </button>
-      )}
-    </div>
   )
 }
 

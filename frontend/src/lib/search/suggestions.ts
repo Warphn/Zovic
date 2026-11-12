@@ -8,7 +8,7 @@ import { DEFAULT_PLAYLIST_COLOR, musicToTrack, type Track } from "@/lib/playlist
 export type QuerySuggestion = { kind: "query"; text: string }
 /** Carries the whole track, so picking it plays it right away. */
 export type TrackSuggestion = { kind: "track"; id: string; title: string; artist: string; track: Track }
-export type ArtistSuggestion = { kind: "artist"; name: string; trackCount: number }
+export type ArtistSuggestion = { kind: "artist"; id: number; name: string; trackCount: number }
 export type PlaylistSuggestion = { kind: "playlist"; id: string; name: string; color: string; trackCount: number }
 
 export type SearchSuggestion = QuerySuggestion | TrackSuggestion | ArtistSuggestion | PlaylistSuggestion
@@ -40,6 +40,7 @@ export function toSuggestions(
   })
   const artists: ArtistSuggestion[] = results.artists.map((a) => ({
     kind: "artist",
+    id: a.id,
     name: a.name,
     trackCount: a.musicCount,
   }))
