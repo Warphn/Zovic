@@ -51,10 +51,10 @@ class InMemoryUserRepository implements UserRepository {
 
 function setup() {
   const usersMap = new Map<number, UserProfile>([
-    [1, { id: 1, name: "Adulto", birthdate: new Date("1995-05-10"), deletedAt: null }],
-    [2, { id: 2, name: "Menor", birthdate: new Date("2012-01-01"), deletedAt: null }],
+    [1, { id: 1, name: "Adulto", birthdate: "1995-05-10", deletedAt: null }],
+    [2, { id: 2, name: "Menor", birthdate: "2012-01-01", deletedAt: null }],
     [3, { id: 3, name: "Sem Nascimento", birthdate: null, deletedAt: null }],
-    [4, { id: 4, name: "Apagado", birthdate: new Date("1990-01-01"), deletedAt: new Date() }],
+    [4, { id: 4, name: "Apagado", birthdate: "1990-01-01", deletedAt: new Date() }],
   ]);
   const commentsRepo = new InMemoryCommentRepository();
   const usersRepo = new InMemoryUserRepository(usersMap);

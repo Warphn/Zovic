@@ -50,8 +50,8 @@ class MockUserRepository implements UserRepository {
 
 function setup() {
   const users = new Map<number, UserProfile>([
-    [1, { id: 1, name: "Adulto", birthdate: new Date("1995-03-12"), deletedAt: null }],
-    [2, { id: 2, name: "Menor", birthdate: new Date("2010-06-28"), deletedAt: null }],
+    [1, { id: 1, name: "Adulto", birthdate: "1995-03-12", deletedAt: null }],
+    [2, { id: 2, name: "Menor", birthdate: "2010-06-28", deletedAt: null }],
     [3, { id: 3, name: "Sem Data", birthdate: null, deletedAt: null }],
   ]);
 

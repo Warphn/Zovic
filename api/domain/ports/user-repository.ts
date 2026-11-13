@@ -1,7 +1,8 @@
 export interface UserProfile {
   id: number;
   name: string;
-  birthdate: Date | null;
+  /** "AAAA-MM-DD", ou null se a conta não tem data de nascimento. */
+  birthdate: string | null;
   deletedAt: Date | null;
 }
 

@@ -2,7 +2,7 @@ import { CommentReport } from "../entities/comment-report.ts";
 import { BusinessRuleError, ForbiddenError, NotFoundError } from "../errors/domain-error.ts";
 import type { CommentRepository } from "../ports/comment-repository.ts";
 import type { UserRepository } from "../ports/user-repository.ts";
-import { isUnderage } from "../shared/user-age.ts";
+import { isMinor } from "../shared/age.ts";
 
 export interface ReportCommentInput {
   reporterId: number;
@@ -26,7 +26,7 @@ export class ReportComment implements ReportCommentUseCase {
       throw new NotFoundError("User not found");
     }
 
-    if (isUnderage(reporter.birthdate)) {
+    if (isMinor(reporter.birthdate, new Date())) {
       throw new ForbiddenError("Underage users cannot interact with comments");
     }
 

@@ -21,7 +21,7 @@ export class PostgresUserRepository implements UserRepository {
     return {
       id: row.id,
       name: row.name,
-      birthdate: row.birthdate ? new Date(row.birthdate) : null,
+      birthdate: row.birthdate,
       deletedAt: row.deleted_at ? new Date(row.deleted_at) : null,
     };
   }
