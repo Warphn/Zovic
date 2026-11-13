@@ -126,7 +126,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Só para admins. |
 | `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só para admins. |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
-| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
+| `GET /api/search?q=&limit=` | Busca músicas, artistas, álbuns e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
 
 **Ordem das músicas.** A ordem é da playlist, então todos os membros veem a mesma. Ela fica em `music_playlist.position`. Para reordenar, o cliente manda a lista inteira. Se faltar ou sobrar uma música (porque outro admin mexeu na playlist depois que a lista foi carregada), a API responde 409 e não muda nada. As rotas que mudam as músicas respondem com a lista atualizada.
 
@@ -134,7 +134,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 - Não diferencia acentos nem maiúsculas: `agua` acha `Águas`. Isso usa a extensão `unaccent` do Postgres.
 - Em cada grupo, vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra que começa com ele e por último os que só o contêm. Os empates ficam em ordem alfabética.
-- Uma música também é encontrada pelo nome dos artistas.
+- Uma música também é encontrada pelo nome dos artistas. Um álbum é encontrado só pelo nome dele e vem com o ano, a capa e os artistas.
+- Para um menor de idade (ou uma conta sem data de nascimento), as músicas explícitas não aparecem e não entram nas contagens de artistas, álbuns e playlists (HU-09).
 - Aparecem as playlists públicas e as privadas de que o usuário é membro. Nada apagado aparece.
 - `%` e `_` contam como texto, não como curinga.
 - Ainda não há índice. O plano para quando o catálogo crescer está no comentário da migration `V261103_151718__Ativa_unaccent_para_busca.sql`.

@@ -20,7 +20,7 @@ const iso = (date: Date | null) => (date ? date.toISOString() : null);
  * A versão é o nome do arquivo sem a extensão: muda a cada troca de capa, então o navegador pode
  * guardar a imagem em cache sem nunca mostrar a antiga. O nome em si não é segredo (é um UUID).
  */
-function coverUrlOf(albumId: number, coverFile: string): string {
+export function coverUrlOf(albumId: number, coverFile: string): string {
   const version = coverFile.slice(0, coverFile.lastIndexOf("."));
   return `/api/albums/${albumId}/cover?v=${version}`;
 }

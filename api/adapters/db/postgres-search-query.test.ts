@@ -1,14 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { Pool } from "pg";
+import { Album } from "../../domain/entities/album.ts";
 import { Artist } from "../../domain/entities/artist.ts";
 import { Music } from "../../domain/entities/music.ts";
 import { Playlist } from "../../domain/entities/playlist.ts";
+import { PostgresAlbumRepository } from "./postgres-album-repository.ts";
 import { PostgresArtistRepository } from "./postgres-artist-repository.ts";
 import { PostgresMusicRepository } from "./postgres-music-repository.ts";
 import { PostgresPlaylistRepository } from "./postgres-playlist-repository.ts";
 import { PostgresSearchQuery } from "./postgres-search-query.ts";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const albums = new PostgresAlbumRepository(pool);
 const artists = new PostgresArtistRepository(pool);
 const musics = new PostgresMusicRepository(pool);
 const playlists = new PostgresPlaylistRepository(pool);
@@ -16,7 +19,7 @@ const query = new PostgresSearchQuery(pool);
 
 // Só letras: um token por execução, para nada do seed nem de outra execução casar com as buscas.
 const T = `qz${Date.now().toString(36).replace(/\d/g, (d) => "abcdefghij"[Number(d)]!)}`;
-const created = { artist: [] as number[], musics: [] as number[], playlists: [] as number[], user: [] as number[] };
+const created = { album: [] as number[], artist: [] as number[], musics: [] as number[], playlists: [] as number[], user: [] as number[] };
 let viewer: number;
 let stranger: number;
 
@@ -35,12 +38,34 @@ async function artist(name: string, deleted = false): Promise<Artist> {
   return entity;
 }
 
-async function music(name: string, artistIds: number[], deleted = false): Promise<Music> {
+async function music(
+  name: string,
+  artistIds: number[],
+  options: { deleted?: boolean; isExplicit?: boolean; albumId?: number } = {},
+): Promise<Music> {
   const id = await musics.nextId();
   created.musics.push(id);
-  const entity = Music.create({ id, name, duration: 200, artistIds, genreIds: [], audioFile: "teste.mp3" });
-  if (deleted) entity.delete();
+  const entity = Music.create({
+    id,
+    name,
+    duration: 200,
+    artistIds,
+    genreIds: [],
+    audioFile: "teste.mp3",
+    isExplicit: options.isExplicit,
+    albumId: options.albumId,
+  });
+  if (options.deleted) entity.delete();
   await musics.save(entity);
+  return entity;
+}
+
+async function album(name: string, artistIds: number[], deleted = false): Promise<Album> {
+  const id = await albums.nextId();
+  created.album.push(id);
+  const entity = Album.create({ id, name, artistIds, year: 1972, coverFile: "0f8fad5b-d9cb-469f-a165-70867728950e.jpg" });
+  if (deleted) entity.delete();
+  await albums.save(entity);
   return entity;
 }
 
@@ -61,7 +86,8 @@ async function addToPlaylist(playlistId: number, musicIds: number[]): Promise<vo
   );
 }
 
-const search = (term: string, limit = 10) => query.search({ term, viewerId: viewer, limit });
+const search = (term: string, limit = 10, hideExplicit = false) =>
+  query.search({ term, viewerId: viewer, hideExplicit, limit });
 const names = (items: { name: string }[]) => items.map((item) => item.name);
 
 beforeAll(async () => {
@@ -137,7 +163,7 @@ describe("PostgresSearchQuery", () => {
     await artist(`Contado${T} apagado`, true);
     await music(`Faixa${T} um`, [ativo.id]);
     await music(`Faixa${T} dois`, [ativo.id]);
-    await music(`Faixa${T} apagada`, [ativo.id], true);
+    await music(`Faixa${T} apagada`, [ativo.id], { deleted: true });
 
     const porArtista = await search(`contado${T}`);
     const porMusica = await search(`faixa${T}`);
@@ -164,7 +190,7 @@ describe("PostgresSearchQuery", () => {
   it("conta as músicas ativas da playlist", async () => {
     const dono = await artist(`Dono${T}`);
     const ativa = await music("Ativa", [dono.id]);
-    const apagada = await music("Apagada", [dono.id], true);
+    const apagada = await music("Apagada", [dono.id], { deleted: true });
     const lista = await playlist(viewer, `Contagem${T}`);
     await addToPlaylist(lista.id, [ativa.id, apagada.id]);
 
@@ -173,16 +199,66 @@ describe("PostgresSearchQuery", () => {
     expect(found).toEqual([{ id: lista.id, name: `Contagem${T}`, isPrivate: false, color: null, musicCount: 1 }]);
   });
 
+  it("acha o artista sem acento no termo (HU-12)", async () => {
+    const joao = await artist(`João${T}`);
+
+    expect((await search(`joao${T}`)).artists).toEqual([{ id: joao.id, name: `João${T}`, musicCount: 0 }]);
+  });
+
+  it("acha o álbum pelo nome, com ano, capa, artistas ativos e músicas ativas (HU-12)", async () => {
+    const term = `Disco${T}`;
+    const dono = await artist(`Dono do disco${T}`);
+    const apagado = await artist(`Ex-dono do disco${T}`, true);
+    const disco = await album(`${term} Ao Vivo`, [dono.id, apagado.id]);
+    await album(`${term} apagado`, [dono.id], true);
+    await music("Faixa ativa", [dono.id], { albumId: disco.id });
+    await music("Faixa apagada", [dono.id], { albumId: disco.id, deleted: true });
+
+    const { albums: found } = await search(term.toLowerCase());
+
+    expect(found).toEqual([
+      {
+        id: disco.id,
+        name: `${term} Ao Vivo`,
+        year: 1972,
+        coverUrl: `/api/albums/${disco.id}/cover?v=0f8fad5b-d9cb-469f-a165-70867728950e`,
+        artists: [{ id: dono.id, name: `Dono do disco${T}` }],
+        musicCount: 1,
+      },
+    ]);
+  });
+
+  it("esconde as músicas explícitas de um menor, também das contagens (HU-09)", async () => {
+    const term = `Explicita${T}`;
+    const dono = await artist(`${term} artista`);
+    const disco = await album(`${term} álbum`, [dono.id]);
+    const livre = await music(`${term} livre`, [dono.id], { albumId: disco.id });
+    const explicita = await music(`${term} proibida`, [dono.id], { albumId: disco.id, isExplicit: true });
+    const lista = await playlist(viewer, `${term} playlist`);
+    await addToPlaylist(lista.id, [livre.id, explicita.id]);
+
+    const adulto = await search(term);
+    const menor = await search(term, 10, true);
+
+    expect(names(adulto.musics)).toEqual([`${term} livre`, `${term} proibida`]);
+    expect(names(menor.musics)).toEqual([`${term} livre`]);
+    expect([adulto.artists[0]?.musicCount, adulto.albums[0]?.musicCount, adulto.playlists[0]?.musicCount]).toEqual([2, 2, 2]);
+    expect([menor.artists[0]?.musicCount, menor.albums[0]?.musicCount, menor.playlists[0]?.musicCount]).toEqual([1, 1, 1]);
+  });
+
   it("respeita o limite em cada grupo", async () => {
     const term = `Limite${T}`;
     const dono = await artist(`${term} artista 1`);
     await artist(`${term} artista 2`);
     await music(`${term} música 1`, [dono.id]);
     await music(`${term} música 2`, [dono.id]);
+    await album(`${term} álbum 1`, [dono.id]);
+    await album(`${term} álbum 2`, [dono.id]);
 
     const result = await search(term, 1);
 
     expect(result.artists).toHaveLength(1);
     expect(result.musics).toHaveLength(1);
+    expect(result.albums).toHaveLength(1);
   });
 });

@@ -1,8 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useDebouncedValue } from "@/lib/use-debounced-value"
+import type { Album } from "./catalog"
 import { apiErrorMessage, queryString, request } from "./client"
 
-// GET /api/search: músicas, artistas e playlists que casam com o termo (api/domain/ports/search-query.ts).
+// GET /api/search: músicas, artistas, álbuns e playlists que casam com o termo (api/domain/ports/search-query.ts).
 
 export interface SearchMusic {
   id: number
@@ -15,6 +16,7 @@ export interface SearchMusic {
 export interface SearchResults {
   musics: SearchMusic[]
   artists: { id: number; name: string; musicCount: number }[]
+  albums: Album[]
   playlists: { id: number; name: string; isPrivate: boolean; color: string | null; musicCount: number }[]
 }
 
