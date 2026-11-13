@@ -217,7 +217,7 @@ export const openApiDocument = {
         tags: ["Histórico"],
         summary: "Lista o histórico de reprodução",
         description:
-          "As músicas que o usuário autenticado ouviu, cada uma uma vez, com a data da última reprodução, da mais recente para a mais antiga. Cada conta tem o próprio histórico, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A reprodução é registrada por `POST /api/musics/{id}/plays`.",
+          "As músicas que o usuário autenticado ouviu, cada uma uma vez, com a data da última reprodução, da mais recente para a mais antiga. Cada conta tem o próprio histórico, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A reprodução é registrada por `POST /api/musics/{id}/plays`. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora, mesmo as que a conta ouviu antes; admins da plataforma veem tudo.",
         operationId: "listMyHistory",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -557,7 +557,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Lista as músicas de uma playlist",
         description:
-          "As músicas ativas da playlist, na ordem dela (a mesma para todos que a veem). Quem vê a playlist vê as músicas: a privada de outra pessoa responde 404. Músicas apagadas ficam de fora, e artistas apagados saem da lista de artistas.",
+          "As músicas ativas da playlist, na ordem dela (a mesma para todos que a veem). Quem vê a playlist vê as músicas: a privada de outra pessoa responde 404. Músicas apagadas ficam de fora, e artistas apagados saem da lista de artistas. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora, também nas playlists de outras pessoas; admins da plataforma veem tudo.",
         operationId: "listPlaylistMusics",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -576,7 +576,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Põe uma música na playlist",
         description:
-          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova.",
+          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova. Para menor de idade, uma música explícita responde 404, como se não existisse.",
         operationId: "addPlaylistMusic",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -625,7 +625,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Reordena as músicas da playlist",
         description:
-          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Responde com a lista na ordem nova.",
+          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Para menor de idade, a lista traz só as músicas que ele vê: as explícitas escondidas vão para o fim, na ordem em que estavam. Responde com a lista na ordem nova.",
         operationId: "reorderPlaylistMusics",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -655,7 +655,7 @@ export const openApiDocument = {
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
           "409": {
-            description: "A lista não tem exatamente as músicas da playlist: recarregue e tente de novo",
+            description: "A lista não tem exatamente as músicas da playlist que a conta vê: recarregue e tente de novo",
             content: {
               "application/json": {
                 schema: errorResponse(
@@ -674,7 +674,8 @@ export const openApiDocument = {
       delete: {
         tags: ["Playlists"],
         summary: "Tira uma música da playlist",
-        description: "Só admins da playlist. As outras músicas mantêm a ordem.",
+        description:
+          "Só admins da playlist. As outras músicas mantêm a ordem. Para menor de idade, uma música explícita responde 404, como se não estivesse na playlist.",
         operationId: "removePlaylistMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -1017,7 +1018,7 @@ export const openApiDocument = {
         tags: ["Busca"],
         summary: "Busca músicas, artistas e playlists",
         description:
-          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece.",
+          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora dos resultados e das contagens de músicas de artistas e playlists; admins da plataforma veem tudo.",
         operationId: "search",
         security: [{ cookieAuth: [] }],
         parameters: [
@@ -1058,7 +1059,7 @@ export const openApiDocument = {
         tags: ["Catálogo"],
         summary: "Lista as músicas do catálogo",
         description:
-          "Músicas ativas por nome. Para um admin da plataforma, vêm também as removidas, com `deletedAt` preenchido. `q` filtra pelo nome da música ou do artista.",
+          "Músicas ativas por nome. Para um admin da plataforma, vêm também as removidas, com `deletedAt` preenchido. `q` filtra pelo nome da música ou do artista. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora.",
         operationId: "listMusics",
         security: [{ cookieAuth: [] }],
         parameters: [
@@ -1079,7 +1080,8 @@ export const openApiDocument = {
       get: {
         tags: ["Catálogo"],
         summary: "Lista os álbuns do catálogo",
-        description: "Álbuns ativos, por nome, com o ano e os artistas.",
+        description:
+          "Álbuns ativos, por nome, com o ano e os artistas. Para menor de idade (ou conta sem data de nascimento), `musicCount` não conta as músicas explícitas.",
         operationId: "listAlbums",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -1125,7 +1127,7 @@ export const openApiDocument = {
         tags: ["Catálogo"],
         summary: "Entrega o arquivo de áudio de uma música",
         description:
-          "O MP3 da música, para o `<audio>` do player. Aceita o cabeçalho `Range` e responde 206 com o trecho pedido, que é como o navegador pula para outro ponto da música. O cache é `private, no-cache`: o navegador guarda o arquivo, mas confirma com a API antes de usá-lo (304 pelo `ETag`), e a confirmação também exige assinatura e idade. Música explícita só é entregue a maiores de 18 anos.",
+          "O MP3 da música, para o `<audio>` do player. Aceita o cabeçalho `Range` e responde 206 com o trecho pedido, que é como o navegador pula para outro ponto da música. O cache é `private, no-cache`: o navegador guarda o arquivo, mas confirma com a API antes de usá-lo (304 pelo `ETag`), e a confirmação também exige assinatura e idade. Música explícita só é entregue a maiores de 18 anos (e a admins da plataforma): para os outros, responde 404, como se ela não existisse.",
         operationId: "getMusicAudio",
         security: [{ cookieAuth: [] }],
         parameters: [
@@ -1142,15 +1144,10 @@ export const openApiDocument = {
             content: { "audio/mpeg": { schema: { type: "string", format: "binary" } } },
           },
           "401": { $ref: "#/components/responses/Unauthenticated" },
-          "403": {
-            description:
-              "A conta não tem assinatura ativa (`SUBSCRIPTION_REQUIRED`), ou a música é explícita e a conta não é maior de idade (`FORBIDDEN`)",
-            content: {
-              "application/json": { schema: errorResponse("FORBIDDEN", "Música explícita: só para maiores de 18 anos") },
-            },
-          },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "404": {
-            description: "Música inexistente, removida ou sem arquivo de áudio",
+            description:
+              "Música inexistente, removida, sem arquivo de áudio, ou explícita para uma conta que não é maior de idade",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "Audio not found") } },
           },
           "500": { $ref: "#/components/responses/InternalError" },

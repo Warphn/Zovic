@@ -44,6 +44,8 @@ export interface SearchParams {
   viewerId: number;
   /** Máximo de itens por grupo. */
   limit: number;
+  /** Falso para menores de idade (HU-09): as músicas explícitas somem dos resultados e das contagens. */
+  includeExplicit: boolean;
 }
 
 /**

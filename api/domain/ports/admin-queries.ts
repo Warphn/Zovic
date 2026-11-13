@@ -35,19 +35,25 @@ export interface AlbumListItem {
 }
 
 export interface CatalogQueries {
-  /** Ativas, por nome; com includeDeleted, também as removidas (só para admins). */
-  listMusics(options: { search?: string; includeDeleted: boolean }): Promise<MusicListItem[]>;
+  /**
+   * Ativas, por nome; com includeDeleted, também as removidas (só para admins). Sem includeExplicit,
+   * as músicas explícitas ficam de fora (menores de idade, HU-09).
+   */
+  listMusics(options: { search?: string; includeDeleted: boolean; includeExplicit: boolean }): Promise<MusicListItem[]>;
   listArtists(): Promise<{ id: number; name: string }[]>;
-  /** Álbuns ativos, por nome. */
-  listAlbums(): Promise<AlbumListItem[]>;
+  /** Álbuns ativos, por nome; sem includeExplicit, a contagem de faixas ignora as explícitas. */
+  listAlbums(options: { includeExplicit: boolean }): Promise<AlbumListItem[]>;
   /** O arquivo da capa de um álbum ativo; null se ele não existe, foi removido ou não tem capa. */
   findAlbumCoverFile(albumId: number): Promise<string | null>;
   listGenres(): Promise<{ id: number; name: string; color: string }[]>;
 }
 
 export interface PlayLog {
-  /** Registra que o usuário tocou a música; recusa música inexistente ou removida. */
-  recordPlay(userId: number, musicId: number): Promise<void>;
+  /**
+   * Registra que o usuário tocou a música; recusa música inexistente ou removida, e a explícita
+   * quando `includeExplicit` é falso (o mesmo 404, para não revelar que ela existe).
+   */
+  recordPlay(userId: number, musicId: number, includeExplicit: boolean): Promise<void>;
 }
 
 export interface AdminUserItem {

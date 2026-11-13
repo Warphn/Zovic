@@ -35,10 +35,10 @@ async function artist(name: string, deleted = false): Promise<Artist> {
   return entity;
 }
 
-async function music(name: string, artistIds: number[], deleted = false): Promise<Music> {
+async function music(name: string, artistIds: number[], deleted = false, isExplicit = false): Promise<Music> {
   const id = await musics.nextId();
   created.musics.push(id);
-  const entity = Music.create({ id, name, duration: 200, artistIds, genreIds: [], audioFile: "teste.mp3" });
+  const entity = Music.create({ id, name, duration: 200, artistIds, genreIds: [], audioFile: "teste.mp3", isExplicit });
   if (deleted) entity.delete();
   await musics.save(entity);
   return entity;
@@ -61,7 +61,8 @@ async function addToPlaylist(playlistId: number, musicIds: number[]): Promise<vo
   );
 }
 
-const search = (term: string, limit = 10) => query.search({ term, viewerId: viewer, limit });
+const search = (term: string, limit = 10, includeExplicit = true) =>
+  query.search({ term, viewerId: viewer, limit, includeExplicit });
 const names = (items: { name: string }[]) => items.map((item) => item.name);
 
 beforeAll(async () => {
@@ -184,5 +185,23 @@ describe("PostgresSearchQuery", () => {
 
     expect(result.artists).toHaveLength(1);
     expect(result.musics).toHaveLength(1);
+  });
+
+  it("esconde a música explícita e tira ela das contagens quando includeExplicit é falso", async () => {
+    const dono = await artist(`Explicito${T}`);
+    const comum = await music(`Faixa explicito${T} comum`, [dono.id]);
+    const explicita = await music(`Faixa explicito${T} proibida`, [dono.id], false, true);
+    const lista = await playlist(viewer, `Lista explicito${T}`);
+    await addToPlaylist(lista.id, [comum.id, explicita.id]);
+
+    const forAdult = await search(`explicito${T}`);
+    const forMinor = await search(`explicito${T}`, 10, false);
+
+    expect(names(forAdult.musics)).toEqual([`Faixa explicito${T} comum`, `Faixa explicito${T} proibida`]);
+    expect(names(forMinor.musics)).toEqual([`Faixa explicito${T} comum`]);
+    expect(forAdult.artists.map((found) => found.musicCount)).toEqual([2]);
+    expect(forMinor.artists.map((found) => found.musicCount)).toEqual([1]);
+    expect(forAdult.playlists.map((found) => found.musicCount)).toEqual([2]);
+    expect(forMinor.playlists.map((found) => found.musicCount)).toEqual([1]);
   });
 });

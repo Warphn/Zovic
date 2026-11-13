@@ -9,6 +9,7 @@ interface Play {
 interface CatalogMusic {
   name: string;
   isAvailable: boolean;
+  isExplicit?: boolean;
 }
 
 /** Fake do port para os testes de domínio: agrupa por música e ordena como a consulta real. */
@@ -16,7 +17,7 @@ export class InMemoryPlayHistory implements PlayHistory {
   readonly plays: Play[] = [];
   readonly catalog = new Map<number, CatalogMusic>();
 
-  listForUser(userId: number): Promise<HistoryEntry[]> {
+  listForUser(userId: number, includeExplicit: boolean): Promise<HistoryEntry[]> {
     const lastPlayByMusic = new Map<number, Date>();
     for (const play of this.plays) {
       if (play.userId !== userId) continue;
@@ -25,6 +26,7 @@ export class InMemoryPlayHistory implements PlayHistory {
     }
 
     const entries = [...lastPlayByMusic]
+      .filter(([musicId]) => includeExplicit || !this.catalog.get(musicId)!.isExplicit)
       .toSorted(([firstId, firstDate], [secondId, secondDate]) =>
         secondDate.getTime() === firstDate.getTime() ? firstId - secondId : secondDate.getTime() - firstDate.getTime(),
       )

@@ -30,7 +30,8 @@ interface PlaylistRow {
   music_count: number;
 }
 
-// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados e $2 é o limite.
+// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados, $2 é o limite. Em músicas e artistas, $3
+// diz se as músicas explícitas entram (falso para menores de idade); em playlists, $3 é quem busca e $4 é esse mesmo aviso.
 // `q.t` é o termo normalizado e `s.h` é o texto onde se procura, normalizado do mesmo jeito.
 const TERM = String.raw`CROSS JOIN (SELECT lower(unaccent($1::text)) AS t) q`;
 const MATCHES = String.raw`s.h LIKE '%' || q.t || '%' ESCAPE '\'`;
@@ -54,7 +55,7 @@ const SEARCH_MUSICS = `
   ) credit
   CROSS JOIN LATERAL (SELECT lower(unaccent(m.name || coalesce(' ' || credit.names, ''))) AS h) s
   ${TERM}
-  WHERE m.deleted_at IS NULL AND ${MATCHES}
+  WHERE m.deleted_at IS NULL AND ($3 OR NOT m.is_explicit) AND ${MATCHES}
   ORDER BY ${RANK}, lower(unaccent(m.name)), m.id
   LIMIT $2`;
 
@@ -63,7 +64,7 @@ const SEARCH_ARTISTS = `
          (SELECT count(*)::int
           FROM artist_music am
           JOIN musics m ON m.id = am.music_id AND m.deleted_at IS NULL
-          WHERE am.artist_id = a.id) AS music_count
+          WHERE am.artist_id = a.id AND ($3 OR NOT m.is_explicit)) AS music_count
   FROM artist a
   CROSS JOIN LATERAL (SELECT lower(unaccent(a.name)) AS h) s
   ${TERM}
@@ -77,7 +78,7 @@ const SEARCH_PLAYLISTS = `
          (SELECT count(*)::int
           FROM music_playlist mp
           JOIN musics m ON m.id = mp.music_id AND m.deleted_at IS NULL
-          WHERE mp.playlist_id = p.id) AS music_count
+          WHERE mp.playlist_id = p.id AND ($4 OR NOT m.is_explicit)) AS music_count
   FROM playlists p
   CROSS JOIN LATERAL (SELECT lower(unaccent(p.name)) AS h) s
   ${TERM}
@@ -96,12 +97,12 @@ function escapeLike(term: string): string {
 export class PostgresSearchQuery implements SearchQuery {
   constructor(private readonly pool: Pool) {}
 
-  async search({ term, viewerId, limit }: SearchParams): Promise<SearchResults> {
+  async search({ term, viewerId, limit, includeExplicit }: SearchParams): Promise<SearchResults> {
     const pattern = escapeLike(term);
     const [musics, artists, playlists] = await Promise.all([
-      this.pool.query<MusicRow>(SEARCH_MUSICS, [pattern, limit]),
-      this.pool.query<ArtistRow>(SEARCH_ARTISTS, [pattern, limit]),
-      this.pool.query<PlaylistRow>(SEARCH_PLAYLISTS, [pattern, limit, viewerId]),
+      this.pool.query<MusicRow>(SEARCH_MUSICS, [pattern, limit, includeExplicit]),
+      this.pool.query<ArtistRow>(SEARCH_ARTISTS, [pattern, limit, includeExplicit]),
+      this.pool.query<PlaylistRow>(SEARCH_PLAYLISTS, [pattern, limit, viewerId, includeExplicit]),
     ]);
 
     return {

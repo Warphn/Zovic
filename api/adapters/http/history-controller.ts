@@ -12,7 +12,12 @@ export interface HistoryController {
 export function makeHistoryController(useCases: HistoryUseCases): HistoryController {
   return {
     list: async (_req, res) => {
-      const entries = await useCases.listMyHistory.execute({ userId: res.locals.userId });
+      const entries = await useCases.listMyHistory.execute({
+        userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
+      });
 
       res.json(entries);
     },

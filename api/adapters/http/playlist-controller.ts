@@ -86,6 +86,9 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
     listMusics: async (req, res) => {
       const musics = await useCases.listPlaylistMusics.execute({
         userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
         playlistId: Number(req.params.id),
       });
 
@@ -95,6 +98,9 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
     addMusic: async (req, res) => {
       const musics = await useCases.addMusicToPlaylist.execute({
         userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
         playlistId: Number(req.params.id),
         musicId: req.body.musicId,
       });
@@ -105,6 +111,9 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
     removeMusic: async (req, res) => {
       await useCases.removeMusicFromPlaylist.execute({
         userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
         playlistId: Number(req.params.id),
         musicId: Number(req.params.musicId),
       });
@@ -115,6 +124,9 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
     reorderMusics: async (req, res) => {
       const musics = await useCases.reorderPlaylistMusics.execute({
         userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
         playlistId: Number(req.params.id),
         musicIds: req.body.musicIds,
       });

@@ -17,6 +17,10 @@ const musics = new PostgresMusicRepository(pool);
 const playlists = new PostgresPlaylistRepository(pool);
 const playlistMusics = new PostgresPlaylistMusics(pool);
 
+// Quem pode ver as músicas explícitas (maior de idade) e quem não pode (menor).
+const ADULT_VIEW = true;
+const MINOR_VIEW = false;
+
 const created = { album: [] as number[], artist: [] as number[], musics: [] as number[], playlists: [] as number[] };
 let userId: number;
 let artistId: number;
@@ -30,10 +34,17 @@ async function artist(name: string, deleted = false): Promise<Artist> {
   return entity;
 }
 
-async function music(name: string, options: { artistIds?: number[]; deleted?: boolean } = {}): Promise<number> {
+async function music(name: string, options: { artistIds?: number[]; deleted?: boolean; isExplicit?: boolean } = {}): Promise<number> {
   const id = await musics.nextId();
   created.musics.push(id);
-  const entity = Music.create({ id, name, duration: 180, artistIds: options.artistIds ?? [artistId], audioFile: "teste.mp3" });
+  const entity = Music.create({
+    id,
+    name,
+    duration: 180,
+    artistIds: options.artistIds ?? [artistId],
+    audioFile: "teste.mp3",
+    isExplicit: options.isExplicit ?? false,
+  });
   if (options.deleted) entity.delete();
   await musics.save(entity);
   return id;
@@ -61,11 +72,11 @@ async function newPlaylist(): Promise<number> {
 /** Cria a playlist e põe as músicas nela, nessa ordem. */
 async function playlistWith(...musicIds: number[]): Promise<number> {
   const playlistId = await newPlaylist();
-  for (const musicId of musicIds) expect(await playlistMusics.add(playlistId, musicId)).toBe("added");
+  for (const musicId of musicIds) expect(await playlistMusics.add(playlistId, musicId, ADULT_VIEW)).toBe("added");
   return playlistId;
 }
 
-const listIds = async (playlistId: number) => (await playlistMusics.list(playlistId)).map((item) => item.id);
+const listIds = async (playlistId: number, includeExplicit = ADULT_VIEW) => (await playlistMusics.list(playlistId, includeExplicit)).map((item) => item.id);
 
 async function positions(playlistId: number) {
   const { rows } = await pool.query<{ music_id: number; position: number }>(
@@ -114,10 +125,10 @@ describe("PostgresPlaylistMusics", () => {
     await album("Segundo", [faixa]);
     const semAlbum = await music("Sem álbum");
     const playlistId = await newPlaylist();
-    await playlistMusics.add(playlistId, faixa, new Date("2026-11-01T12:00:00Z"));
-    await playlistMusics.add(playlistId, semAlbum);
+    await playlistMusics.add(playlistId, faixa, ADULT_VIEW, new Date("2026-11-01T12:00:00Z"));
+    await playlistMusics.add(playlistId, semAlbum, ADULT_VIEW);
 
-    const [comAlbum, avulsa] = await playlistMusics.list(playlistId);
+    const [comAlbum, avulsa] = await playlistMusics.list(playlistId, ADULT_VIEW);
 
     expect(comAlbum).toEqual({
       id: faixa,
@@ -147,9 +158,9 @@ describe("PostgresPlaylistMusics", () => {
     const apagada = await music("Apagada", { deleted: true });
     const playlistId = await playlistWith(ativa);
 
-    expect(await playlistMusics.add(playlistId, 2_000_000_000)).toBe("music_not_found");
-    expect(await playlistMusics.add(playlistId, apagada)).toBe("music_not_found");
-    expect(await playlistMusics.add(playlistId, ativa)).toBe("already_in_playlist");
+    expect(await playlistMusics.add(playlistId, 2_000_000_000, ADULT_VIEW)).toBe("music_not_found");
+    expect(await playlistMusics.add(playlistId, apagada, ADULT_VIEW)).toBe("music_not_found");
+    expect(await playlistMusics.add(playlistId, ativa, ADULT_VIEW)).toBe("already_in_playlist");
     expect(await listIds(playlistId)).toEqual([ativa]);
   });
 
@@ -157,9 +168,9 @@ describe("PostgresPlaylistMusics", () => {
     const [a, b, c] = [await music("A"), await music("B"), await music("C")];
     const playlistId = await playlistWith(a, b);
 
-    expect(await playlistMusics.remove(playlistId, a)).toBe(true);
-    expect(await playlistMusics.remove(playlistId, a)).toBe(false);
-    await playlistMusics.add(playlistId, c);
+    expect(await playlistMusics.remove(playlistId, a, ADULT_VIEW)).toBe(true);
+    expect(await playlistMusics.remove(playlistId, a, ADULT_VIEW)).toBe(false);
+    await playlistMusics.add(playlistId, c, ADULT_VIEW);
 
     expect(await positions(playlistId)).toEqual([
       [b, 1],
@@ -170,10 +181,10 @@ describe("PostgresPlaylistMusics", () => {
   it("reordena renumerando de 0 e põe as apagadas no fim, na ordem em que estavam", async () => {
     const [a, b, c, d] = [await music("A"), await music("B"), await music("C"), await music("D")];
     const playlistId = await playlistWith(a, b, c, d);
-    await playlistMusics.remove(playlistId, a);
+    await playlistMusics.remove(playlistId, a, ADULT_VIEW);
     await pool.query("UPDATE musics SET deleted_at = now() WHERE id = $1", [c]);
 
-    expect(await playlistMusics.reorder(playlistId, [d, b])).toBe(true);
+    expect(await playlistMusics.reorder(playlistId, [d, b], ADULT_VIEW)).toBe(true);
 
     expect(await listIds(playlistId)).toEqual([d, b]);
     expect(await positions(playlistId)).toEqual([
@@ -188,19 +199,59 @@ describe("PostgresPlaylistMusics", () => {
     const playlistId = await playlistWith(a, b);
 
     for (const ids of [[b], [b, a, c], [b, c], [a, a]]) {
-      expect(await playlistMusics.reorder(playlistId, ids)).toBe(false);
+      expect(await playlistMusics.reorder(playlistId, ids, ADULT_VIEW)).toBe(false);
     }
     expect(await listIds(playlistId)).toEqual([a, b]);
   });
 
   it("aceita lista vazia na playlist vazia e serializa inclusões simultâneas", async () => {
     const playlistId = await newPlaylist();
-    expect(await playlistMusics.reorder(playlistId, [])).toBe(true);
+    expect(await playlistMusics.reorder(playlistId, [], ADULT_VIEW)).toBe(true);
     const ids = await Promise.all(["A", "B", "C", "D", "E"].map((name) => music(name)));
 
-    const results = await Promise.all(ids.map((id) => playlistMusics.add(playlistId, id)));
+    const results = await Promise.all(ids.map((id) => playlistMusics.add(playlistId, id, ADULT_VIEW)));
 
     expect(results).toEqual(["added", "added", "added", "added", "added"]);
     expect((await positions(playlistId)).map(([, position]) => position)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  describe("músicas explícitas (HU-09)", () => {
+    it("esconde a explícita da lista de quem não pode vê-la", async () => {
+      const [comum, explicita] = [await music("Comum"), await music("Explícita", { isExplicit: true })];
+      const playlistId = await playlistWith(explicita, comum);
+
+      expect(await listIds(playlistId, MINOR_VIEW)).toEqual([comum]);
+      expect(await listIds(playlistId, ADULT_VIEW)).toEqual([explicita, comum]);
+    });
+
+    it("não deixa quem não pode ver incluir a explícita", async () => {
+      const explicita = await music("Explícita", { isExplicit: true });
+      const playlistId = await newPlaylist();
+
+      expect(await playlistMusics.add(playlistId, explicita, MINOR_VIEW)).toBe("music_not_found");
+      expect(await listIds(playlistId)).toEqual([]);
+    });
+
+    it("não deixa quem não pode ver remover a explícita", async () => {
+      const explicita = await music("Explícita", { isExplicit: true });
+      const playlistId = await playlistWith(explicita);
+
+      expect(await playlistMusics.remove(playlistId, explicita, MINOR_VIEW)).toBe(false);
+      expect(await listIds(playlistId)).toEqual([explicita]);
+    });
+
+    it("reordena só as visíveis para quem não pode ver e manda a explícita para o fim", async () => {
+      const [a, explicita, b] = [await music("A"), await music("Explícita", { isExplicit: true }), await music("B")];
+      const playlistId = await playlistWith(a, explicita, b);
+
+      expect(await playlistMusics.reorder(playlistId, [a, explicita, b], MINOR_VIEW)).toBe(false);
+      expect(await playlistMusics.reorder(playlistId, [b, a], MINOR_VIEW)).toBe(true);
+
+      expect(await positions(playlistId)).toEqual([
+        [b, 0],
+        [a, 1],
+        [explicita, 2],
+      ]);
+    });
   });
 });

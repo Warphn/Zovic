@@ -27,3 +27,16 @@ export function calendarDateIn(instant: Date, timeZone: string): string {
     instant,
   );
 }
+
+/** Menor de idade pelo dia de hoje no fuso do Brasil; sem data de nascimento, também conta como menor. */
+export function isMinor(birthdate: string | null, now: Date): boolean {
+  return !isAdult(birthdate, calendarDateIn(now, TIME_ZONE));
+}
+
+/**
+ * Quem pode ver e ouvir conteúdo explícito (HU-09): maior de idade ou admin da plataforma, que
+ * precisa enxergar o catálogo inteiro para gerenciá-lo.
+ */
+export function canSeeExplicit(birthdate: string | null, now: Date, isAdmin = false): boolean {
+  return isAdmin || !isMinor(birthdate, now);
+}

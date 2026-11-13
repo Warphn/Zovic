@@ -11,10 +11,16 @@ interface Entry {
 export class InMemoryPlaylistMusics implements PlaylistMusics {
   readonly entries: Entry[] = [];
   readonly catalog = new Map<number, string>();
+  /** Ids do catálogo marcados como explícitos. */
+  readonly explicitIds = new Set<number>();
 
-  list(playlistId: number): Promise<PlaylistMusicItem[]> {
+  private isVisible(musicId: number, includeExplicit: boolean): boolean {
+    return this.catalog.has(musicId) && (includeExplicit || !this.explicitIds.has(musicId));
+  }
+
+  list(playlistId: number, includeExplicit: boolean): Promise<PlaylistMusicItem[]> {
     const items = this.entries
-      .filter((e) => e.playlistId === playlistId && this.catalog.has(e.musicId))
+      .filter((e) => e.playlistId === playlistId && this.isVisible(e.musicId, includeExplicit))
       .toSorted((a, b) => a.position - b.position)
       .map((e) => ({
         id: e.musicId,
@@ -27,8 +33,8 @@ export class InMemoryPlaylistMusics implements PlaylistMusics {
     return Promise.resolve(items);
   }
 
-  add(playlistId: number, musicId: number, now: Date = new Date()): Promise<AddMusicResult> {
-    if (!this.catalog.has(musicId)) return Promise.resolve("music_not_found");
+  add(playlistId: number, musicId: number, includeExplicit: boolean, now: Date = new Date()): Promise<AddMusicResult> {
+    if (!this.isVisible(musicId, includeExplicit)) return Promise.resolve("music_not_found");
     const inPlaylist = this.entries.filter((e) => e.playlistId === playlistId);
     if (inPlaylist.some((e) => e.musicId === musicId)) return Promise.resolve("already_in_playlist");
 
@@ -37,15 +43,15 @@ export class InMemoryPlaylistMusics implements PlaylistMusics {
     return Promise.resolve("added");
   }
 
-  remove(playlistId: number, musicId: number): Promise<boolean> {
+  remove(playlistId: number, musicId: number, includeExplicit: boolean): Promise<boolean> {
     const index = this.entries.findIndex((e) => e.playlistId === playlistId && e.musicId === musicId);
-    if (index === -1) return Promise.resolve(false);
+    if (index === -1 || (!includeExplicit && this.explicitIds.has(musicId))) return Promise.resolve(false);
     this.entries.splice(index, 1);
     return Promise.resolve(true);
   }
 
-  reorder(playlistId: number, musicIds: readonly number[]): Promise<boolean> {
-    const active = this.entries.filter((e) => e.playlistId === playlistId && this.catalog.has(e.musicId));
+  reorder(playlistId: number, musicIds: readonly number[], includeExplicit: boolean): Promise<boolean> {
+    const active = this.entries.filter((e) => e.playlistId === playlistId && this.isVisible(e.musicId, includeExplicit));
     const sameSet = active.length === musicIds.length && active.every((e) => musicIds.includes(e.musicId));
     if (!sameSet) return Promise.resolve(false);
 

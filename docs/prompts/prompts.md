@@ -199,3 +199,14 @@ Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do 
 | 4 | Precisamos de uma barra de opções para ser possível navegar entre as páginas importantes do site (com a busca mantida como está hoje). | A navegação principal no cabeçalho, em [`main-nav.tsx`](../../frontend/src/components/main-nav.tsx): Início, Playlists, Histórico e Tocando. Ela mostra ícones a partir de 1024 px, porque os nomes não cabem ao lado da busca centralizada, e fica no menu ☰ em telas menores. O destaque da página atual tem teste em [`main-nav.ts`](../../frontend/src/lib/main-nav.ts) |
 
 A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de artista e o número da faixa), e aprovou a spec e o plano antes da implementação. A IA conferiu cada tela por capturas do Chrome, com uma conta nova e com a do seed, e deixou a conferência no Opera para o Victor.
+
+### 13/11/2026: conteúdo explícito escondido de menores (#87, HU-09)
+
+Forma de trabalho: o Claude Opus leu a issue e o código, fez o plano e levou as dúvidas ao usuário. Um subagente Claude Sonnet implementou a partir do plano, e o Opus revisou o diff e rodou as verificações.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Veja quais issues estão atribuídas a mim e quais eu já posso resolver; suponho que podemos fazer a #87 agora. Você é um orquestrador e deve verificar, analisar e planejar, mas use o Sonnet para implementar. | O levantamento: a #87 está pronta para começar e a #97 depende das curtidas (#94). O plano cobre catálogo, busca, playlists, histórico, áudio e play. Ficaram para o usuário quatro decisões: o 404 no lugar do 403, não criar a rota de ficha, `Closes #87` e o refactor da regra de idade |
+| 2 | Escolho o 1. *(não criar `GET /musics/:id`)* | A implementação: [`canSeeExplicit` e `isMinor`](../../api/domain/shared/age.ts), o filtro nas consultas e nos casos de uso, o 404 no áudio e no play, os testes de integração em [`explicit-content-routes.test.ts`](../../api/adapters/http/explicit-content-routes.test.ts), o `openapi.ts` e o [`docs/api.md`](../api.md); e os comentários usando a mesma regra de idade |
+
+O usuário tomou cada decisão de regra antes da implementação. A IA conferiu o resultado com os testes de unidade e de integração, o lint e o typecheck.

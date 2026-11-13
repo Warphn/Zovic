@@ -30,11 +30,11 @@ const LIST = `
     ORDER BY al.id
     LIMIT 1
   ) first_album ON true
-  WHERE mp.playlist_id = $1
+  WHERE mp.playlist_id = $1 AND ($2 OR NOT m.is_explicit)
   ORDER BY mp.position, mp.music_id`;
 
-// A nova sequência: primeiro os ids pedidos, na ordem pedida; depois as músicas apagadas que
-// continuam na tabela, na ordem em que estavam. O UNIQUE (playlist_id, position) é DEFERRABLE,
+// A nova sequência: primeiro os ids pedidos, na ordem pedida; depois as músicas que não vieram
+// (apagadas ou explícitas escondidas de menor), na ordem em que estavam. O UNIQUE (playlist_id, position) é DEFERRABLE,
 // então trocar as posições num UPDATE só não esbarra em posição repetida no meio do caminho.
 const REORDER = `
   UPDATE music_playlist mp
@@ -63,8 +63,8 @@ async function lockPlaylist(client: PoolClient, playlistId: number): Promise<voi
 export class PostgresPlaylistMusics implements PlaylistMusics {
   constructor(private readonly pool: Pool) {}
 
-  async list(playlistId: number): Promise<PlaylistMusicItem[]> {
-    const { rows } = await this.pool.query<PlaylistMusicRow>(LIST, [playlistId]);
+  async list(playlistId: number, includeExplicit: boolean): Promise<PlaylistMusicItem[]> {
+    const { rows } = await this.pool.query<PlaylistMusicRow>(LIST, [playlistId, includeExplicit]);
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
@@ -75,12 +75,15 @@ export class PostgresPlaylistMusics implements PlaylistMusics {
     }));
   }
 
-  async add(playlistId: number, musicId: number, now: Date = new Date()): Promise<AddMusicResult> {
+  async add(playlistId: number, musicId: number, includeExplicit: boolean, now: Date = new Date()): Promise<AddMusicResult> {
     let result: AddMusicResult = "added";
     await inTransaction(this.pool, async (client) => {
       await lockPlaylist(client, playlistId);
 
-      const music = await client.query("SELECT 1 FROM musics WHERE id = $1 AND deleted_at IS NULL", [musicId]);
+      const music = await client.query(
+        "SELECT 1 FROM musics WHERE id = $1 AND deleted_at IS NULL AND ($2 OR NOT is_explicit)",
+        [musicId, includeExplicit],
+      );
       if (music.rowCount === 0) {
         result = "music_not_found";
         return;
@@ -97,15 +100,17 @@ export class PostgresPlaylistMusics implements PlaylistMusics {
     return result;
   }
 
-  async remove(playlistId: number, musicId: number): Promise<boolean> {
-    const { rowCount } = await this.pool.query("DELETE FROM music_playlist WHERE playlist_id = $1 AND music_id = $2", [
-      playlistId,
-      musicId,
-    ]);
+  async remove(playlistId: number, musicId: number, includeExplicit: boolean): Promise<boolean> {
+    const { rowCount } = await this.pool.query(
+      `DELETE FROM music_playlist mp
+       USING musics m
+       WHERE mp.playlist_id = $1 AND mp.music_id = $2 AND m.id = mp.music_id AND ($3 OR NOT m.is_explicit)`,
+      [playlistId, musicId, includeExplicit],
+    );
     return (rowCount ?? 0) > 0;
   }
 
-  async reorder(playlistId: number, musicIds: readonly number[]): Promise<boolean> {
+  async reorder(playlistId: number, musicIds: readonly number[], includeExplicit: boolean): Promise<boolean> {
     let matches = false;
     await inTransaction(this.pool, async (client) => {
       await lockPlaylist(client, playlistId);
@@ -114,8 +119,8 @@ export class PostgresPlaylistMusics implements PlaylistMusics {
         `SELECT mp.music_id
          FROM music_playlist mp
          JOIN musics m ON m.id = mp.music_id AND m.deleted_at IS NULL
-         WHERE mp.playlist_id = $1`,
-        [playlistId],
+         WHERE mp.playlist_id = $1 AND ($2 OR NOT m.is_explicit)`,
+        [playlistId, includeExplicit],
       );
       const current = new Set(rows.map((row) => row.music_id));
       // Mesmo tamanho, sem repetição e todos presentes: é exatamente o mesmo conjunto.

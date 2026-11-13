@@ -1,6 +1,7 @@
-import type { Request, RequestHandler } from "express";
+import type { Request, RequestHandler, Response } from "express";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type { AdminQueries, CatalogQueries, PlayLog } from "../../domain/ports/admin-queries.ts";
+import { canSeeExplicit } from "../../domain/shared/age.ts";
 import type { GetMusicAudio } from "../../domain/use-cases/get-music-audio.ts";
 import type { ManageCatalog } from "../../domain/use-cases/manage-catalog.ts";
 import type { ManageUsers } from "../../domain/use-cases/manage-users.ts";
@@ -29,6 +30,11 @@ function searchParam(req: Request): string | undefined {
   return typeof req.query.q === "string" ? req.query.q : undefined;
 }
 
+/** Quem fez a requisição pode ver música explícita hoje (HU-09). */
+function canSeeExplicitNow(res: Response): boolean {
+  return canSeeExplicit(res.locals.birthdate, new Date(), res.locals.role === "admin");
+}
+
 export interface CatalogController {
   listMusics: RequestHandler;
   listArtists: RequestHandler;
@@ -49,13 +55,19 @@ export function makeCatalogController(
   return {
     // Músicas removidas só aparecem para admins (e vêm com deletedAt preenchido).
     listMusics: async (req, res) => {
-      res.json(await queries.listMusics({ search: searchParam(req), includeDeleted: res.locals.role === "admin" }));
+      res.json(
+        await queries.listMusics({
+          search: searchParam(req),
+          includeDeleted: res.locals.role === "admin",
+          includeExplicit: canSeeExplicitNow(res),
+        }),
+      );
     },
     listArtists: async (_req, res) => {
       res.json(await queries.listArtists());
     },
     listAlbums: async (_req, res) => {
-      res.json(await queries.listAlbums());
+      res.json(await queries.listAlbums({ includeExplicit: canSeeExplicitNow(res) }));
     },
     albumCover: async (req, res, next) => {
       const coverFile = await queries.findAlbumCoverFile(idParam(req));
@@ -72,6 +84,7 @@ export function makeCatalogController(
         musicId: idParam(req),
         birthdate: res.locals.birthdate,
         now: new Date(),
+        isAdmin: res.locals.role === "admin",
       });
       res.set("Cache-Control", AUDIO_CACHE_CONTROL);
       // O sendFile responde a Range (206), que o <audio> usa para pular trechos; um arquivo que sumiu do disco vira 404.
@@ -84,7 +97,7 @@ export function makeCatalogController(
       res.json(await queries.listGenres());
     },
     recordPlay: async (req, res) => {
-      await plays.recordPlay(res.locals.userId, idParam(req));
+      await plays.recordPlay(res.locals.userId, idParam(req), canSeeExplicitNow(res));
       res.sendStatus(204);
     },
   };

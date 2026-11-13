@@ -43,7 +43,15 @@ interface MusicRow {
 export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
   constructor(private readonly pool: Pool) {}
 
-  async listMusics({ search, includeDeleted }: { search?: string; includeDeleted: boolean }): Promise<MusicListItem[]> {
+  async listMusics({
+    search,
+    includeDeleted,
+    includeExplicit,
+  }: {
+    search?: string;
+    includeDeleted: boolean;
+    includeExplicit: boolean;
+  }): Promise<MusicListItem[]> {
     const { rows } = await this.pool.query<MusicRow>(
       `SELECT m.id, m.name, m.duration, m.streams, m.is_explicit, m.audio_file IS NOT NULL AS has_audio,
          m.created_at, m.deleted_at,
@@ -57,11 +65,12 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
             FROM genre_music gm JOIN genre g ON g.id = gm.genre_id WHERE gm.music_id = m.id), '[]') AS genres
        FROM musics m
        WHERE ($1 OR m.deleted_at IS NULL)
+         AND ($3 OR NOT m.is_explicit)
          AND ($2::text IS NULL OR m.name ILIKE '%' || $2 || '%' OR EXISTS (
            SELECT 1 FROM artist_music am JOIN artist a ON a.id = am.artist_id
            WHERE am.music_id = m.id AND a.name ILIKE '%' || $2 || '%'))
        ORDER BY m.deleted_at IS NOT NULL, m.name, m.id`,
-      [includeDeleted, search?.trim() || null],
+      [includeDeleted, search?.trim() || null, includeExplicit],
     );
     return rows.map((row) => ({
       id: row.id,
@@ -86,18 +95,19 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     return rows;
   }
 
-  async listAlbums(): Promise<AlbumListItem[]> {
+  async listAlbums({ includeExplicit }: { includeExplicit: boolean }): Promise<AlbumListItem[]> {
     const { rows } = await this.pool.query<
       Omit<AlbumListItem, "musicCount" | "coverUrl"> & { music_count: string; cover_file: string | null }
     >(
       `SELECT al.id, al.name, al.year, al.cover_file,
          (SELECT count(*) FROM album_music amu JOIN musics m ON m.id = amu.music_id
-            WHERE amu.album_id = al.id AND m.deleted_at IS NULL) AS music_count,
+            WHERE amu.album_id = al.id AND m.deleted_at IS NULL AND ($1 OR NOT m.is_explicit)) AS music_count,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name)
             FROM album_artist aa JOIN artist a ON a.id = aa.artist_id WHERE aa.album_id = al.id), '[]') AS artists
        FROM album al
        WHERE al.deleted_at IS NULL
        ORDER BY al.name, al.id`,
+      [includeExplicit],
     );
     return rows.map(({ music_count: musicCount, cover_file: coverFile, ...album }) => ({
       ...album,
@@ -121,15 +131,17 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     return rows;
   }
 
-  async recordPlay(userId: number, musicId: number): Promise<void> {
-    // Um comando só: o evento e o contador de streams entram juntos, e só para música ativa.
+  async recordPlay(userId: number, musicId: number, includeExplicit: boolean): Promise<void> {
+    // Um comando só: o evento e o contador de streams entram juntos, e só para música ativa e
+    // que a pessoa pode ver.
     const { rowCount } = await this.pool.query(
       `WITH played AS (
-         UPDATE musics SET streams = streams + 1 WHERE id = $2 AND deleted_at IS NULL RETURNING id
+         UPDATE musics SET streams = streams + 1
+         WHERE id = $2 AND deleted_at IS NULL AND ($3 OR NOT is_explicit) RETURNING id
        )
        INSERT INTO user_event (user_id, event_type, music_id)
        SELECT $1, 'music_play', id FROM played`,
-      [userId, musicId],
+      [userId, musicId, includeExplicit],
     );
     if (rowCount === 0) throw new NotFoundError("Music not found");
   }
