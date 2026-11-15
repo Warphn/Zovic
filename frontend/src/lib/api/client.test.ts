@@ -43,6 +43,28 @@ describe("request", () => {
     await request("/x", json("POST", {}))
     expect(sent[0]?.get("Content-Type")).toBe("application/json")
   })
+
+  // HU-19: what the collaborators dialog and the playlist page show for each refusal
+  it("translates the playlist collaborators errors", async () => {
+    const translations: [number, string, string][] = [
+      [404, "Account not found", "Não há conta com esse email."],
+      [409, "This account has no active subscription", "Essa conta não tem assinatura ativa, então não pode colaborar."],
+      [409, "User is already a member of this playlist", "Essa pessoa já está na playlist."],
+      [403, "Only the playlist owner manages collaborators", "Só quem criou a playlist gerencia os colaboradores."],
+      [404, "Collaborator not found", "Essa pessoa já não está na playlist."],
+      [409, "The last admin cannot leave the playlist", "Quem criou a playlist não pode sair dela. Para deixá-la, exclua a playlist."],
+      [403, "Only playlist members can add musics", "Só quem monta a playlist pode adicionar músicas."],
+      [403, "Only playlist members can remove musics", "Só quem monta a playlist pode tirar músicas."],
+      [403, "Only playlist members can reorder musics", "Só quem monta a playlist pode mudar a ordem."],
+    ]
+    for (const [status, apiMessage, shown] of translations) {
+      spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "ERROR", message: apiMessage }), { status })
+      )
+      await expect(request("/x")).rejects.toThrow(shown)
+      mock.restore()
+    }
+  })
 })
 
 describe("apiUrl", () => {

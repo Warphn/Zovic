@@ -29,12 +29,20 @@ const MESSAGES: Record<string, string> = {
   "Album must have a cover image": "Escolha a imagem de capa do álbum.",
   "Cover image must be a JPEG, PNG or WebP": "A capa precisa ser uma imagem JPEG, PNG ou WebP.",
   "Cover image must be at most 2 MB": "A capa pode ter no máximo 2 MB.",
-  // Playlists (api/domain/use-cases): only the playlist's admins can change it
-  "Only playlist admins can edit it": "Só quem administra a playlist pode editá-la.",
-  "Only playlist admins can delete it": "Só quem administra a playlist pode apagá-la.",
-  "Only playlist admins can add musics": "Só quem administra a playlist pode adicionar músicas.",
-  "Only playlist admins can remove musics": "Só quem administra a playlist pode tirar músicas.",
-  "Only playlist admins can reorder musics": "Só quem administra a playlist pode mudar a ordem.",
+  // Playlists (api/domain/use-cases): the owner edits and deletes it; owner and collaborators change the musics
+  "Only playlist admins can edit it": "Só quem criou a playlist pode editá-la.",
+  "Only playlist admins can delete it": "Só quem criou a playlist pode apagá-la.",
+  "Only playlist members can add musics": "Só quem monta a playlist pode adicionar músicas.",
+  "Only playlist members can remove musics": "Só quem monta a playlist pode tirar músicas.",
+  "Only playlist members can reorder musics": "Só quem monta a playlist pode mudar a ordem.",
+  // Playlist collaborators (HU-19, api/domain/use-cases/playlist-collaborators.ts)
+  "Account not found": "Não há conta com esse email.",
+  "This account has no active subscription": "Essa conta não tem assinatura ativa, então não pode colaborar.",
+  "User is already a member of this playlist": "Essa pessoa já está na playlist.",
+  "Only the playlist owner manages collaborators": "Só quem criou a playlist gerencia os colaboradores.",
+  "Collaborator not found": "Essa pessoa já não está na playlist.",
+  "The last admin cannot leave the playlist":
+    "Quem criou a playlist não pode sair dela. Para deixá-la, exclua a playlist.",
   "Music is already in this playlist": "Essa música já está na playlist.",
   "Music is not in this playlist": "Essa música já tinha saído da playlist.",
   "Music not found": "Essa música não está mais no catálogo.",
