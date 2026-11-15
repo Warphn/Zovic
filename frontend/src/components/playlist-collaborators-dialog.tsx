@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Notice } from "@/components/ui/notice"
 import { useSession } from "@/lib/auth/client"
 import { apiErrorMessage } from "@/lib/api/client"
-import { useAddCollaborator, usePlaylistCollaborators, useRemoveCollaborator } from "@/lib/api/playlists"
+import { useAddCollaborator, useLeavePlaylist, usePlaylistCollaborators, useRemoveCollaborator } from "@/lib/api/playlists"
 
 // Who builds a playlist (HU-19). The owner adds people by email and removes them; a collaborator
 // sees the list and can leave. The API owns the rules (account, subscription, who may do what).
@@ -29,17 +29,16 @@ export function PlaylistCollaboratorsDialog({
   const viewerId = Number(session?.user.id)
   const { data: collaborators, isPending, isError } = usePlaylistCollaborators(open ? playlistId : null)
   const remove = useRemoveCollaborator()
+  const leave = useLeavePlaylist()
+  const failedAction = remove.isError ? remove : leave.isError ? leave : null
 
   const removeCollaborator = (userId: number) => {
-    remove.mutate(
-      { id: playlistId, userId },
-      {
-        // Leaving a playlist: back to "Minhas playlists", where it no longer is
-        onSuccess: () => {
-          if (userId === viewerId) router.push("/playlist")
-        },
-      }
-    )
+    if (userId !== viewerId) {
+      remove.mutate({ id: playlistId, userId })
+      return
+    }
+    // Leaving: straight back to "Minhas playlists", where it no longer is
+    leave.mutate({ id: playlistId, userId }, { onSuccess: () => router.push("/playlist") })
   }
 
   return (
@@ -47,6 +46,7 @@ export function PlaylistCollaboratorsDialog({
       open={open}
       onOpenChange={(next) => {
         remove.reset()
+        leave.reset()
         onOpenChange(next)
       }}
     >
@@ -82,8 +82,9 @@ export function PlaylistCollaboratorsDialog({
                       variant="ghost"
                       size="lg"
                       className="text-destructive"
-                      disabled={remove.isPending}
+                      disabled={remove.isPending || leave.isPending}
                       onClick={() => removeCollaborator(collaborator.userId)}
+                      aria-label={isViewer ? "Sair da playlist" : `Remover ${collaborator.name}`}
                     >
                       {isViewer ? "Sair da playlist" : "Remover"}
                     </Button>
@@ -94,7 +95,7 @@ export function PlaylistCollaboratorsDialog({
           </ul>
         )}
 
-        {remove.isError && <Notice>{apiErrorMessage(remove.error)}</Notice>}
+        {failedAction && <Notice>{apiErrorMessage(failedAction.error)}</Notice>}
 
         {isOwner && <AddCollaboratorForm playlistId={playlistId} />}
       </DialogContent>

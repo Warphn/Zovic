@@ -224,10 +224,29 @@ export function useAddCollaborator() {
   })
 }
 
+/** The owner removes a collaborator: the list of who builds it changes, the playlist stays. */
 export function useRemoveCollaborator() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, userId }: { id: number; userId: number }) => playlistsApi.removeCollaborator(id, userId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: playlistKeys.all }),
+    onSuccess: (_result, { id }) => queryClient.invalidateQueries({ queryKey: playlistKeys.collaborators(id) }),
+  })
+}
+
+/**
+ * A collaborator leaves the playlist (their own id). A private one now answers 404, so its open
+ * queries are only marked stale, not refetched: the page navigates away without flashing errors,
+ * and a later visit loads it again. Nothing is awaited, so the navigation is not held up.
+ */
+export function useLeavePlaylist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: number; userId: number }) => playlistsApi.removeCollaborator(id, userId),
+    onSuccess: (_result, { id }) => {
+      for (const queryKey of [playlistKeys.detail(id), playlistKeys.musics(id), playlistKeys.collaborators(id)]) {
+        void queryClient.invalidateQueries({ queryKey, refetchType: "none" })
+      }
+      void queryClient.invalidateQueries({ queryKey: playlistKeys.list() })
+    },
   })
 }
