@@ -118,6 +118,19 @@ describe("rotas de playlist", () => {
     expect(ids).not.toContain(doBruno.id);
   });
 
+  it("POST /playlists sem nome responde 400 e não cria a playlist", async () => {
+    const before = await json<PlaylistBody[]>(await call("GET", "/playlists", bruno));
+
+    for (const body of [{}, { name: "" }, { name: "   " }, { name: null, isPrivate: true }]) {
+      const res = await call("POST", "/playlists", bruno, body);
+      expect(res.status).toBe(400);
+      expect((await json<{ fields: { field: string }[] }>(res)).fields.map((error) => error.field)).toEqual(["name"]);
+    }
+
+    const after = await json<PlaylistBody[]>(await call("GET", "/playlists", bruno));
+    expect(after.map((playlist) => playlist.id)).toEqual(before.map((playlist) => playlist.id));
+  });
+
   it("GET /playlists/:id mostra a pública a outros usuários e esconde a privada com 404", async () => {
     const publica = await create(ana, { name: "Pública" });
     const privada = await create(ana, { name: "Privada", isPrivate: true });
