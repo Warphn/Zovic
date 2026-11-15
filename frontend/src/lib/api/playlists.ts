@@ -12,8 +12,17 @@ export interface Playlist {
   color: string | null
   /** ISO date-time. */
   createdAt: string
-  /** Whether the viewer can edit and delete it. */
+  /** Whether the viewer is the owner: renames, deletes and manages the collaborators. */
   isAdmin: boolean
+  /** Whether the viewer puts, takes out and reorders the musics: the owner and the collaborators (HU-19). */
+  canEditMusics: boolean
+}
+
+/** Someone who builds the playlist, as GET /playlists/:id/collaborators lists them (no email). */
+export interface Collaborator {
+  userId: number
+  name: string
+  isOwner: boolean
 }
 
 /** A music in a playlist, as GET /playlists/:id/musics lists it (api/domain/ports/playlist-musics.ts). */
@@ -48,15 +57,25 @@ export const playlistsApi = {
 
   /** The playlist's active musics, in its order. Same visibility as `get`. */
   musics: (id: number, signal?: AbortSignal) => request<PlaylistMusic[]>(`/playlists/${id}/musics`, { signal }),
-  /** Puts the music at the end (playlist admins only); answers the updated list. */
+  /** Puts the music at the end (owner and collaborators); answers the updated list. */
   addMusic: (id: number, musicId: number) =>
     request<PlaylistMusic[]>(`/playlists/${id}/musics`, json("POST", { musicId })),
-  /** Takes the music out (playlist admins only). */
+  /** Takes the music out (owner and collaborators). */
   removeMusic: (id: number, musicId: number) =>
     request<void>(`/playlists/${id}/musics/${musicId}`, { method: "DELETE" }),
   /** The new order, with every active music of the playlist exactly once; answers the updated list. */
   reorderMusics: (id: number, musicIds: number[]) =>
     request<PlaylistMusic[]>(`/playlists/${id}/musics/order`, json("PUT", { musicIds })),
+
+  /** The owner first, then the collaborators by name. Same visibility as `get`. */
+  collaborators: (id: number, signal?: AbortSignal) =>
+    request<Collaborator[]>(`/playlists/${id}/collaborators`, { signal }),
+  /** Owner only: adds the subscriber with this email; answers the updated list. */
+  addCollaborator: (id: number, email: string) =>
+    request<Collaborator[]>(`/playlists/${id}/collaborators`, json("POST", { email })),
+  /** The owner removes a collaborator; a collaborator passes their own id to leave. */
+  removeCollaborator: (id: number, userId: number) =>
+    request<void>(`/playlists/${id}/collaborators/${userId}`, { method: "DELETE" }),
 }
 
 export const playlistKeys = {
@@ -64,6 +83,7 @@ export const playlistKeys = {
   list: () => [...playlistKeys.all, "list"] as const,
   detail: (id: number) => [...playlistKeys.all, "detail", id] as const,
   musics: (id: number) => [...playlistKeys.all, "musics", id] as const,
+  collaborators: (id: number) => [...playlistKeys.all, "collaborators", id] as const,
 }
 
 /** A route param as a playlist id; null when it is not a positive integer (an old local id, say). */
@@ -183,5 +203,31 @@ export function useReorderPlaylistMusics() {
       return queryClient.invalidateQueries({ queryKey: playlistKeys.musics(id) })
     },
     onSuccess: (musics, { id }) => queryClient.setQueryData(playlistKeys.musics(id), musics),
+  })
+}
+
+/** The owner and collaborators of a playlist; idle while `id` is null. */
+export function usePlaylistCollaborators(id: number | null) {
+  return useQuery({
+    queryKey: playlistKeys.collaborators(id ?? 0),
+    queryFn: ({ signal }) => playlistsApi.collaborators(id ?? 0, signal),
+    enabled: id !== null,
+  })
+}
+
+// Adding or removing someone changes the collaborators and whose "Minhas playlists" has the playlist
+export function useAddCollaborator() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, email }: { id: number; email: string }) => playlistsApi.addCollaborator(id, email),
+    onSuccess: (collaborators, { id }) => queryClient.setQueryData(playlistKeys.collaborators(id), collaborators),
+  })
+}
+
+export function useRemoveCollaborator() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: number; userId: number }) => playlistsApi.removeCollaborator(id, userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: playlistKeys.all }),
   })
 }

@@ -298,7 +298,7 @@ export default function PlaylistPage() {
                         <span className="pointer-events-none w-14 text-right font-mono text-xs text-muted-foreground">
                           {playlist.isPrivate ? "Privada" : "Pública"}
                         </span>
-                        {playlist.canEdit && (
+                        {playlist.canManage && (
                           <button
                             type="button"
                             onClick={(e) => handleDeletePlaylist(playlist.id, e)}
@@ -385,7 +385,7 @@ export default function PlaylistPage() {
                         className="absolute inset-0 z-20 rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-current"
                       />
 
-                      {playlist.canEdit && (
+                      {playlist.canManage && (
                         <button
                           type="button"
                           onClick={(e) => handleDeletePlaylist(playlist.id, e)}

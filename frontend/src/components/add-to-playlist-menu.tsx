@@ -23,7 +23,7 @@ export function AddToPlaylistMenu({
   const router = useRouter()
   const { data: playlists, isPending } = useMyPlaylistsData()
   const addMusic = useAddPlaylistMusic()
-  const editable = playlists.filter((p) => p.canEdit)
+  const editable = playlists.filter((playlist) => playlist.canEditMusics)
 
   const add = (playlistId: string, name: string) =>
     addMusic.mutate(

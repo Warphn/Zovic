@@ -24,7 +24,15 @@ describe("playlist-store", () => {
   })
 
   it("turns an API playlist into what the pages draw, with the default color when it has none", () => {
-    const playlist = { id: 4, name: "Churrasco", isPrivate: false, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: false }
+    // A collaborator (HU-19): edits the musics, but does not manage the playlist
+    const playlist = {
+      id: 4,
+      name: "Churrasco",
+      isPrivate: false,
+      createdAt: "2026-01-02T12:00:00.000Z",
+      isAdmin: false,
+      canEditMusics: true,
+    }
     expect(toPlaylistData({ ...playlist, color: "#F2A541" })).toEqual({
       id: "4",
       name: "Churrasco",
@@ -32,13 +40,14 @@ describe("playlist-store", () => {
       isPrivate: false,
       createdAt: "2026-01-02T12:00:00.000Z",
       tracks: [],
-      canEdit: false,
+      canManage: false,
+      canEditMusics: true,
     })
     expect(toPlaylistData({ ...playlist, color: null }).color).toBe(DEFAULT_PLAYLIST_COLOR)
   })
 
   it("turns a playlist's musics into tracks, in the playlist's order", () => {
-    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true }
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true, canEditMusics: true }
     const musics = [
       { id: 9, name: "Pedra na Água", duration: 201, artists: [{ id: 3, name: "Tomás Lago" }], album: null, addedAt: "2026-01-03T00:00:00.000Z" },
       {

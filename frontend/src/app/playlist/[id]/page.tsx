@@ -44,10 +44,12 @@ import {
   ListMinusIcon,
   PauseIcon,
   PencilIcon,
+  UserIcon,
   PlayIcon,
   SearchIcon,
 } from "@/components/icons"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
+import { PlaylistCollaboratorsDialog } from "@/components/playlist-collaborators-dialog"
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
@@ -62,6 +64,8 @@ export default function PlaylistDetailPage() {
   // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
   // color is previewed on the page; nothing is saved until "Salvar"
   const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
+  const [isCollaboratorsOpen, setIsCollaboratorsOpen] = React.useState(false)
+  const numericPlaylistId = parsePlaylistId(playlistId)
   const [searchQuery, setSearchQuery] = React.useState("")
   // What the last "Adicionar à fila" did, announced to screen readers too
   const [queued, setQueued] = React.useState<string | null>(null)
@@ -180,14 +184,31 @@ export default function PlaylistDetailPage() {
               <span>Playlists</span>
             </Link>
 
-            {/* Only a playlist admin can edit it; the API refuses anyone else */}
-            {currentPlaylist.canEdit && (
-              <Button variant="outline" size="lg" onClick={openEditor} className="gap-2">
-                <PencilIcon size={16} className="text-muted-foreground" />
-                Editar playlist
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {/* The owner and the collaborators see who builds it (HU-19) */}
+              {currentPlaylist.canEditMusics && numericPlaylistId !== null && (
+                <Button variant="outline" size="lg" onClick={() => setIsCollaboratorsOpen(true)} className="gap-2">
+                  <UserIcon size={16} className="text-muted-foreground" />
+                  Colaboradores
+                </Button>
+              )}
+              {/* Only the owner can edit it; the API refuses anyone else */}
+              {currentPlaylist.canManage && (
+                <Button variant="outline" size="lg" onClick={openEditor} className="gap-2">
+                  <PencilIcon size={16} className="text-muted-foreground" />
+                  Editar playlist
+                </Button>
+              )}
+            </div>
           </div>
+          {numericPlaylistId !== null && (
+            <PlaylistCollaboratorsDialog
+              playlistId={numericPlaylistId}
+              isOwner={Boolean(currentPlaylist.canManage)}
+              open={isCollaboratorsOpen}
+              onOpenChange={setIsCollaboratorsOpen}
+            />
+          )}
 
           {/* Sleeve and title, aligned on their bottom edge like an album page */}
           <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
@@ -251,8 +272,8 @@ export default function PlaylistDetailPage() {
                 Não deu para carregar as faixas. {tracksError}
               </p>
             ) : tracks.length === 0 ? (
-              // An empty playlist: admins get the way to fill it, everyone else just an empty list
-              currentPlaylist.canEdit && (
+              // An empty playlist: the owner and collaborators get the way to fill it, everyone else just an empty list
+              currentPlaylist.canEditMusics && (
                 <p className="py-12 text-center text-sm text-muted-foreground">
                   Busque uma música e use{" "}
                   <Link href="/busca" className="text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground">
@@ -269,7 +290,7 @@ export default function PlaylistDetailPage() {
                 ids={filteredTracks.map((t) => t.id)}
                 rowHeight={56}
                 gap={2}
-                disabled={isSearching || !currentPlaylist.canEdit}
+                disabled={isSearching || !currentPlaylist.canEditMusics}
                 onReorder={handleReorderTracks}
               >
                 {filteredTracks.map((track) => {
@@ -286,7 +307,7 @@ export default function PlaylistDetailPage() {
                       className={cn(
                         // Pointer: a click plays the track; grabbing only while a drag is held
                         "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
-                        !isSearching && currentPlaylist.canEdit && "active:cursor-grabbing",
+                        !isSearching && currentPlaylist.canEditMusics && "active:cursor-grabbing",
                         isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
@@ -359,7 +380,7 @@ export default function PlaylistDetailPage() {
                           <TrackLikeButton trackId={track.id} />
                         </span>
 
-                        {currentPlaylist.canEdit && (
+                        {currentPlaylist.canEditMusics && (
                           <button
                             type="button"
                             onClick={() => handleRemoveTrack(track.id)}

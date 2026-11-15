@@ -26,8 +26,10 @@ export interface PlaylistData {
   createdAt: string
   /** In the playlist's order; empty until its musics load. */
   tracks: Track[]
-  /** Whether the viewer can edit and delete it (the API's isAdmin). */
-  canEdit?: boolean
+  /** Whether the viewer renames, deletes it and manages its collaborators: the owner (the API's isAdmin). */
+  canManage?: boolean
+  /** Whether the viewer puts, takes out and reorders its musics: the owner and the collaborators (HU-19). */
+  canEditMusics?: boolean
 }
 
 /** Cover color of a playlist that has none. */
@@ -224,7 +226,8 @@ export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = [])
     isPrivate: playlist.isPrivate,
     createdAt: playlist.createdAt,
     tracks: musics.map(musicToTrack),
-    canEdit: playlist.isAdmin,
+    canManage: playlist.isAdmin,
+    canEditMusics: playlist.canEditMusics,
   }
 }
 
