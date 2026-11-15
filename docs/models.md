@@ -249,10 +249,11 @@ Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entida
 | `PlaylistMusics` | `playlist-musics.ts` | Lista, põe, tira e reordena as músicas de uma playlist. As escritas mexem só em `music_playlist`. |
 | `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
 | `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
+| `PlayHistory` | `play-history.ts` | O histórico de reprodução da conta, a marca de música ouvida (`music_listened`, HU-15) e a lista das já ouvidas. Quem decide se a música conta como ouvida (mais de 30 segundos) é o caso de uso `MarkMusicListened`. |
 | `AdminQueries` | `admin-queries.ts` | Os números do painel e as reproduções recentes de um usuário |
 | `UserAccounts` | `admin-queries.ts` | Cria e remove contas e conta os admins ativos, para o painel de admin |
 
-As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
+As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
 
 ## Criando uma entidade nova
 

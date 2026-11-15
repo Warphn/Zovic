@@ -1,0 +1,24 @@
+meta {
+  name: Marcar a música B com 20 segundos
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/musics/{{musicB}}/listens
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playedSeconds": 20
+  }
+}
+
+tests {
+  test("responde 409: a música só conta como ouvida depois de mais de 30 segundos", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().error).to.equal("BUSINESS_RULE_ERROR");
+  });
+}

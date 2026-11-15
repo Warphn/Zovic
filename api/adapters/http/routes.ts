@@ -10,6 +10,7 @@ import { validateInvitationToken } from "./middlewares/validate-invitation-token
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
+import { markListenedSchema, musicIdParamsSchema } from "./schemas/listened-schemas.ts";
 import {
   artistSchema,
   createAlbumSchema,
@@ -101,6 +102,14 @@ export function makeRouter(
   );
 
   router.get("/history", subscriberOnly, history.list);
+  router.get("/history/listened", subscriberOnly, history.listListened);
+  router.post(
+    "/musics/:id/listens",
+    subscriberOnly,
+    validateParams(musicIdParamsSchema),
+    validateBody(markListenedSchema),
+    history.markListened,
+  );
 
   router.get("/search", subscriberOnly, validateQuery(searchQuerySchema), search.search);
 

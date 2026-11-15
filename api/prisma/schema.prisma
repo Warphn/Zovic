@@ -395,6 +395,7 @@ enum UserEventType {
   logout
   music_play
   music_skip
+  music_listened
 
   @@map("user_event_type")
 }

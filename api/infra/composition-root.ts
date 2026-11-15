@@ -42,6 +42,8 @@ import { GetMusicAudio } from "../domain/use-cases/get-music-audio.ts";
 import { GetPlaylist } from "../domain/use-cases/get-playlist.ts";
 import { ListMusicComments } from "../domain/use-cases/list-music-comments.ts";
 import { ListMyHistory } from "../domain/use-cases/list-my-history.ts";
+import { ListMyListenedMusics } from "../domain/use-cases/list-my-listened-musics.ts";
+import { MarkMusicListened } from "../domain/use-cases/mark-music-listened.ts";
 import { ListMyPlaylists } from "../domain/use-cases/list-my-playlists.ts";
 import { ListPlaylistMusics } from "../domain/use-cases/list-playlist-musics.ts";
 import { ManageCatalog } from "../domain/use-cases/manage-catalog.ts";
@@ -127,7 +129,12 @@ export function composeApp(
     acceptInvitation: new AcceptInvitation(subscriptionRepository),
   });
 
-  const historyController = makeHistoryController({ listMyHistory: new ListMyHistory(new PostgresPlayHistory(db)) });
+  const playHistory = new PostgresPlayHistory(db);
+  const historyController = makeHistoryController({
+    listMyHistory: new ListMyHistory(playHistory),
+    markMusicListened: new MarkMusicListened(playHistory),
+    listMyListenedMusics: new ListMyListenedMusics(playHistory),
+  });
 
   const router = makeRouter(
     {
