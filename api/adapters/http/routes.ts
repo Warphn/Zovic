@@ -10,6 +10,7 @@ import { validateInvitationToken } from "./middlewares/validate-invitation-token
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
+import { addCollaboratorSchema, playlistCollaboratorParamsSchema } from "./schemas/playlist-collaborators-schemas.ts";
 import {
   artistSchema,
   createAlbumSchema,
@@ -98,6 +99,22 @@ export function makeRouter(
     subscriberOnly,
     validateParams(playlistMusicParamsSchema),
     playlists.removeMusic,
+  );
+
+  // Colaboradores (HU-19): o dono gerencia; o colaborador só sai (DELETE de si mesmo)
+  router.get("/playlists/:id/collaborators", subscriberOnly, playlistId, playlists.listCollaborators);
+  router.post(
+    "/playlists/:id/collaborators",
+    subscriberOnly,
+    playlistId,
+    validateBody(addCollaboratorSchema),
+    playlists.addCollaborator,
+  );
+  router.delete(
+    "/playlists/:id/collaborators/:userId",
+    subscriberOnly,
+    validateParams(playlistCollaboratorParamsSchema),
+    playlists.removeCollaborator,
   );
 
   router.get("/history", subscriberOnly, history.list);

@@ -7,6 +7,11 @@ import type { ListMyPlaylistsUseCase } from "../../domain/use-cases/list-my-play
 import type { ListPlaylistMusicsUseCase } from "../../domain/use-cases/list-playlist-musics.ts";
 import type { RemoveMusicFromPlaylistUseCase } from "../../domain/use-cases/remove-music-from-playlist.ts";
 import type { ReorderPlaylistMusicsUseCase } from "../../domain/use-cases/reorder-playlist-musics.ts";
+import type {
+  AddCollaboratorUseCase,
+  ListCollaboratorsUseCase,
+  RemoveCollaboratorUseCase,
+} from "../../domain/use-cases/playlist-collaborators.ts";
 import type { UpdatePlaylistUseCase } from "../../domain/use-cases/update-playlist.ts";
 
 export interface PlaylistUseCases {
@@ -19,6 +24,9 @@ export interface PlaylistUseCases {
   addMusicToPlaylist: AddMusicToPlaylistUseCase;
   removeMusicFromPlaylist: RemoveMusicFromPlaylistUseCase;
   reorderPlaylistMusics: ReorderPlaylistMusicsUseCase;
+  listCollaborators: ListCollaboratorsUseCase;
+  addCollaborator: AddCollaboratorUseCase;
+  removeCollaborator: RemoveCollaboratorUseCase;
 }
 
 export interface PlaylistController {
@@ -31,9 +39,12 @@ export interface PlaylistController {
   addMusic: RequestHandler;
   removeMusic: RequestHandler;
   reorderMusics: RequestHandler;
+  listCollaborators: RequestHandler;
+  addCollaborator: RequestHandler;
+  removeCollaborator: RequestHandler;
 }
 
-// `:id` e `:musicId` já passaram pelo validateParams; o corpo, pelo validateBody.
+// `:id`, `:musicId` e `:userId` já passaram pelo validateParams; o corpo, pelo validateBody.
 export function makePlaylistController(useCases: PlaylistUseCases): PlaylistController {
   return {
     create: async (req, res) => {
@@ -120,6 +131,35 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
       });
 
       res.json(musics);
+    },
+
+    listCollaborators: async (req, res) => {
+      const collaborators = await useCases.listCollaborators.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+      });
+
+      res.json(collaborators);
+    },
+
+    addCollaborator: async (req, res) => {
+      const collaborators = await useCases.addCollaborator.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        email: req.body.email,
+      });
+
+      res.status(201).json(collaborators);
+    },
+
+    removeCollaborator: async (req, res) => {
+      await useCases.removeCollaborator.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        collaboratorId: Number(req.params.userId),
+      });
+
+      res.sendStatus(204);
     },
   };
 }

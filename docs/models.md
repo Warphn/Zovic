@@ -85,7 +85,7 @@ Arquivo: `api/domain/entities/playlist.ts` · Tabelas: `playlists`, `playlist_us
 | `toData()` | Dados da playlist, com cópia da lista de membros. |
 | `isMember(userId)` | `true` se o usuário é membro. |
 | `isAdmin(userId)` | `true` se o usuário é membro **e** admin. |
-| `addMember(userId)` | Adiciona como membro comum. Recusa quem já é membro. |
+| `addMember(userId)` | Adiciona como membro comum, que é o colaborador da HU-19. Recusa quem já é membro. |
 | `removeMember(userId)` | Remove o membro. Recusa quem não é membro e **não deixa sair o último admin**. |
 | `promote(userId)` | Torna o membro admin. |
 | `rename(name)` | Troca o nome. |
@@ -204,6 +204,9 @@ As portas ficam em `api/domain/ports/` e as implementações em `api/adapters/db
 | `findById(id)` | Todos | Carrega a entidade com seus vínculos. Devolve `null` se não existir **ou estiver apagada**. |
 | `findByIds(ids)` | Music | Carrega várias músicas ativas, **na ordem dos ids pedidos**. Ids inexistentes são ignorados. |
 | `listByUser(userId)` | Playlist | As playlists ativas de que o usuário é membro, da mais nova para a mais antiga. |
+| `findByEmail(email)` | User (`UserEmailLookup`) | A conta ativa com esse email, já em minúsculas, ou `null`. Fica numa interface própria porque só o `AddCollaborator` (HU-19) precisa dela. |
+
+Os colaboradores da playlist (HU-19) não têm repositório próprio: os casos de uso de `playlist-collaborators.ts` (`ListCollaborators`, `AddCollaborator` e `RemoveCollaborator`) mudam os membros da `Playlist` e a salvam. Quem mexe nas músicas é conferido por `findMusicEditablePlaylist` (é membro). Renomear, apagar e gerenciar colaboradores continua com `findEditablePlaylist` (é o dono, admin).
 
 Erros do banco traduzidos para erros de domínio:
 

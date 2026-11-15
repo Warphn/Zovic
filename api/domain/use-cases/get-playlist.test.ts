@@ -20,7 +20,7 @@ describe("GetPlaylist", () => {
 
     const output = await useCase.execute({ userId: ANA, playlistId: playlist.id });
 
-    expect(output).toMatchObject({ id: playlist.id, name: "Rock", isPrivate: true, isAdmin: true });
+    expect(output).toMatchObject({ id: playlist.id, name: "Rock", isPrivate: true, isAdmin: true, canEditMusics: true });
   });
 
   it("mostra a playlist pública de outra pessoa, sem papel de admin", async () => {
@@ -28,7 +28,7 @@ describe("GetPlaylist", () => {
 
     const output = await useCase.execute({ userId: BRUNO, playlistId: playlist.id });
 
-    expect(output).toMatchObject({ id: playlist.id, isAdmin: false });
+    expect(output).toMatchObject({ id: playlist.id, isAdmin: false, canEditMusics: false });
   });
 
   it("mostra a playlist privada a um membro que não é admin", async () => {
@@ -38,7 +38,7 @@ describe("GetPlaylist", () => {
 
     const output = await useCase.execute({ userId: BRUNO, playlistId: playlist.id });
 
-    expect(output.isAdmin).toBe(false);
+    expect(output).toMatchObject({ isAdmin: false, canEditMusics: true });
   });
 
   it("esconde a playlist privada de quem não é membro com NotFoundError", async () => {

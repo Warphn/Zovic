@@ -47,6 +47,7 @@ import { ListPlaylistMusics } from "../domain/use-cases/list-playlist-musics.ts"
 import { ManageCatalog } from "../domain/use-cases/manage-catalog.ts";
 import { ManageUsers } from "../domain/use-cases/manage-users.ts";
 import { RemoveMusicFromPlaylist } from "../domain/use-cases/remove-music-from-playlist.ts";
+import { AddCollaborator, ListCollaborators, RemoveCollaborator } from "../domain/use-cases/playlist-collaborators.ts";
 import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musics.ts";
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
@@ -68,6 +69,8 @@ export function composeApp(
   db: Pool = pool,
   storages: MediaStorages = { audio: new LocalFileStorage(config.audioDir), covers: new LocalFileStorage(config.coverDir) },
 ) {
+  const userRepository = new PostgresUserRepository(db);
+  const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const playlistRepository = new PostgresPlaylistRepository(db);
   const playlistMusics = new PostgresPlaylistMusics(db);
   const playlistController = makePlaylistController({
@@ -80,6 +83,9 @@ export function composeApp(
     addMusicToPlaylist: new AddMusicToPlaylist(playlistRepository, playlistMusics),
     removeMusicFromPlaylist: new RemoveMusicFromPlaylist(playlistRepository, playlistMusics),
     reorderPlaylistMusics: new ReorderPlaylistMusics(playlistRepository, playlistMusics),
+    listCollaborators: new ListCollaborators(playlistRepository, userRepository),
+    addCollaborator: new AddCollaborator(playlistRepository, userRepository, subscriptionRepository),
+    removeCollaborator: new RemoveCollaborator(playlistRepository),
   });
   const searchController = makeSearchController(new SearchCatalog(new PostgresSearchQuery(db)));
 
@@ -104,7 +110,6 @@ export function composeApp(
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);
 
-  const userRepository = new PostgresUserRepository(db);
   const commentRepository = new PostgresCommentRepository(db);
   const createComment = new CreateComment(commentRepository, userRepository);
   const listComments = new ListMusicComments(commentRepository, userRepository);
@@ -112,7 +117,6 @@ export function composeApp(
   const reportComment = new ReportComment(commentRepository, userRepository);
   const commentController = makeCommentController(createComment, listComments, deleteComment, reportComment);
 
-  const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({
     subscribePlan: new SubscribePlan(subscriptionRepository),

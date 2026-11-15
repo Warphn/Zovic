@@ -1,0 +1,17 @@
+meta {
+  name: Colaborador sai da playlist
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/collaborators/{{collaboratorId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

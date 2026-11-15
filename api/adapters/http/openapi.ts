@@ -576,7 +576,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Põe uma música na playlist",
         description:
-          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova.",
+          "Dono e colaboradores da playlist (HU-19). A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova.",
         operationId: "addPlaylistMusic",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -625,7 +625,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Reordena as músicas da playlist",
         description:
-          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Responde com a lista na ordem nova.",
+          "Dono e colaboradores da playlist (HU-19). `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Responde com a lista na ordem nova.",
         operationId: "reorderPlaylistMusics",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -674,7 +674,7 @@ export const openApiDocument = {
       delete: {
         tags: ["Playlists"],
         summary: "Tira uma música da playlist",
-        description: "Só admins da playlist. As outras músicas mantêm a ordem.",
+        description: "Dono e colaboradores da playlist (HU-19). As outras músicas mantêm a ordem.",
         operationId: "removePlaylistMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -689,6 +689,119 @@ export const openApiDocument = {
             description: "A playlist não existe ou não é visível para o usuário, ou a música não está nela",
             content: {
               "application/json": { schema: errorResponse("NOT_FOUND", "Music is not in this playlist") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/collaborators": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      get: {
+        tags: ["Playlists"],
+        summary: "Lista o dono e os colaboradores da playlist",
+        description:
+          "Quem vê a playlist vê quem a monta (HU-19): o dono primeiro e os colaboradores pelo nome. A lista não traz email.",
+        operationId: "listPlaylistCollaborators",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Dono e colaboradores",
+            content: {
+              "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Collaborator" } } },
+            },
+          },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      post: {
+        tags: ["Playlists"],
+        summary: "Adiciona um colaborador pelo email",
+        description:
+          "Só o dono. A pessoa entra direto, sem convite, e passa a pôr, tirar e reordenar as músicas. O email precisa ser de uma conta ativa com assinatura ativa; maiúsculas e espaços nas pontas são ignorados.",
+        operationId: "addPlaylistCollaborator",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: { email: { type: "string", format: "email", example: "bruno.andrade@zovic.test" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Lista atualizada de dono e colaboradores",
+            content: {
+              "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Collaborator" } } },
+            },
+          },
+          "400": {
+            description: "Email ausente ou inválido, ou id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Quem chama não é o dono da playlist (ou não tem assinatura ativa: `SUBSCRIPTION_REQUIRED`)",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner manages collaborators") },
+            },
+          },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou nenhuma conta ativa tem esse email",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Account not found") } },
+          },
+          "409": {
+            description: "A conta não tem assinatura ativa, ou já está na playlist",
+            content: {
+              "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "This account has no active subscription") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/collaborators/{userId}": {
+      parameters: [
+        { $ref: "#/components/parameters/PlaylistId" },
+        { name: "userId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+      ],
+      delete: {
+        tags: ["Playlists"],
+        summary: "Remove um colaborador ou sai da playlist",
+        description:
+          "O dono remove qualquer colaborador; o colaborador só remove a si mesmo, que é sair da playlist. O dono não sai da própria playlist (409): para deixá-la, ele a apaga. Quem sai de uma playlist privada deixa de vê-la.",
+        operationId: "removePlaylistCollaborator",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Colaborador removido" },
+          "400": {
+            description: "Id da playlist ou da pessoa não é um inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Um colaborador tentou remover outra pessoa (ou não tem assinatura ativa: `SUBSCRIPTION_REQUIRED`)",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner manages collaborators") },
+            },
+          },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a pessoa não está nela",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Collaborator not found") } },
+          },
+          "409": {
+            description: "O dono tentou sair da própria playlist",
+            content: {
+              "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "The last admin cannot leave the playlist") },
             },
           },
           "500": { $ref: "#/components/responses/InternalError" },
@@ -1496,7 +1609,7 @@ export const openApiDocument = {
       },
       NotPlaylistAdmin: {
         description:
-          "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
+          "O usuário vê a playlist, mas não tem permissão: só o dono edita, apaga e gerencia os colaboradores, e só o dono e os colaboradores mudam as músicas (HU-19). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
         },
@@ -1795,7 +1908,7 @@ export const openApiDocument = {
       },
       Playlist: {
         type: "object",
-        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin"],
+        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics"],
         properties: {
           id: { type: "integer", example: 42 },
           name: { type: "string", example: "Rock nacional" },
@@ -1804,9 +1917,24 @@ export const openApiDocument = {
           createdAt: { type: "string", format: "date-time", example: "2026-10-13T19:25:03.445Z" },
           isAdmin: {
             type: "boolean",
-            description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
+            description:
+              "Se o usuário autenticado é o dono (admin) da playlist, ou seja, se pode editá-la, apagá-la e gerenciar os colaboradores.",
             example: true,
           },
+          canEditMusics: {
+            type: "boolean",
+            description: "Se o usuário autenticado pode pôr, tirar e reordenar as músicas: o dono e os colaboradores (HU-19).",
+            example: true,
+          },
+        },
+      },
+      Collaborator: {
+        type: "object",
+        required: ["userId", "name", "isOwner"],
+        properties: {
+          userId: { type: "integer", example: 12 },
+          name: { type: "string", example: "Bruno Andrade" },
+          isOwner: { type: "boolean", description: "Verdadeiro só para o dono da playlist.", example: false },
         },
       },
       CreateCommentRequest: {
