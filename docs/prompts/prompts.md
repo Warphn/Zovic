@@ -219,3 +219,13 @@ O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fund
 | 2 | Pode começar. | A seleção em [`home.ts`](../../frontend/src/lib/home.ts) (`albumsOfArtist` e `singlesOfArtist`), com testes; a página [`artista/`](../../frontend/src/app/artista/); o card de álbum em [`album-card.tsx`](../../frontend/src/components/album-card.tsx), compartilhado com o `/inicio`; os links no cabeçalho do álbum e nas sugestões de artista da busca ([`routes.ts`](../../frontend/src/lib/search/routes.ts)); e o teste de integração do artista removido |
 
 O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.
+
+### 15/11/2026: músicas já ouvidas (#91, HU-15)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Vamos completar as issues que faltam. | Conversa de design da HU-15 e duas formas de contar os 30 segundos: o front conta e avisa a API, ou a API também confere o relógio desde o início da reprodução |
+| 2 | Vamos de 1. | A [spec](../superpowers/specs/2026-11-15-musicas-ouvidas-design.md), com o evento `music_listened` em `user_event` e a regra no domínio, e o [plano de implementação](../superpowers/plans/2026-11-15-musicas-ouvidas.md), em 6 tarefas com os testes antes do código |
+| 3 | Manda bala, implementa aqui mesmo. | O caso de uso [`mark-music-listened.ts`](../../api/domain/use-cases/mark-music-listened.ts) (`LISTENED_THRESHOLD_SECONDS = 30`) e a lista das ouvidas, com testes; as duas migrações e as rotas `POST /api/musics/:id/listens` e `GET /api/history/listened`, com testes de integração; a soma do tempo de som em [`listen-tracker.ts`](../../frontend/src/lib/listen-tracker.ts), com testes; o fone de "Já ouvida" em [`track-title.tsx`](../../frontend/src/components/track-title.tsx), nas listas de faixas; e a aba "Já ouvidas" no [histórico](../../frontend/src/app/historico/page.tsx) |
+
+O Victor escolheu deixar a contagem com o front e aprovou a spec e o plano antes da implementação. A IA escolheu o evento em `user_event` (sem tabela nova), o ícone de fone e a recusa com 409 para 30 segundos ou menos.
