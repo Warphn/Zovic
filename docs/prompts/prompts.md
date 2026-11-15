@@ -219,3 +219,12 @@ O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fund
 | 2 | Pode começar. | A seleção em [`home.ts`](../../frontend/src/lib/home.ts) (`albumsOfArtist` e `singlesOfArtist`), com testes; a página [`artista/`](../../frontend/src/app/artista/); o card de álbum em [`album-card.tsx`](../../frontend/src/components/album-card.tsx), compartilhado com o `/inicio`; os links no cabeçalho do álbum e nas sugestões de artista da busca ([`routes.ts`](../../frontend/src/lib/search/routes.ts)); e o teste de integração do artista removido |
 
 O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.
+
+### 15/11/2026: playlist colaborativa (#93, HU-19)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Manda bala no 93. | O levantamento do que a história toca: o colaborador já cabia em `playlist_user` como membro sem `is_admin`, então não há migração, e a mudança central é de permissão (músicas para todo membro, o resto só para o dono). Resultado: a proposta de rotas, casos de uso e diálogo |
+| 2 | Aprovo. | A [spec](../superpowers/specs/2026-11-15-playlist-colaborativa-design.md) e o [plano](../superpowers/plans/2026-11-15-playlist-colaborativa.md); o `findMusicEditablePlaylist` e os casos de uso de [`playlist-collaborators.ts`](../../api/domain/use-cases/playlist-collaborators.ts), com testes; as rotas `…/collaborators`, com testes de integração; o `canEditMusics` na resposta; e o [diálogo de colaboradores](../../frontend/src/components/playlist-collaborators-dialog.tsx) na página da playlist |
+
+O Victor aprovou o design antes da implementação. A IA escolheu exigir assinatura ativa de quem entra como colaborador, mostrar só o nome (sem email) na lista e separar a busca por email numa interface própria (`UserEmailLookup`).
