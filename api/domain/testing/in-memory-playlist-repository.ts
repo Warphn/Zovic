@@ -20,9 +20,24 @@ export class InMemoryPlaylistRepository implements PlaylistRepository {
     return this.lastId;
   }
 
+  // Como o banco: os membros só entram na criação; depois, mudam por addMember e removeMember
   async save(playlist: Playlist): Promise<void> {
     this.saveCount += 1;
-    this.rows.set(playlist.id, copy(playlist));
+    const stored = this.rows.get(playlist.id);
+    const data = playlist.toData();
+    this.rows.set(playlist.id, Playlist.restore(stored ? { ...data, members: stored.members } : data));
+  }
+
+  async addMember(playlistId: number, userId: number): Promise<void> {
+    const stored = this.rows.get(playlistId);
+    if (!stored || stored.isMember(userId)) return;
+    stored.addMember(userId);
+  }
+
+  async removeMember(playlistId: number, userId: number): Promise<void> {
+    const stored = this.rows.get(playlistId);
+    if (!stored || !stored.isMember(userId) || stored.isAdmin(userId)) return;
+    stored.removeMember(userId);
   }
 
   async findById(id: number): Promise<Playlist | null> {

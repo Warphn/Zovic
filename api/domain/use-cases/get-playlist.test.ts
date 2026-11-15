@@ -33,8 +33,7 @@ describe("GetPlaylist", () => {
 
   it("mostra a playlist privada a um membro que não é admin", async () => {
     const { repository, playlist, useCase } = await setup(true);
-    playlist.addMember(BRUNO);
-    await repository.save(playlist);
+    await repository.addMember(playlist.id, BRUNO);
 
     const output = await useCase.execute({ userId: BRUNO, playlistId: playlist.id });
 

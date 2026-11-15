@@ -204,9 +204,10 @@ As portas ficam em `api/domain/ports/` e as implementações em `api/adapters/db
 | `findById(id)` | Todos | Carrega a entidade com seus vínculos. Devolve `null` se não existir **ou estiver apagada**. |
 | `findByIds(ids)` | Music | Carrega várias músicas ativas, **na ordem dos ids pedidos**. Ids inexistentes são ignorados. |
 | `listByUser(userId)` | Playlist | As playlists ativas de que o usuário é membro, da mais nova para a mais antiga. |
+| `addMember(playlistId, userId)` e `removeMember(playlistId, userId)` | Playlist | Põem ou tiram um colaborador com uma linha só em `playlist_user`. O `removeMember` nunca tira o dono. Na Playlist, o `save` grava os membros só quando ela é nova: assim, salvar uma cópia carregada antes (ao renomear, por exemplo) não desfaz quem entrou ou saiu nesse meio-tempo. |
 | `findByEmail(email)` | User (`UserEmailLookup`) | A conta ativa com esse email, já em minúsculas, ou `null`. Fica numa interface própria porque só o `AddCollaborator` (HU-19) precisa dela. |
 
-Os colaboradores da playlist (HU-19) não têm repositório próprio: os casos de uso de `playlist-collaborators.ts` (`ListCollaborators`, `AddCollaborator` e `RemoveCollaborator`) mudam os membros da `Playlist` e a salvam. Quem mexe nas músicas é conferido por `findMusicEditablePlaylist` (é membro). Renomear, apagar e gerenciar colaboradores continua com `findEditablePlaylist` (é o dono, admin).
+Os colaboradores da playlist (HU-19) não têm repositório próprio: os casos de uso de `playlist-collaborators.ts` (`ListCollaborators`, `AddCollaborator` e `RemoveCollaborator`) mudam os membros da `Playlist` e a salvam. Quem mexe nas músicas é conferido por `findMusicEditablePlaylist` (é membro). Renomear e apagar continuam com `findEditablePlaylist` (é o dono, admin). Gerenciar os colaboradores confere a playlist com `findVisiblePlaylist` e o dono com `isAdmin`, porque o colaborador também pode sair.
 
 Erros do banco traduzidos para erros de domínio:
 

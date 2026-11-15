@@ -80,8 +80,10 @@ export class AddCollaborator implements AddCollaboratorUseCase {
       throw new BusinessRuleError("This account has no active subscription");
     }
 
+    // A entidade confere a regra (quem já é membro); a gravação mexe só nessa pessoa, para não
+    // desfazer o que outra pessoa mudou nos membros ao mesmo tempo
     playlist.addMember(account.id);
-    await this.playlists.save(playlist);
+    await this.playlists.addMember(playlistId, account.id);
     return toCollaborators(playlist, this.users);
   }
 }
@@ -114,6 +116,6 @@ export class RemoveCollaborator implements RemoveCollaboratorUseCase {
     }
 
     playlist.removeMember(collaboratorId);
-    await this.playlists.save(playlist);
+    await this.playlists.removeMember(playlistId, collaboratorId);
   }
 }

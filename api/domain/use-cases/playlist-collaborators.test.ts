@@ -110,6 +110,23 @@ describe("AddCollaborator", () => {
   });
 });
 
+describe("Colaboradores e gravações simultâneas", () => {
+  it("salvar uma cópia antiga da playlist não desfaz quem entrou nem quem saiu", async () => {
+    const { add, remove, playlists, playlistId } = await setup();
+    await add.execute({ userId: ANA, playlistId, email: "bruno@zovic.test" });
+    const staleCopy = (await playlists.findById(playlistId))!;
+
+    await remove.execute({ userId: BRUNO, playlistId, collaboratorId: BRUNO });
+    await add.execute({ userId: ANA, playlistId, email: "diego@zovic.test" });
+    staleCopy.rename("Renomeada com cópia antiga");
+    await playlists.save(staleCopy);
+
+    const saved = (await playlists.findById(playlistId))!;
+    expect(saved.isMember(BRUNO)).toBe(false);
+    expect(saved.isMember(DIEGO)).toBe(true);
+  });
+});
+
 describe("RemoveCollaborator", () => {
   async function withBrunoAndDiego() {
     const context = await setup();

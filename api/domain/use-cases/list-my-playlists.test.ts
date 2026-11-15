@@ -38,8 +38,7 @@ describe("ListMyPlaylists", () => {
   it("marca isAdmin conforme o papel do usuário em cada playlist", async () => {
     const repository = new InMemoryPlaylistRepository();
     const doBruno = await seed(repository, BRUNO, "Do Bruno", new Date("2026-01-01T00:00:00Z"));
-    doBruno.addMember(ANA);
-    await repository.save(doBruno);
+    await repository.addMember(doBruno.id, ANA);
     await seed(repository, ANA, "Da Ana", new Date("2026-01-02T00:00:00Z"));
 
     const output = await new ListMyPlaylists(repository).execute({ userId: ANA });
