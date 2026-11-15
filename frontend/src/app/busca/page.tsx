@@ -8,6 +8,7 @@ import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SuggestionView } from "@/components/search/suggestion-renderers"
 import { TrackRow } from "@/components/track-row"
+import { ListenedMark } from "@/components/track-title"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { suggestionHref } from "@/lib/search/routes"
 import { toSuggestions } from "@/lib/search/suggestions"
@@ -98,7 +99,10 @@ function SearchResults() {
                             </>
                           }
                         >
-                          <SuggestionView suggestion={result} query={search.resultsQuery} showKind={false} />
+                          <span className="flex min-w-0 items-center gap-2">
+                            <SuggestionView suggestion={result} query={search.resultsQuery} showKind={false} />
+                            <ListenedMark musicId={Number(result.id)} />
+                          </span>
                         </TrackRow>
                       ) : (
                         <Link href={suggestionHref(result)} className={RESULT_CLASSES}>

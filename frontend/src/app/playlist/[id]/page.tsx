@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
+import { ListenedMark } from "@/components/track-title"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { LevelBars } from "@/components/playback-marks"
 import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, usePlayback } from "@/lib/playback-store"
@@ -324,17 +325,20 @@ export default function PlaylistDetailPage() {
 
                       {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
                       <div className="pointer-events-none relative min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={playOrPauseRow}
-                          aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
-                          className={cn(
-                            "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
-                            isCurrent ? "text-primary" : "text-foreground"
-                          )}
-                        >
-                          {track.title}
-                        </button>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={playOrPauseRow}
+                            aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
+                            className={cn(
+                              "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
+                              isCurrent ? "text-primary" : "text-foreground"
+                            )}
+                          >
+                            {track.title}
+                          </button>
+                          <ListenedMark musicId={Number(track.id)} />
+                        </div>
                         <div className="truncate text-xs text-muted-foreground">
                           {[track.artist, [track.album, track.year].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
                         </div>

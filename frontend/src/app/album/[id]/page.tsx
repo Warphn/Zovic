@@ -8,6 +8,7 @@ import { AlbumCoverImage } from "@/components/album-cover-image"
 import Header from "@/components/header"
 import { PlayIcon } from "@/components/icons"
 import { TrackRow } from "@/components/track-row"
+import { TrackTitle } from "@/components/track-title"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { useAlbums, useCatalogMusics } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
@@ -147,7 +148,7 @@ export default function AlbumPage() {
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
                   <span className="block min-w-0">
-                    <span className="block truncate text-sm font-medium">{music.name}</span>
+                    <TrackTitle title={music.name} musicId={music.id} />
                     <span className="block truncate text-xs text-muted-foreground">
                       {[track.artist, formatDuration(music.duration)].filter(Boolean).join(" · ")}
                     </span>
