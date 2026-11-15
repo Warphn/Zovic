@@ -243,7 +243,8 @@ export class PostgresAdminQueries implements AdminQueries {
          ARRAY(SELECT a.name FROM artist_music am JOIN artist a ON a.id = am.artist_id
                WHERE am.music_id = m.id ORDER BY a.name) AS artists
        FROM user_event e JOIN musics m ON m.id = e.music_id
-       WHERE e.user_id = $1
+       -- Só reproduções: a marca de música ouvida (music_listened, HU-15) não é uma reprodução a mais
+       WHERE e.user_id = $1 AND e.event_type IN ('music_play', 'music_skip')
        ORDER BY e.created_at DESC, e.id DESC
        LIMIT $2`,
       [userId, limit],

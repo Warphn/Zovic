@@ -266,6 +266,24 @@ describe("catálogo e reproduções", () => {
     expect(recent[0]).toMatchObject({ musicId, event: "music_play" });
   });
 
+  it("música marcada como ouvida (HU-15) não conta como reprodução a mais para o admin", async () => {
+    const listener = await signUp("ouvinte-marcado");
+    await subscribeAccount(url, listener.cookie);
+    const genrePlays = async () =>
+      (await json<{ byGenre: { genreId: number; plays: number }[] }>(await call("/admin/stats", adminCookie))).byGenre.find(
+        (genre) => genre.genreId === genreId,
+      )?.plays;
+    const playsBefore = await genrePlays();
+
+    expect((await call(`/musics/${musicId}/plays`, listener.cookie, { method: "POST" })).status).toBe(204);
+    const listened = await call(`/musics/${musicId}/listens`, listener.cookie, { method: "POST", body: { playedSeconds: 31 } });
+    expect(listened.status).toBe(204);
+
+    const recent = await json<{ musicId: number; event: string }[]>(await call(`/admin/users/${listener.id}/plays`, adminCookie));
+    expect(recent.map((play) => play.event)).toEqual(["music_play"]);
+    expect(await genrePlays()).toBe((playsBefore ?? 0) + 1);
+  });
+
   it("música removida some para o assinante, aparece marcada para o admin e não aceita reprodução", async () => {
     expect((await call(`/admin/musics/${musicId}`, adminCookie, { method: "DELETE" })).status).toBe(204);
 
