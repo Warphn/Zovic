@@ -5,8 +5,9 @@ import { useQueryClient } from "@tanstack/react-query"
 import { adminKeys } from "@/lib/api/admin"
 import { catalogApi } from "@/lib/api/catalog"
 import { apiUrl } from "@/lib/api/client"
-import { historyKeys } from "@/lib/api/history"
+import { historyApi, historyKeys } from "@/lib/api/history"
 import { markUnavailable, registerAudioElement, reportProgress } from "@/lib/audio-player"
+import { type ListenProgress, musicIdToMark, shouldReportListened, trackListen } from "@/lib/listen-tracker"
 import {
   advanceAfterEnd,
   currentTrackOf,
@@ -40,6 +41,7 @@ export function PlaybackAudio() {
   const lastRecordedListenId = React.useRef<number | null>(null)
   const startedListenId = React.useRef<number | null>(null)
   const skipTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const listenProgress = React.useRef<ListenProgress | null>(null)
 
   const track = currentTrackOf(playback)
   const isPlaying = Boolean(playback?.isPlaying)
@@ -94,6 +96,22 @@ export function PlaybackAudio() {
       .catch(() => {})
   }
 
+  // Sums the sound of this listen and, past 30 seconds, marks the music as listened (HU-15)
+  const trackListenedTime = (position: number) => {
+    if (listenId === null || !track) return
+    const progress = trackListen(listenProgress.current, listenId, position)
+    listenProgress.current = progress
+    const musicId = musicIdToMark(track.id)
+    if (musicId === null || !shouldReportListened(progress)) return
+    listenProgress.current = { ...progress, isReported: true }
+    historyApi
+      .markListened(musicId, progress.playedSeconds)
+      // The "Já ouvidas" tab and the listened icons now include this music
+      .then(() => queryClient.invalidateQueries({ queryKey: historyKeys.all }))
+      // A mark that could not be saved must not get in the way of listening
+      .catch(() => {})
+  }
+
   // Removed, without a file or not allowed (explicit for a minor): the API refuses the file
   const handleError = () => {
     if (!track || !src || listenId === null) return
@@ -112,7 +130,10 @@ export function PlaybackAudio() {
       ref={attachAudio}
       src={src}
       preload="metadata"
-      onTimeUpdate={(event) => reportElementProgress(event.currentTarget)}
+      onTimeUpdate={(event) => {
+        reportElementProgress(event.currentTarget)
+        trackListenedTime(event.currentTarget.currentTime)
+      }}
       onDurationChange={(event) => reportElementProgress(event.currentTarget)}
       onPlaying={recordListen}
       onEnded={advanceAfterEnd}
