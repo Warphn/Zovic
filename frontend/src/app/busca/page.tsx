@@ -85,6 +85,7 @@ function SearchResults() {
                       {result.kind === "track" ? (
                         // A track plays (or pauses) right here, without leaving the results
                         <TrackRow
+                          musicId={Number(result.id)}
                           isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === result.id}
                           onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                           title={result.title}

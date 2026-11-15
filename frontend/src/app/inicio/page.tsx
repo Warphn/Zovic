@@ -155,6 +155,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={music.id}>
               <TrackRow
+                musicId={music.id}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
@@ -196,6 +197,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={entry.musicId}>
               <TrackRow
+                musicId={entry.musicId}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleTrack(track.id, [track, ...catalogTracks])}
                 title={entry.name}

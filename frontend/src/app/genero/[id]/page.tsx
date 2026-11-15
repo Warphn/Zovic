@@ -114,6 +114,7 @@ export default function GenrePage() {
             return (
               <li key={music.id}>
                 <TrackRow
+                  musicId={music.id}
                   isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                   onClick={() => playOrToggleQueueTrack(tracks, index)}
                   title={music.name}

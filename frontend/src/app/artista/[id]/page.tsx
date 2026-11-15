@@ -136,6 +136,7 @@ export default function ArtistPage() {
               return (
                 <li key={music.id}>
                   <TrackRow
+                    musicId={music.id}
                     isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                     onClick={() => playOrToggleQueueTrack(singleTracks, index)}
                     title={music.name}

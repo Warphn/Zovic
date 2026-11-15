@@ -7,11 +7,12 @@ import Header from "@/components/header"
 import { PauseIcon, PlayIcon } from "@/components/icons"
 import { TrackTitle } from "@/components/track-title"
 import { apiErrorMessage } from "@/lib/api/client"
-import { useHistory, useListenedMusics } from "@/lib/api/history"
+import { useHistory, useListenedMusicIds, useListenedMusics } from "@/lib/api/history"
 import { formatDayAndTime } from "@/lib/format-date-time"
 import { formatDuration } from "@/lib/format-duration"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
+import { playButtonLabel } from "@/lib/track-label"
 import { TrackLikeButton } from "@/components/track-like-button"
 
 /** One row of either tab: a music and when it was last heard (played, or listened past 30 s). */
@@ -64,11 +65,13 @@ function PlayableRow({
   isPlaying: boolean
   onClick: () => void
 }) {
+  const listenedMusicIds = useListenedMusicIds()
+  const isListened = showListenedMark && listenedMusicIds.has(item.musicId)
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={isPlaying ? `Pausar ${item.name}` : `Tocar ${item.name}`}
+      aria-label={playButtonLabel(item.name, { isPlaying, isListened })}
       aria-pressed={isPlaying}
       className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
     >
