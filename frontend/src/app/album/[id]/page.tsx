@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { AlbumCoverImage } from "@/components/album-cover-image"
 import Header from "@/components/header"
@@ -46,7 +47,7 @@ export default function AlbumPage() {
   const albums = useAlbums()
   const musics = useCatalogMusics()
   const playback = usePlayback()
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [announcement, setAnnouncement] = React.useState<{ message: string; ok: boolean } | null>(null)
   const announce = React.useCallback((message: string, ok: boolean) => setAnnouncement({ message, ok }), [])
 
@@ -141,6 +142,7 @@ export default function AlbumPage() {
                     <AddToQueueButton track={track} onResult={announce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={announce} />
                   </>
                 }
               >
