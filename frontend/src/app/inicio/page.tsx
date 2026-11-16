@@ -2,13 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
-import { AlbumCoverImage } from "@/components/album-cover-image"
+import { AlbumCard } from "@/components/album-card"
 import Header from "@/components/header"
-import { PlayIcon } from "@/components/icons"
 import { PlaylistTile } from "@/components/playlist-tile"
 import { TrackRow } from "@/components/track-row"
-import { type Album, type CatalogMusic, useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
+import { TrackTitle } from "@/components/track-title"
+import { useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useHistory } from "@/lib/api/history"
 import { useSession } from "@/lib/auth/client"
@@ -24,13 +25,11 @@ import {
   recentlyPlayed,
   TOP_PLAYED_COUNT,
   topPlayed,
-  tracksOfAlbum,
 } from "@/lib/home"
 import {
   currentTrackOf,
   playOrToggleQueueTrack,
   playOrToggleTrack,
-  playQueue,
   useCatalogTracks,
   usePlayback,
 } from "@/lib/playback-store"
@@ -92,10 +91,10 @@ function QueryStatus({ isPending, errorMessage }: { isPending: boolean; errorMes
   return null
 }
 
-function TrackText({ title, meta }: { title: string; meta: string }) {
+function TrackText({ title, musicId, meta }: { title: string; musicId: number; meta: string }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-sm font-medium">{title}</span>
+      <TrackTitle title={title} musicId={musicId} />
       <span className="block truncate text-xs text-muted-foreground">{meta}</span>
     </span>
   )
@@ -157,6 +156,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={music.id}>
               <TrackRow
+                musicId={music.id}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
@@ -165,6 +165,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
                   </>
                 }
               >
@@ -172,7 +173,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <TrackText title={music.name} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
+                  <TrackText title={music.name} musicId={music.id} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
                 </span>
               </TrackRow>
             </li>
@@ -198,6 +199,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={entry.musicId}>
               <TrackRow
+                musicId={entry.musicId}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleTrack(track.id, [track, ...catalogTracks])}
                 title={entry.name}
@@ -206,10 +208,11 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={entry.musicId} title={entry.name} onResult={onAnnounce} />
                   </>
                 }
               >
-                <TrackText title={entry.name} meta={artistNames(entry.artists)} />
+                <TrackText title={entry.name} musicId={entry.musicId} meta={artistNames(entry.artists)} />
               </TrackRow>
             </li>
           )
@@ -241,36 +244,6 @@ function YourPlaylists() {
         </div>
       )}
     </HomeSection>
-  )
-}
-
-function AlbumCard({ album, musics }: { album: Album; musics: CatalogMusic[] }) {
-  const tracks = tracksOfAlbum(musics, album.id).map(musicToTrack)
-  const meta = [artistNames(album.artists), album.year].filter(Boolean).join(" · ")
-
-  return (
-    <div className="group relative">
-      <Link
-        href={`/album/${album.id}`}
-        className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
-      >
-        <AlbumCoverImage album={album} className="aspect-square w-full text-3xl" />
-        <span className="mt-3 block truncate text-sm font-medium">{album.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">{meta}</span>
-      </Link>
-      {/* Beside the link, never inside it: the card opens the album, the button plays it */}
-      {tracks.length > 0 && (
-        <button
-          type="button"
-          onClick={() => playQueue(tracks, 0)}
-          aria-label={`Tocar ${album.name}`}
-          title={`Tocar ${album.name}`}
-          className="absolute top-3 right-3 flex size-10 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [@media(hover:none)]:opacity-100"
-        >
-          <PlayIcon size={16} />
-        </button>
-      )}
-    </div>
   )
 }
 
@@ -326,7 +299,7 @@ function Genres() {
 
 export default function HomePage() {
   const history = useHistory()
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [announcement, setAnnouncement] = React.useState<{ message: string; ok: boolean } | null>(null)
   const announce = React.useCallback<Announce>((message, ok) => setAnnouncement({ message, ok }), [])
   // A new account has no history: the chart then takes the reading width on its own

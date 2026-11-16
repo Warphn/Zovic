@@ -228,6 +228,18 @@ describe("catálogo e reproduções", () => {
     expect(await json(renamed)).toMatchObject({ name: `${PREFIX} artista 2` });
   });
 
+  it("artista removido some da lista do assinante (HU-10)", async () => {
+    const artist = await json<{ id: number }>(await call("/admin/artists", adminCookie, { method: "POST", body: { name: `${PREFIX} removível` } }));
+    created.artist.push(artist.id);
+    const before = await json<{ id: number }[]>(await call("/artists", userCookie));
+    expect(before.some((listed) => listed.id === artist.id)).toBe(true);
+
+    expect((await call(`/admin/artists/${artist.id}`, adminCookie, { method: "DELETE" })).status).toBe(204);
+
+    const after = await json<{ id: number }[]>(await call("/artists", userCookie));
+    expect(after.some((listed) => listed.id === artist.id)).toBe(false);
+  });
+
   it("assinante não edita o catálogo", async () => {
     expect((await call(`/admin/musics/${musicId}`, userCookie, { method: "PATCH", body: { name: "Invadida" } })).status).toBe(403);
   });
@@ -252,6 +264,24 @@ describe("catálogo e reproduções", () => {
     const recent = await json<{ musicId: number; event: string }[]>(await call(`/admin/users/${listener.id}/plays`, adminCookie));
     expect(recent).toHaveLength(2);
     expect(recent[0]).toMatchObject({ musicId, event: "music_play" });
+  });
+
+  it("música marcada como ouvida (HU-15) não conta como reprodução a mais para o admin", async () => {
+    const listener = await signUp("ouvinte-marcado");
+    await subscribeAccount(url, listener.cookie);
+    const genrePlays = async () =>
+      (await json<{ byGenre: { genreId: number; plays: number }[] }>(await call("/admin/stats", adminCookie))).byGenre.find(
+        (genre) => genre.genreId === genreId,
+      )?.plays;
+    const playsBefore = await genrePlays();
+
+    expect((await call(`/musics/${musicId}/plays`, listener.cookie, { method: "POST" })).status).toBe(204);
+    const listened = await call(`/musics/${musicId}/listens`, listener.cookie, { method: "POST", body: { playedSeconds: 31 } });
+    expect(listened.status).toBe(204);
+
+    const recent = await json<{ musicId: number; event: string }[]>(await call(`/admin/users/${listener.id}/plays`, adminCookie));
+    expect(recent.map((play) => play.event)).toEqual(["music_play"]);
+    expect(await genrePlays()).toBe((playsBefore ?? 0) + 1);
   });
 
   it("música removida some para o assinante, aparece marcada para o admin e não aceita reprodução", async () => {

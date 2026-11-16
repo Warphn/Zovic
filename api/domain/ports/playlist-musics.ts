@@ -25,6 +25,12 @@ export interface PlaylistMusics {
   /** Põe a música no fim da playlist. Música inexistente, apagada ou explícita vetada: "music_not_found". */
   add(playlistId: number, musicId: number, includeExplicit: boolean, now?: Date): Promise<AddMusicResult>;
 
+  /**
+   * Põe a música no topo da playlist (posição 0), descendo as outras: a Músicas Curtidas vai da
+   * curtida mais recente para a mais antiga (HU-34). Se a música já está lá, nada muda.
+   */
+  addToTop(playlistId: number, musicId: number, now?: Date): Promise<AddMusicResult>;
+
   /** Tira a música da playlist. Devolve false se ela não estava lá (ou se é explícita vetada). */
   remove(playlistId: number, musicId: number, includeExplicit: boolean): Promise<boolean>;
 

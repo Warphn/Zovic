@@ -85,9 +85,11 @@ Arquivo: `api/domain/entities/playlist.ts` · Tabelas: `playlists`, `playlist_us
 | `toData()` | Dados da playlist, com cópia da lista de membros. |
 | `isMember(userId)` | `true` se o usuário é membro. |
 | `isAdmin(userId)` | `true` se o usuário é membro **e** admin. |
-| `addMember(userId)` | Adiciona como membro comum. Recusa quem já é membro. |
+| `addMember(userId)` | Adiciona como membro comum, que é o colaborador da HU-19. Recusa quem já é membro. |
 | `removeMember(userId)` | Remove o membro. Recusa quem não é membro e **não deixa sair o último admin**. |
 | `promote(userId)` | Torna o membro admin. |
+| `createLikedSongs({ id, userId, now? })` | Cria a Músicas Curtidas da conta (HU-34): privada, com o nome `LIKED_SONGS_NAME` e a cor `LIKED_SONGS_COLOR` fixos e a conta como admin. |
+| `isLikedSongs` | `true` na Músicas Curtidas. Nela, `rename`, `changeColor`, `setPrivate`, `delete` e `addMember` lançam `BusinessRuleError`: ela só muda pela curtida (`LikeMusic` e `UnlikeMusic`, em `liked-songs.ts`). |
 | `rename(name)` | Troca o nome. |
 | `changeColor(color)` | Troca a cor (`null` tira a cor). |
 | `setPrivate(isPrivate)` | Torna a playlist privada ou pública. |
@@ -135,7 +137,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 
 Arquivo: `api/domain/entities/album.ts` · Tabelas: `album`, `album_artist`, `album_genre`
 
-As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`.
+As faixas do álbum não ficam aqui: cada música diz o próprio álbum (`Music.albumId`), e é o repositório de músicas que grava o `album_music`. Ele também dá o número da faixa: a música entra como a última do álbum e mantém o número enquanto não muda de álbum.
 
 | Campo | Tipo | Observação |
 | --- | --- | --- |
@@ -204,6 +206,11 @@ As portas ficam em `api/domain/ports/` e as implementações em `api/adapters/db
 | `findById(id)` | Todos | Carrega a entidade com seus vínculos. Devolve `null` se não existir **ou estiver apagada**. |
 | `findByIds(ids)` | Music | Carrega várias músicas ativas, **na ordem dos ids pedidos**. Ids inexistentes são ignorados. |
 | `listByUser(userId)` | Playlist | As playlists ativas de que o usuário é membro, da mais nova para a mais antiga. |
+| `findLikedSongs(userId)` e `createLikedSongs(playlist)` | Playlist | A Músicas Curtidas da conta (HU-34). O `createLikedSongs` usa o `UNIQUE` de `liked_by_user_id`: se duas chamadas criarem ao mesmo tempo, fica uma só, e as duas recebem a mesma. |
+| `addMember(playlistId, userId)` e `removeMember(playlistId, userId)` | Playlist | Põem ou tiram um colaborador com uma linha só em `playlist_user`. O `removeMember` nunca tira o dono. Na Playlist, o `save` grava os membros só quando ela é nova: assim, salvar uma cópia carregada antes (ao renomear, por exemplo) não desfaz quem entrou ou saiu nesse meio-tempo. |
+| `findByEmail(email)` | User (`UserEmailLookup`) | A conta ativa com esse email, já em minúsculas, ou `null`. Fica numa interface própria porque só o `AddCollaborator` (HU-19) precisa dela. |
+
+Os colaboradores da playlist (HU-19) não têm repositório próprio: os casos de uso de `playlist-collaborators.ts` (`ListCollaborators`, `AddCollaborator` e `RemoveCollaborator`) mudam os membros da `Playlist` e a salvam. Quem mexe nas músicas é conferido por `findMusicEditablePlaylist` (é membro). Renomear e apagar continuam com `findEditablePlaylist` (é o dono, admin). Gerenciar os colaboradores confere a playlist com `findVisiblePlaylist` e o dono com `isAdmin`, porque o colaborador também pode sair.
 
 Erros do banco traduzidos para erros de domínio:
 
@@ -249,10 +256,11 @@ Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entida
 | `PlaylistMusics` | `playlist-musics.ts` | Lista, põe, tira e reordena as músicas de uma playlist. As escritas mexem só em `music_playlist`. |
 | `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
 | `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
+| `PlayHistory` | `play-history.ts` | O histórico de reprodução da conta, a marca de música ouvida (`music_listened`, HU-15) e a lista das já ouvidas. Quem decide se a música conta como ouvida (mais de 30 segundos) é o caso de uso `MarkMusicListened`. |
 | `AdminQueries` | `admin-queries.ts` | Os números do painel e as reproduções recentes de um usuário |
 | `UserAccounts` | `admin-queries.ts` | Cria e remove contas e conta os admins ativos, para o painel de admin |
 
-As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
+As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
 
 ## Criando uma entidade nova
 

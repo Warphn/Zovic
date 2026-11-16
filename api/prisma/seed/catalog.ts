@@ -20,7 +20,7 @@ export const seedCatalog: Seeder["run"] = async (tx) => {
   const artistIds = byName(artists);
 
   let musics = 0;
-  const createMusic = (track: Track & Release, albumId?: number) => {
+  const createMusic = (track: Track & Release, album?: { id: number; trackNumber: number }) => {
     musics++;
     return tx.music.create({
       data: {
@@ -30,7 +30,7 @@ export const seedCatalog: Seeder["run"] = async (tx) => {
         createdAt: day(-60 + musics),
         artists: { create: [...track.artists, ...(track.feat ?? [])].map((name) => ({ artistId: idOf(artistIds, name) })) },
         genres: { create: track.genres.map((name) => ({ genreId: idOf(genreIds, name) })) },
-        ...(albumId ? { albums: { create: { albumId } } } : {}),
+        ...(album ? { albums: { create: { albumId: album.id, trackNumber: album.trackNumber } } } : {}),
       },
     });
   };
@@ -45,8 +45,8 @@ export const seedCatalog: Seeder["run"] = async (tx) => {
         genres: { create: album.genres.map((name) => ({ genreId: idOf(genreIds, name) })) },
       },
     });
-    for (const track of album.tracks) {
-      await createMusic({ ...track, artists: album.artists, genres: album.genres }, id);
+    for (const [index, track] of album.tracks.entries()) {
+      await createMusic({ ...track, artists: album.artists, genres: album.genres }, { id, trackNumber: index + 1 });
     }
   }
   for (const single of SINGLES) await createMusic(single);

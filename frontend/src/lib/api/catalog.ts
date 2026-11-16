@@ -28,8 +28,8 @@ export interface CatalogMusic extends SearchMusic {
   streams: number
   plays: number
   genres: Genre[]
-  /** The music's active album, if any. */
-  album: { id: number; name: string; year: number | null } | null
+  /** The music's active album, if any. `trackNumber` starts at 1 and may have gaps. */
+  album: { id: number; name: string; year: number | null; trackNumber: number } | null
   isExplicit: boolean
   /** Musics older than the upload have no audio file. */
   hasAudio: boolean

@@ -33,7 +33,7 @@ interface MusicRow {
   plays: string;
   artists: { id: number; name: string }[];
   genres: { id: number; name: string; color: string }[];
-  album: { id: number; name: string; year: number | null } | null;
+  album: MusicListItem["album"];
   is_explicit: boolean;
   has_audio: boolean;
   created_at: Date;
@@ -55,7 +55,7 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     const { rows } = await this.pool.query<MusicRow>(
       `SELECT m.id, m.name, m.duration, m.streams, m.is_explicit, m.audio_file IS NOT NULL AS has_audio,
          m.created_at, m.deleted_at,
-         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year)
+         (SELECT json_build_object('id', al.id, 'name', al.name, 'year', al.year, 'trackNumber', amu.track_number)
             FROM album_music amu JOIN album al ON al.id = amu.album_id
             WHERE amu.music_id = m.id AND al.deleted_at IS NULL ORDER BY al.id LIMIT 1) AS album,
          (SELECT count(*) FROM user_event e WHERE e.music_id = m.id AND e.event_type = 'music_play') AS plays,
@@ -255,7 +255,8 @@ export class PostgresAdminQueries implements AdminQueries {
          ARRAY(SELECT a.name FROM artist_music am JOIN artist a ON a.id = am.artist_id
                WHERE am.music_id = m.id ORDER BY a.name) AS artists
        FROM user_event e JOIN musics m ON m.id = e.music_id
-       WHERE e.user_id = $1
+       -- Só reproduções: a marca de música ouvida (music_listened, HU-15) não é uma reprodução a mais
+       WHERE e.user_id = $1 AND e.event_type IN ('music_play', 'music_skip')
        ORDER BY e.created_at DESC, e.id DESC
        LIMIT $2`,
       [userId, limit],

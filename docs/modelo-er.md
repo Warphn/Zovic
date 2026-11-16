@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261105_213000__Adiciona_capa_do_album.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261112_120000__Adiciona_numero_da_faixa.sql`).
 
 ### Diagrama gerado do banco
 
@@ -30,6 +30,7 @@ erDiagram
     user ||--o{ user_event : "gera"
     musics |o--o{ user_event : "tocada em"
     user ||--o{ playlist_user : "participa"
+    user |o--o| playlists : "curte em"
     playlists ||--|{ playlist_user : "tem membros"
     user ||--o{ music_user : "salva"
     musics ||--o{ music_user : "salva por"
@@ -187,6 +188,7 @@ erDiagram
         char color "#RRGGBB"
         timestamptz deleted_at
         timestamptz created_at
+        int liked_by_user_id FK, UK "só na Músicas Curtidas"
     }
     music_playlist {
         int music_id PK, FK
@@ -232,6 +234,7 @@ erDiagram
     album_music {
         int album_id PK, FK
         int music_id PK, FK
+        smallint track_number "1, 2, 3… dentro do álbum"
     }
     album_artist {
         int album_id PK, FK
@@ -262,7 +265,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `plan_user` | Quem está em cada plano e quem é o titular (`is_admin`): o assinante do individual ou o gestor do familiar | Todo plano tem ao menos uma pessoa. O limite do tipo é conferido pela API, que conta os membros e os convites pendentes. Uma conta nova não tem plano até assinar. Sair ou ser removido apaga a linha. |
 | `plan_invitation` | Os convites do plano familiar: o email convidado, o hash do token e a validade | `email` sempre minúsculo e `token_hash` único. O banco guarda só o hash SHA-256 do token, então não guarda um link utilizável. Um convite está pendente enquanto `accepted_at` e `canceled_at` são nulos e `expires_at` está no futuro, e só vale com o plano ativo (`plan.deleted_at` nulo). Pendente, ele ocupa uma vaga. Apagar o plano apaga os convites. |
 | `user` | Os usuários. É também a tabela de usuário do Better Auth. | `email` é único e sempre minúsculo. `role` é `admin` ou `assinante` (o padrão). O email de uma conta removida continua reservado. |
-| `user_event` | Cadastros, logins, logouts e reproduções (`sign_up`, `login`, `logout`, `music_play` e `music_skip`) | `music_id` só pode ser preenchido em `music_play` e `music_skip`. É a base das estatísticas do painel de admin. |
+| `user_event` | Cadastros, logins, logouts, reproduções e músicas ouvidas (`sign_up`, `login`, `logout`, `music_play`, `music_skip` e `music_listened`) | `music_id` só pode ser preenchido em `music_play`, `music_skip` e `music_listened`. Um `music_listened` é gravado quando uma reprodução passa de 30 segundos de som (HU-15). É a base das estatísticas do painel de admin, do histórico e das músicas já ouvidas. |
 | `system_data` | Os totais do sistema: usuários, músicas e playlists | Tem uma linha só: a chave `singleton` só aceita `true`, então um segundo `INSERT` falha. A migration já cria essa linha. |
 
 ### Interações com músicas
@@ -278,7 +281,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
-| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional |
+| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional. `liked_by_user_id` só é preenchida na Músicas Curtidas (HU-34) e guarda a conta dona dela; é única, então cada conta tem uma só. Apagar a conta apaga a playlist. |
 | `playlist_user` | Os membros de cada playlist e quem é admin | Toda playlist tem ao menos um membro |
 | `music_playlist` | As músicas de cada playlist, com a posição e a data em que entraram | `position` é única em cada playlist e pode ter buracos. A unicidade só é conferida no `COMMIT`, para a reordenação trocar as posições num `UPDATE` só. |
 
@@ -292,7 +295,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `artist` | Os artistas | |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |
-| `album_music` | As faixas de cada álbum | |
+| `album_music` | As faixas de cada álbum | `track_number > 0`, único dentro do álbum. A música entra como a última faixa, e editá-la não muda o número. Pode ter buracos: tirar uma música do álbum não renumera as outras. |
 | `genre_music` e `album_genre` | Os gêneros de cada música e de cada álbum | |
 
 ### Autenticação (Better Auth)

@@ -8,6 +8,7 @@ import { AddToQueueButton } from "@/components/add-to-queue-button"
 import Header from "@/components/header"
 import { PlayIcon } from "@/components/icons"
 import { TrackRow } from "@/components/track-row"
+import { TrackTitle } from "@/components/track-title"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
@@ -113,6 +114,7 @@ export default function GenrePage() {
             return (
               <li key={music.id}>
                 <TrackRow
+                  musicId={music.id}
                   isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                   onClick={() => playOrToggleQueueTrack(tracks, index)}
                   title={music.name}
@@ -126,7 +128,7 @@ export default function GenrePage() {
                   }
                 >
                   <span className="block min-w-0">
-                    <span className="block truncate text-sm font-medium">{music.name}</span>
+                    <TrackTitle title={music.name} musicId={music.id} />
                     <span className="block truncate text-xs text-muted-foreground">
                       {[track.artist, formatDuration(music.duration)].filter(Boolean).join(" · ")}
                     </span>

@@ -3,11 +3,13 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { AlbumCoverImage } from "@/components/album-cover-image"
 import Header from "@/components/header"
 import { PlayIcon } from "@/components/icons"
 import { TrackRow } from "@/components/track-row"
+import { TrackTitle } from "@/components/track-title"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { useAlbums, useCatalogMusics } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
@@ -46,7 +48,7 @@ export default function AlbumPage() {
   const albums = useAlbums()
   const musics = useCatalogMusics()
   const playback = usePlayback()
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [announcement, setAnnouncement] = React.useState<{ message: string; ok: boolean } | null>(null)
   const announce = React.useCallback((message: string, ok: boolean) => setAnnouncement({ message, ok }), [])
 
@@ -76,7 +78,6 @@ export default function AlbumPage() {
     )
   }
 
-  const artists = album.artists.map((artist) => artist.name).join(", ")
   const meta = [
     album.year,
     `${tracks.length} ${tracks.length === 1 ? "faixa" : "faixas"}`,
@@ -92,7 +93,21 @@ export default function AlbumPage() {
         <div className="min-w-0 flex-1">
           <p className="font-mono text-xs text-muted-foreground">Álbum</p>
           <h1 className="mt-2 text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">{album.name}</h1>
-          {artists && <p className="mt-2 text-sm text-muted-foreground">{artists}</p>}
+          {album.artists.length > 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {album.artists.map((artist, index) => (
+                <React.Fragment key={artist.id}>
+                  {index > 0 && ", "}
+                  <Link
+                    href={`/artista/${artist.id}`}
+                    className="rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    {artist.name}
+                  </Link>
+                </React.Fragment>
+              ))}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
             <p className="font-mono text-xs text-muted-foreground tabular-nums">{meta}</p>
             <Button size="lg" className="gap-2" disabled={tracks.length === 0} onClick={() => playQueue(tracks, 0)}>
@@ -120,6 +135,7 @@ export default function AlbumPage() {
           return (
             <li key={music.id}>
               <TrackRow
+                musicId={music.id}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
@@ -128,13 +144,14 @@ export default function AlbumPage() {
                     <AddToQueueButton track={track} onResult={announce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={announce} />
                   </>
                 }
               >
                 <span className="flex items-center gap-3">
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
                   <span className="block min-w-0">
-                    <span className="block truncate text-sm font-medium">{music.name}</span>
+                    <TrackTitle title={music.name} musicId={music.id} />
                     <span className="block truncate text-xs text-muted-foreground">
                       {[track.artist, formatDuration(music.duration)].filter(Boolean).join(" · ")}
                     </span>

@@ -3,6 +3,7 @@ import { LevelBars } from "@/components/playback-marks"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { INITIAL_PLAYLISTS, getPlaylistInitials } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+import { ZovicCat } from "@/components/zovic-cat"
 
 // The landing hero's visual: the playlist page as the app draws it, with the app's own first
 // playlist and its second track playing. Same sleeve, same tracklist, same level bars.
@@ -20,10 +21,13 @@ export default function HeroPreview({ className }: { className?: string }) {
       // The playlist color is the accent inside the preview, as on its page
       style={getPlaylistAccentStyle(PLAYLIST.color)}
       className={cn(
-        "rounded-2xl border border-ink/10 bg-surface p-6 shadow-[0_1px_2px_rgba(23,21,18,0.06),0_24px_48px_-24px_rgba(23,21,18,0.35)] sm:p-8",
+        "relative rounded-2xl border border-ink/10 bg-surface p-6 shadow-[0_1px_2px_rgba(23,21,18,0.06),0_24px_48px_-24px_rgba(23,21,18,0.35)] sm:p-8",
         className
       )}
     >
+      {/* The cat lies on top of the preview, its paws over the top edge */}
+      <ZovicCat priority className="absolute right-8 bottom-full h-24 translate-y-3 sm:h-28" />
+
       {/* Sleeve and title */}
       <div className="flex items-end gap-6">
         <div

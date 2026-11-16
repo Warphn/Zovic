@@ -144,7 +144,7 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 
-Depois do login, quem tem assinatura (ou é admin) cai na tela inicial, `/inicio`: as 10 músicas mais tocadas, as últimas ouvidas, as playlists da conta, os álbuns mais recentes e os gêneros. O álbum e o gênero abrem as páginas `/album/<id>` e `/genero/<id>`. Uma conta nova, sem histórico nem playlists, vê a parada e o convite para criar a primeira playlist.
+Depois do login, quem tem assinatura (ou é admin) cai na tela inicial, `/inicio`: as 10 músicas mais tocadas, as últimas ouvidas, as playlists da conta, os álbuns mais recentes e os gêneros. O álbum e o gênero abrem as páginas `/album/<id>` e `/genero/<id>`. O nome do artista, no cabeçalho do álbum e nas sugestões da busca, abre `/artista/<id>`, com os álbuns dele, do mais recente para o mais antigo, e as músicas que estão fora de álbum. Uma conta nova, sem histórico nem playlists, vê a parada e o convite para criar a primeira playlist.
 
 Para essas contas, o cabeçalho traz a navegação principal: **Início**, **Playlists**, **Histórico** e **Tocando** (`/player`). A partir de 1024 px, os links aparecem como ícones ao lado do logo, e o nome aparece ao passar o mouse. Em telas menores, eles ficam no menu ☰.
 

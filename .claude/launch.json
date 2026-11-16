@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--cwd=frontend", "next", "dev", "--port", "3001"],
+      "port": 3001
+    }
+  ]
+}

@@ -66,7 +66,7 @@ describe("search suggestions from the API", () => {
 
   it("maps artist and playlist counts, with a default cover color", () => {
     const suggestions = toSuggestions(RESULTS, "lo")
-    expect(suggestions).toContainEqual({ kind: "artist", name: "Lô Borges", trackCount: 2 })
+    expect(suggestions).toContainEqual({ kind: "artist", id: 7, name: "Lô Borges", trackCount: 2 })
     expect(suggestions).toContainEqual({
       kind: "playlist",
       id: "13",

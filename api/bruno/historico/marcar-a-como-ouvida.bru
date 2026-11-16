@@ -1,0 +1,23 @@
+meta {
+  name: Marcar a música A como ouvida
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/musics/{{musicA}}/listens
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playedSeconds": 31
+  }
+}
+
+tests {
+  test("responde 204 e marca a música como ouvida", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

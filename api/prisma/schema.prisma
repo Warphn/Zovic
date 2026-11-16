@@ -79,6 +79,7 @@ model User {
   savedMusics    MusicUser[]
   plans          PlanUser[]
   playlists      PlaylistUser[]
+  likedSongs     Playlist?
   ratings        Rating[]
   sessions       Session[]
   events         UserEvent[]
@@ -182,12 +183,14 @@ model AlbumGenre {
 }
 
 model AlbumMusic {
-  albumId Int   @map("album_id")
-  musicId Int   @map("music_id")
-  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  music   Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  albumId     Int   @map("album_id")
+  musicId     Int   @map("music_id")
+  trackNumber Int   @map("track_number") @db.SmallInt
+  album       Album @relation(fields: [albumId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  music       Music @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([albumId, musicId])
+  @@unique([albumId, trackNumber])
   @@index([musicId])
   @@map("album_music")
 }
@@ -271,14 +274,16 @@ model Comment {
 }
 
 model Playlist {
-  id        Int             @id @default(autoincrement())
-  name      String          @db.VarChar(150)
-  isPrivate Boolean         @default(false) @map("is_private")
-  color     String?         @db.Char(7)
-  deletedAt DateTime?       @map("deleted_at") @db.Timestamptz(6)
-  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  musics    MusicPlaylist[]
-  users     PlaylistUser[]
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(150)
+  isPrivate     Boolean         @default(false) @map("is_private")
+  color         String?         @db.Char(7)
+  deletedAt     DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  likedByUserId Int?            @unique @map("liked_by_user_id")
+  musics        MusicPlaylist[]
+  users         PlaylistUser[]
+  likedByUser   User?           @relation(fields: [likedByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "playlists_liked_by_user_id_fkey")
 
   @@map("playlists")
 }
@@ -393,6 +398,7 @@ enum UserEventType {
   logout
   music_play
   music_skip
+  music_listened
 
   @@map("user_event_type")
 }

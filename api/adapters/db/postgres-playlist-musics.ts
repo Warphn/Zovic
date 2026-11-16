@@ -100,6 +100,38 @@ export class PostgresPlaylistMusics implements PlaylistMusics {
     return result;
   }
 
+  // A Músicas Curtidas (HU-34) vai da curtida mais recente para a mais antiga: a nova entra na
+  // posição 0 e as outras descem uma. O UNIQUE (playlist_id, position) é DEFERRABLE, então o UPDATE
+  // pode passar por posições repetidas no meio da transação.
+  async addToTop(playlistId: number, musicId: number, now: Date = new Date()): Promise<AddMusicResult> {
+    let result: AddMusicResult = "added";
+    await inTransaction(this.pool, async (client) => {
+      await lockPlaylist(client, playlistId);
+
+      const music = await client.query("SELECT 1 FROM musics WHERE id = $1 AND deleted_at IS NULL", [musicId]);
+      if (music.rowCount === 0) {
+        result = "music_not_found";
+        return;
+      }
+      const present = await client.query("SELECT 1 FROM music_playlist WHERE playlist_id = $1 AND music_id = $2", [
+        playlistId,
+        musicId,
+      ]);
+      if ((present.rowCount ?? 0) > 0) {
+        result = "already_in_playlist";
+        return;
+      }
+
+      await client.query("UPDATE music_playlist SET position = position + 1 WHERE playlist_id = $1", [playlistId]);
+      await client.query("INSERT INTO music_playlist (music_id, playlist_id, position, added_at) VALUES ($2, $1, 0, $3)", [
+        playlistId,
+        musicId,
+        now,
+      ]);
+    });
+    return result;
+  }
+
   async remove(playlistId: number, musicId: number, includeExplicit: boolean): Promise<boolean> {
     const { rowCount } = await this.pool.query(
       `DELETE FROM music_playlist mp

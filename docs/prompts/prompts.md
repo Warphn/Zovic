@@ -200,6 +200,26 @@ Forma de trabalho: o Claude Opus testou três geradores de diagrama a partir do 
 
 A equipe escolheu as seções, o layout e o que fica com o Carlos (a página de artista e o número da faixa), e aprovou a spec e o plano antes da implementação. A IA conferiu cada tela por capturas do Chrome, com uma conta nova e com a do seed, e deixou a conferência no Opera para o Victor.
 
+### 07/11/2026: logo e identidade visual no front
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Me mande a paleta de cores do site. | A lista das cores de [`globals.css`](../../frontend/src/app/globals.css), com o uso de cada uma |
+| 2 | Criei esse logo, qual a sua sugestão para adaptar a paleta? Não, eu quero é adaptar o meu logo. Me mande como se fosse um prompt as sugestões que você tem. *(com a primeira versão do logo anexada)* | Um prompt para o gerador de imagem, com as cores do site: vermelho `#d33a2c`, preto `#171512`, papel `#efe7d8`, creme `#f8f3e7` e o verde-azulado `#1e7f82` nos olhos do gato. Com ele, o Felipe gerou as imagens de [`docs/images/`](../images/) |
+| 3 | Me ajude a incorporar as novas imagens no front do site. *(e, na conversa: o gato sobre um dos discos da estante do login, sobre a prévia da playlist "MPB dos Anos Dourados" na landing e, depois do login, só no header)* | O componente [`zovic-cat.tsx`](../../frontend/src/components/zovic-cat.tsx), o gato no [`hero-preview.tsx`](../../frontend/src/components/hero-preview.tsx) e no [`auth-form.tsx`](../../frontend/src/components/auth-form.tsx), o favicon `frontend/src/app/icon.png` e o título "Zovic" da aba |
+| 4 | Atualize o header do site com `docs/images/Zovic_header.png`. | O logo com o nome no [`header.tsx`](../../frontend/src/components/header.tsx), sem o fundo bege, em duas versões: letras pretas e, sobre as seções escuras da landing, letras claras (`frontend/public/zovic-header.png` e `zovic-header-dark.png`) |
+
+O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fundo das imagens e as encaixou nas telas, e conferiu a landing e o login no navegador.
+
+### 12/11/2026: página do artista (#88, HU-10)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | https://github.com/Warphn/Zovic/issues/88 Faça um plano local de implementação para essa task. | Plano em três PRs: o número da faixa, a página do artista e a ficha da música, com as dependências das curtidas (#94) e do filtro de menores (#87) |
+| 2 | Pode começar. | A seleção em [`home.ts`](../../frontend/src/lib/home.ts) (`albumsOfArtist` e `singlesOfArtist`), com testes; a página [`artista/`](../../frontend/src/app/artista/); o card de álbum em [`album-card.tsx`](../../frontend/src/components/album-card.tsx), compartilhado com o `/inicio`; os links no cabeçalho do álbum e nas sugestões de artista da busca ([`routes.ts`](../../frontend/src/lib/search/routes.ts)); e o teste de integração do artista removido |
+
+O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.
+
 ### 13/11/2026: conteúdo explícito escondido de menores (#87, HU-09)
 
 Forma de trabalho: o Claude Opus leu a issue e o código, fez o plano e levou as dúvidas ao usuário. Um subagente Claude Sonnet implementou a partir do plano, e o Opus revisou o diff e rodou as verificações.
@@ -210,3 +230,31 @@ Forma de trabalho: o Claude Opus leu a issue e o código, fez o plano e levou as
 | 2 | Escolho o 1. *(não criar `GET /musics/:id`)* | A implementação: [`canSeeExplicit` e `isMinor`](../../api/domain/shared/age.ts), o filtro nas consultas e nos casos de uso, o 404 no áudio e no play, os testes de integração em [`explicit-content-routes.test.ts`](../../api/adapters/http/explicit-content-routes.test.ts), o `openapi.ts` e o [`docs/api.md`](../api.md); e os comentários usando a mesma regra de idade |
 
 O usuário tomou cada decisão de regra antes da implementação. A IA conferiu o resultado com os testes de unidade e de integração, o lint e o typecheck.
+
+### 15/11/2026: músicas já ouvidas (#91, HU-15)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Vamos completar as issues que faltam. | Conversa de design da HU-15 e duas formas de contar os 30 segundos: o front conta e avisa a API, ou a API também confere o relógio desde o início da reprodução |
+| 2 | Vamos de 1. | A [spec](../superpowers/specs/2026-11-15-musicas-ouvidas-design.md), com o evento `music_listened` em `user_event` e a regra no domínio, e o [plano de implementação](../superpowers/plans/2026-11-15-musicas-ouvidas.md), em 6 tarefas com os testes antes do código |
+| 3 | Manda bala, implementa aqui mesmo. | O caso de uso [`mark-music-listened.ts`](../../api/domain/use-cases/mark-music-listened.ts) (`LISTENED_THRESHOLD_SECONDS = 30`) e a lista das ouvidas, com testes; as duas migrações e as rotas `POST /api/musics/:id/listens` e `GET /api/history/listened`, com testes de integração; a soma do tempo de som em [`listen-tracker.ts`](../../frontend/src/lib/listen-tracker.ts), com testes; o fone de "Já ouvida" em [`track-title.tsx`](../../frontend/src/components/track-title.tsx), nas listas de faixas; e a aba "Já ouvidas" no [histórico](../../frontend/src/app/historico/page.tsx) |
+
+O Victor escolheu deixar a contagem com o front e aprovou a spec e o plano antes da implementação. A IA escolheu o evento em `user_event` (sem tabela nova), o ícone de fone e a recusa com 409 para 30 segundos ou menos.
+
+### 15/11/2026: playlist colaborativa (#93, HU-19)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Manda bala no 93. | O levantamento do que a história toca: o colaborador já cabia em `playlist_user` como membro sem `is_admin`, então não há migração, e a mudança central é de permissão (músicas para todo membro, o resto só para o dono). Resultado: a proposta de rotas, casos de uso e diálogo |
+| 2 | Aprovo. | A [spec](../superpowers/specs/2026-11-15-playlist-colaborativa-design.md) e o [plano](../superpowers/plans/2026-11-15-playlist-colaborativa.md); o `findMusicEditablePlaylist` e os casos de uso de [`playlist-collaborators.ts`](../../api/domain/use-cases/playlist-collaborators.ts), com testes; as rotas `…/collaborators`, com testes de integração; o `canEditMusics` na resposta; e o [diálogo de colaboradores](../../frontend/src/components/playlist-collaborators-dialog.tsx) na página da playlist |
+
+O Victor aprovou o design antes da implementação. A IA escolheu exigir assinatura ativa de quem entra como colaborador, mostrar só o nome (sem email) na lista e separar a busca por email numa interface própria (`UserEmailLookup`).
+
+### 15/11/2026: playlist Músicas Curtidas (#136, HU-34)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Vamos adicionar uma feature parecida com a do Spotify: todo usuário terá uma playlist padrão criada chamada "Músicas Curtidas" e toda vez que o usuário der like em uma música, ela será automaticamente adicionada a essa playlist. | O levantamento mostrou que a curtida ainda não existe na API (só no `localStorage`) e que a HU-20 já pede uma lista "Curtidas". Resultado: duas formas de construir (playlist de verdade ou "virtual" a partir dos votos) e as regras da playlist especial |
+| 2 | Vamos só deixar nosso lado pronto. / Vamos com 1, as regras estão excelentes. / Manda bala. | A [spec](../superpowers/specs/2026-11-15-musicas-curtidas-design.md), a issue #136 e o [plano](../superpowers/plans/2026-11-15-musicas-curtidas.md); a coluna `playlists.liked_by_user_id`; as regras na entidade `Playlist` e os casos de uso de [`liked-songs.ts`](../../api/domain/use-cases/liked-songs.ts), com testes; as rotas `/me/liked-musics/:id`, com testes de integração; e o coração, o encarte com coração e as regras na página da playlist no front |
+
+O Victor escolheu a playlist de verdade e aprovou as regras e a issue. A IA escolheu criar a playlist sob demanda (sem gancho no cadastro), a coluna única `liked_by_user_id` e a cor fixa.

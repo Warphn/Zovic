@@ -1,22 +1,44 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { HeartIcon } from "@/components/icons"
+import { likedMusicsApi, playlistKeys } from "@/lib/api/playlists"
 import { useSession } from "@/lib/auth/client"
 import { useLikedTracks } from "@/lib/likes-store"
 import { cn } from "@/lib/utils"
 
-export function TrackLikeButton({ trackId }: { trackId: string }) {
+// Catalog tracks have the music's numeric id; the landing's sample tracks have none
+const CATALOG_TRACK_ID = /^\d+$/
+
+// `isInLikedSongs`: the track is in "Músicas Curtidas" (HU-34), so it shows liked even when this
+// browser has no heart for it yet (liked elsewhere)
+export function TrackLikeButton({ trackId, isInLikedSongs = false }: { trackId: string; isInLikedSongs?: boolean }) {
   const { data: session } = useSession()
+  const queryClient = useQueryClient()
   const userId = Number(session?.user.id)
-  const { isLiked, toggleLike } = useLikedTracks(Number.isFinite(userId) ? userId : 0)
+  const { isLiked, setLike } = useLikedTracks(Number.isFinite(userId) ? userId : 0)
 
   if (!session?.user) return null
 
-  const liked = isLiked(trackId)
+  const liked = isLiked(trackId) || isInLikedSongs
+
+  // The heart stays in this browser (HU-20 will keep it in the API); "Músicas Curtidas" (HU-34) follows it
+  const toggle = () => {
+    const nextLiked = !liked
+    setLike(trackId, nextLiked)
+    if (!CATALOG_TRACK_ID.test(trackId)) return
+    const musicId = Number(trackId)
+    const request = nextLiked ? likedMusicsApi.like(musicId) : likedMusicsApi.unlike(musicId)
+    request
+      .then(() => queryClient.invalidateQueries({ queryKey: playlistKeys.all }))
+      // A playlist that could not follow must not undo the heart
+      .catch(() => {})
+  }
+
   return (
     <button
       type="button"
-      onClick={() => toggleLike(trackId)}
+      onClick={toggle}
       aria-label={liked ? "Descurtir faixa" : "Curtir faixa"}
       aria-pressed={liked}
       className={cn(

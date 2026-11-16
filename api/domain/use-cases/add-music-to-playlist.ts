@@ -2,7 +2,8 @@ import { BusinessRuleError, NotFoundError } from "../errors/domain-error.ts";
 import { canSeeExplicit } from "../shared/age.ts";
 import type { PlaylistMusicItem, PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
-import { findEditablePlaylist } from "./find-editable-playlist.ts";
+import { findMusicEditablePlaylist } from "./find-music-editable-playlist.ts";
+import { LIKED_SONGS_ONLY_THROUGH_LIKES } from "./liked-songs.ts";
 
 export interface AddMusicToPlaylistInput {
   userId: number;
@@ -24,8 +25,8 @@ export interface AddMusicToPlaylistUseCase {
 }
 
 /**
- * Só admins da playlist. A música entra no fim; a mesma música não entra duas vezes. Para menor de
- * idade, a explícita é NotFoundError, como se não existisse (HU-09).
+ * Dono e colaboradores da playlist (HU-19). A música entra no fim; a mesma música não entra duas
+ * vezes. Para menor de idade, a explícita é NotFoundError, como se não existisse (HU-09).
  */
 export class AddMusicToPlaylist implements AddMusicToPlaylistUseCase {
   constructor(
@@ -34,7 +35,13 @@ export class AddMusicToPlaylist implements AddMusicToPlaylistUseCase {
   ) {}
 
   async execute(input: AddMusicToPlaylistInput): Promise<AddMusicToPlaylistOutput> {
-    await findEditablePlaylist(this.playlists, input.playlistId, input.userId, "Only playlist admins can add musics");
+    const playlist = await findMusicEditablePlaylist(
+      this.playlists,
+      input.playlistId,
+      input.userId,
+      "Only playlist members can add musics",
+    );
+    if (playlist.isLikedSongs) throw new BusinessRuleError(LIKED_SONGS_ONLY_THROUGH_LIKES);
 
     const includeExplicit = canSeeExplicit(input.birthdate, input.now, input.isAdmin);
     const result = await this.musics.add(input.playlistId, input.musicId, includeExplicit, input.now);

@@ -2,7 +2,7 @@ import { NotFoundError } from "../errors/domain-error.ts";
 import { canSeeExplicit } from "../shared/age.ts";
 import type { PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
-import { findEditablePlaylist } from "./find-editable-playlist.ts";
+import { findMusicEditablePlaylist } from "./find-music-editable-playlist.ts";
 
 export interface RemoveMusicFromPlaylistInput {
   userId: number;
@@ -20,8 +20,8 @@ export interface RemoveMusicFromPlaylistUseCase {
 }
 
 /**
- * Só admins da playlist. Tirar uma música que não está nela dá NotFoundError, o que vale também
- * para a explícita que um menor de idade não enxerga (HU-09).
+ * Dono e colaboradores da playlist (HU-19). Tirar uma música que não está nela dá NotFoundError, o
+ * que vale também para a explícita que um menor de idade não enxerga (HU-09).
  */
 export class RemoveMusicFromPlaylist implements RemoveMusicFromPlaylistUseCase {
   constructor(
@@ -30,7 +30,7 @@ export class RemoveMusicFromPlaylist implements RemoveMusicFromPlaylistUseCase {
   ) {}
 
   async execute(input: RemoveMusicFromPlaylistInput): Promise<void> {
-    await findEditablePlaylist(this.playlists, input.playlistId, input.userId, "Only playlist admins can remove musics");
+    await findMusicEditablePlaylist(this.playlists, input.playlistId, input.userId, "Only playlist members can remove musics");
 
     if (!(await this.musics.remove(
         input.playlistId,

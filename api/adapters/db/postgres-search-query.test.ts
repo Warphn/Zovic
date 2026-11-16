@@ -154,8 +154,7 @@ describe("PostgresSearchQuery", () => {
     await playlist(viewer, `${term} privada minha`, { isPrivate: true });
     await playlist(viewer, `${term} apagada`, { deleted: true });
     const compartilhada = await playlist(stranger, `${term} privada compartilhada`, { isPrivate: true });
-    compartilhada.addMember(viewer);
-    await playlists.save(compartilhada);
+    await playlists.addMember(compartilhada.id, viewer);
 
     const { playlists: found } = await search(term);
 

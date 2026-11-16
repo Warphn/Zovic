@@ -1,0 +1,23 @@
+meta {
+  name: Músicas Curtidas primeiro
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/playlists
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const likedSongs = res.getBody().find((playlist) => playlist.isLikedSongs);
+  if (likedSongs) bru.setVar("likedSongsId", likedSongs.id);
+}
+
+tests {
+  test("a primeira playlist é a Músicas Curtidas, privada", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0]).to.include({ name: "Músicas Curtidas", isPrivate: true, isLikedSongs: true });
+  });
+}

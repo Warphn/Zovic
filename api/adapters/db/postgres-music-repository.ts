@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { Music } from "../../domain/entities/music.ts";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type { MusicRepository } from "../../domain/ports/music-repository.ts";
@@ -6,7 +6,6 @@ import { inTransaction, type LinkTable, nextId, replaceLinks, translateConstrain
 
 const ARTISTS: LinkTable = { table: "artist_music", owner: "music_id", other: "artist_id" };
 const GENRES: LinkTable = { table: "genre_music", owner: "music_id", other: "genre_id" };
-const ALBUM: LinkTable = { table: "album_music", owner: "music_id", other: "album_id" };
 
 interface MusicRow {
   id: number;
@@ -68,7 +67,7 @@ export class PostgresMusicRepository implements MusicRepository {
         );
         await replaceLinks(client, ARTISTS, data.id, data.artistIds);
         await replaceLinks(client, GENRES, data.id, data.genreIds);
-        await replaceLinks(client, ALBUM, data.id, data.albumId === null ? [] : [data.albumId]);
+        await linkAlbum(client, data.id, data.albumId);
       });
     } catch (error) {
       throw translateConstraintError(error, {
@@ -90,6 +89,23 @@ export class PostgresMusicRepository implements MusicRepository {
     const byId = new Map(rows.map((row) => [row.id, toMusic(row)]));
     return ids.flatMap((id) => byId.get(id) ?? []);
   }
+}
+
+/**
+ * Liga a música ao álbum como a última faixa. Se ela já está nesse álbum, mantém o número:
+ * editar a música não muda a ordem das faixas.
+ */
+async function linkAlbum(client: PoolClient, musicId: number, albumId: number | null): Promise<void> {
+  await client.query("DELETE FROM album_music WHERE music_id = $1 AND album_id IS DISTINCT FROM $2", [musicId, albumId]);
+  if (albumId === null) return;
+  // Trava o álbum: duas músicas entrando ao mesmo tempo não disputam o mesmo número.
+  await client.query("SELECT 1 FROM album WHERE id = $1 FOR UPDATE", [albumId]);
+  await client.query(
+    `INSERT INTO album_music (album_id, music_id, track_number)
+     SELECT $1, $2, COALESCE(max(track_number), 0) + 1 FROM album_music WHERE album_id = $1
+     ON CONFLICT (album_id, music_id) DO NOTHING`,
+    [albumId, musicId],
+  );
 }
 
 function toMusic(row: MusicRow): Music {

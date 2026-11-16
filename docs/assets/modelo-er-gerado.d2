@@ -101,6 +101,7 @@ catalogo: "Catálogo" {
     shape: sql_table
     album_id: "integer" {constraint: [primary_key; foreign_key]}
     music_id: "integer" {constraint: [primary_key; foreign_key]}
+    track_number: "smallint"
   }
   artist_music: {
     shape: sql_table
@@ -133,6 +134,7 @@ playlists: "Playlists" {
     color: "character(7)"
     deleted_at: "timestamptz"
     created_at: "timestamptz"
+    liked_by_user_id: "integer" {constraint: [foreign_key]}
   }
   playlist_user: {
     shape: sql_table
@@ -292,6 +294,10 @@ playlists.playlist_user.playlist_id <-> playlists.playlists.id: {
 playlists.playlist_user.user_id <-> contas.user.id: {
   source-arrowhead.shape: cf-many
   target-arrowhead.shape: cf-one-required
+}
+playlists.playlists.liked_by_user_id <-> contas.user.id: {
+  source-arrowhead.shape: cf-one
+  target-arrowhead.shape: cf-one
 }
 interacoes.rating.music_id <-> catalogo.musics.id: {
   source-arrowhead.shape: cf-many

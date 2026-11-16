@@ -212,6 +212,48 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/me/liked-musics/{id}": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+      put: {
+        tags: ["Playlists"],
+        summary: "Curte uma música: põe no topo da Músicas Curtidas",
+        description:
+          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
+        operationId: "likeMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música na Músicas Curtidas" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Música inexistente ou removida",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Playlists"],
+        summary: "Descurte uma música: tira da Músicas Curtidas",
+        description: "HU-34. Tirar uma música que não está lá também responde 204.",
+        operationId: "unlikeMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música fora da Músicas Curtidas" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/history": {
       get: {
         tags: ["Histórico"],
@@ -235,17 +277,95 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/history/listened": {
+      get: {
+        tags: ["Histórico"],
+        summary: "Lista as músicas já ouvidas",
+        description:
+          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A marca é registrada por `POST /api/musics/{id}/listens`.",
+        operationId: "listMyListenedMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas já ouvidas (lista vazia se nenhuma passou dos 30 segundos)",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/ListenedEntry" } },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/musics/{id}/listens": {
+      post: {
+        tags: ["Histórico"],
+        summary: "Marca uma música como ouvida",
+        description:
+          "Chamada pelo player quando a soma do tempo de som de uma reprodução passa de 30 segundos, uma vez por reprodução. Pausar não zera a soma, e pular pela barra não conta. A regra dos 30 segundos é conferida pela API: com 30 segundos ou menos, nada é marcado.",
+        operationId: "markMusicListened",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["playedSeconds"],
+                properties: {
+                  playedSeconds: {
+                    type: "number",
+                    minimum: 0,
+                    description: "Segundos de som tocados nesta reprodução.",
+                    example: 31.5,
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "204": { description: "Música marcada como ouvida" },
+          "400": {
+            description: "Id que não é inteiro positivo, ou `playedSeconds` ausente, negativo ou não numérico",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Música inexistente ou removida",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "409": {
+            description: "A reprodução não passou de 30 segundos",
+            content: {
+              "application/json": {
+                schema: errorResponse(
+                  "BUSINESS_RULE_ERROR",
+                  "A music counts as listened only after more than 30 seconds",
+                ),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/playlists": {
       get: {
         tags: ["Playlists"],
         summary: "Lista as playlists do usuário",
         description:
-          "As playlists ativas de que o usuário autenticado é membro, da mais nova para a mais antiga. `isAdmin` diz se ele pode editá-las e apagá-las.",
+          "As playlists ativas de que o usuário autenticado é membro: a Músicas Curtidas (HU-34) primeiro, criada aqui se ainda não existe, e depois as outras, da mais nova para a mais antiga. `isAdmin` diz se ele é o dono, `canEditMusics` se mexe nas músicas e `isLikedSongs` se é a Músicas Curtidas.",
         operationId: "listMyPlaylists",
         security: [{ cookieAuth: [] }],
         responses: {
           "200": {
-            description: "Playlists do usuário (lista vazia se não houver nenhuma)",
+            description: "Playlists do usuário, sempre com a Músicas Curtidas primeiro",
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/Playlist" } },
@@ -366,6 +486,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -382,6 +503,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -576,7 +698,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Põe uma música na playlist",
         description:
-          "Só admins da playlist. A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova. Para menor de idade, uma música explícita responde 404, como se não existisse.",
+          "Dono e colaboradores da playlist (HU-19). A música entra no fim. A mesma música não entra duas vezes. Responde com a lista inteira, já com a música nova. Para menor de idade, uma música explícita responde 404, como se não existisse.",
         operationId: "addPlaylistMusic",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -608,7 +730,7 @@ export const openApiDocument = {
             },
           },
           "409": {
-            description: "A música já está na playlist",
+            description: "A música já está na playlist, ou a playlist é a Músicas Curtidas, que só muda pela curtida (HU-34)",
             content: {
               "application/json": {
                 schema: errorResponse("BUSINESS_RULE_ERROR", "Music is already in this playlist"),
@@ -625,7 +747,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Reordena as músicas da playlist",
         description:
-          "Só admins da playlist. `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Para menor de idade, a lista traz só as músicas que ele vê: as explícitas escondidas vão para o fim, na ordem em que estavam. Responde com a lista na ordem nova.",
+          "Dono e colaboradores da playlist (HU-19). `musicIds` é a sequência nova, com **todas** as músicas da playlist, cada uma uma vez (vazia na playlist vazia). Se faltar ou sobrar música, alguém mudou a playlist depois que ela foi carregada: responde 409 e nada muda, para o cliente recarregar a lista em vez de desfazer a mudança da outra pessoa. Para menor de idade, a lista traz só as músicas que ele vê: as explícitas escondidas vão para o fim, na ordem em que estavam. Responde com a lista na ordem nova.",
         operationId: "reorderPlaylistMusics",
         security: [{ cookieAuth: [] }],
         requestBody: {
@@ -655,7 +777,7 @@ export const openApiDocument = {
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
           "409": {
-            description: "A lista não tem exatamente as músicas da playlist que a conta vê: recarregue e tente de novo",
+            description: "A lista não tem exatamente as músicas da playlist que a conta vê: recarregue e tente de novo. Também para a Músicas Curtidas, que não é reordenada (HU-34)",
             content: {
               "application/json": {
                 schema: errorResponse(
@@ -675,7 +797,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Tira uma música da playlist",
         description:
-          "Só admins da playlist. As outras músicas mantêm a ordem. Para menor de idade, uma música explícita responde 404, como se não estivesse na playlist.",
+          "Dono e colaboradores da playlist (HU-19). As outras músicas mantêm a ordem. Para menor de idade, uma música explícita responde 404, como se não estivesse na playlist.",
         operationId: "removePlaylistMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -690,6 +812,119 @@ export const openApiDocument = {
             description: "A playlist não existe ou não é visível para o usuário, ou a música não está nela",
             content: {
               "application/json": { schema: errorResponse("NOT_FOUND", "Music is not in this playlist") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/collaborators": {
+      parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+      get: {
+        tags: ["Playlists"],
+        summary: "Lista o dono e os colaboradores da playlist",
+        description:
+          "Quem vê a playlist vê quem a monta (HU-19): o dono primeiro e os colaboradores pelo nome. A lista não traz email.",
+        operationId: "listPlaylistCollaborators",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Dono e colaboradores",
+            content: {
+              "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Collaborator" } } },
+            },
+          },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      post: {
+        tags: ["Playlists"],
+        summary: "Adiciona um colaborador pelo email",
+        description:
+          "Só o dono. A pessoa entra direto, sem convite, e passa a pôr, tirar e reordenar as músicas. O email precisa ser de uma conta ativa com assinatura ativa; maiúsculas e espaços nas pontas são ignorados.",
+        operationId: "addPlaylistCollaborator",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: { email: { type: "string", format: "email", example: "bruno.andrade@zovic.test" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Lista atualizada de dono e colaboradores",
+            content: {
+              "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Collaborator" } } },
+            },
+          },
+          "400": {
+            description: "Email ausente ou inválido, ou id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Quem chama não é o dono da playlist (ou não tem assinatura ativa: `SUBSCRIPTION_REQUIRED`)",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner manages collaborators") },
+            },
+          },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou nenhuma conta ativa tem esse email",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Account not found") } },
+          },
+          "409": {
+            description: "A conta não tem assinatura ativa, ou já está na playlist",
+            content: {
+              "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "This account has no active subscription") },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/playlists/{id}/collaborators/{userId}": {
+      parameters: [
+        { $ref: "#/components/parameters/PlaylistId" },
+        { name: "userId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+      ],
+      delete: {
+        tags: ["Playlists"],
+        summary: "Remove um colaborador ou sai da playlist",
+        description:
+          "O dono remove qualquer colaborador; o colaborador só remove a si mesmo, que é sair da playlist. O dono não sai da própria playlist (409): para deixá-la, ele a apaga. Quem sai de uma playlist privada deixa de vê-la.",
+        operationId: "removePlaylistCollaborator",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Colaborador removido" },
+          "400": {
+            description: "Id da playlist ou da pessoa não é um inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Um colaborador tentou remover outra pessoa (ou não tem assinatura ativa: `SUBSCRIPTION_REQUIRED`)",
+            content: {
+              "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner manages collaborators") },
+            },
+          },
+          "404": {
+            description: "A playlist não existe ou não é visível para o usuário, ou a pessoa não está nela",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Collaborator not found") } },
+          },
+          "409": {
+            description: "O dono tentou sair da própria playlist",
+            content: {
+              "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "The last admin cannot leave the playlist") },
             },
           },
           "500": { $ref: "#/components/responses/InternalError" },
@@ -1493,9 +1728,15 @@ export const openApiDocument = {
       },
       NotPlaylistAdmin: {
         description:
-          "O usuário vê a playlist, mas não é admin dela (só admins editam, apagam e mudam as músicas). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
+          "O usuário vê a playlist, mas não tem permissão: só o dono edita, apaga e gerencia os colaboradores, e só o dono e os colaboradores mudam as músicas (HU-19). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
+        },
+      },
+      LikedSongsUnchangeable: {
+        description: "A playlist é a Músicas Curtidas (HU-34): ela não é renomeada, apagada nem compartilhada",
+        content: {
+          "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "Músicas Curtidas cannot be changed") },
         },
       },
       InternalError: {
@@ -1790,9 +2031,39 @@ export const openApiDocument = {
           },
         },
       },
+      ListenedEntry: {
+        type: "object",
+        description: "Uma música ouvida por mais de 30 segundos numa reprodução. Mesmo formato de `HistoryEntry`, com `lastListenedAt` no lugar de `lastPlayedAt`.",
+        required: ["musicId", "name", "duration", "artists", "lastListenedAt", "isAvailable"],
+        properties: {
+          musicId: { type: "integer", example: 7 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: { id: { type: "integer", example: 3 }, name: { type: "string", example: "Elis Regina" } },
+            },
+          },
+          lastListenedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Quando a música passou dos 30 segundos pela última vez.",
+            example: "2026-11-15T19:25:03.445Z",
+          },
+          isAvailable: {
+            type: "boolean",
+            description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",
+            example: true,
+          },
+        },
+      },
       Playlist: {
         type: "object",
-        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin"],
+        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics", "isLikedSongs"],
         properties: {
           id: { type: "integer", example: 42 },
           name: { type: "string", example: "Rock nacional" },
@@ -1801,9 +2072,30 @@ export const openApiDocument = {
           createdAt: { type: "string", format: "date-time", example: "2026-10-13T19:25:03.445Z" },
           isAdmin: {
             type: "boolean",
-            description: "Se o usuário autenticado é admin da playlist, ou seja, se pode editá-la e apagá-la.",
+            description:
+              "Se o usuário autenticado é o dono (admin) da playlist, ou seja, se pode editá-la, apagá-la e gerenciar os colaboradores.",
             example: true,
           },
+          canEditMusics: {
+            type: "boolean",
+            description: "Se o usuário autenticado pode pôr, tirar e reordenar as músicas: o dono e os colaboradores (HU-19).",
+            example: true,
+          },
+          isLikedSongs: {
+            type: "boolean",
+            description:
+              "Se é a Músicas Curtidas da conta (HU-34): privada, criada sob demanda, alimentada só pela curtida. Ela não é renomeada, apagada, reordenada nem compartilhada, e não aceita música pelo menu (409).",
+            example: false,
+          },
+        },
+      },
+      Collaborator: {
+        type: "object",
+        required: ["userId", "name", "isOwner"],
+        properties: {
+          userId: { type: "integer", example: 12 },
+          name: { type: "string", example: "Bruno Andrade" },
+          isOwner: { type: "boolean", description: "Verdadeiro só para o dono da playlist.", example: false },
         },
       },
       CreateCommentRequest: {
@@ -1993,8 +2285,13 @@ export const openApiDocument = {
           album: {
             type: ["object", "null"],
             description: "O álbum ativo da música, ou null se ela não está em nenhum.",
-            properties: { id: { type: "integer" }, name: { type: "string" }, year: { type: ["integer", "null"] } },
-            example: { id: 3, name: "Ondas de Concreto", year: 2018 },
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              year: { type: ["integer", "null"] },
+              trackNumber: { type: "integer", minimum: 1, description: "Número da faixa no álbum. Pode ter buracos." },
+            },
+            example: { id: 3, name: "Ondas de Concreto", year: 2018, trackNumber: 2 },
           },
           isExplicit: { type: "boolean", example: false },
           hasAudio: { type: "boolean", description: "Músicas anteriores ao upload não têm arquivo de áudio.", example: true },
