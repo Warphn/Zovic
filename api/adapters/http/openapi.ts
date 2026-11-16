@@ -282,12 +282,12 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Lista as playlists do usuário",
         description:
-          "As playlists ativas de que o usuário autenticado é membro, da mais nova para a mais antiga. `isAdmin` diz se ele pode editá-las e apagá-las.",
+          "As playlists ativas de que o usuário autenticado é membro: a Músicas Curtidas (HU-34) primeiro, criada aqui se ainda não existe, e depois as outras, da mais nova para a mais antiga. `isAdmin` diz se ele é o dono, `canEditMusics` se mexe nas músicas e `isLikedSongs` se é a Músicas Curtidas.",
         operationId: "listMyPlaylists",
         security: [{ cookieAuth: [] }],
         responses: {
           "200": {
-            description: "Playlists do usuário (lista vazia se não houver nenhuma)",
+            description: "Playlists do usuário, sempre com a Músicas Curtidas primeiro",
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/Playlist" } },
@@ -408,6 +408,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -424,6 +425,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
           "500": { $ref: "#/components/responses/InternalError" },
         },
       },
@@ -650,7 +652,7 @@ export const openApiDocument = {
             },
           },
           "409": {
-            description: "A música já está na playlist",
+            description: "A música já está na playlist, ou a playlist é a Músicas Curtidas, que só muda pela curtida (HU-34)",
             content: {
               "application/json": {
                 schema: errorResponse("BUSINESS_RULE_ERROR", "Music is already in this playlist"),
@@ -697,7 +699,7 @@ export const openApiDocument = {
           "403": { $ref: "#/components/responses/NotPlaylistAdmin" },
           "404": { $ref: "#/components/responses/PlaylistNotFound" },
           "409": {
-            description: "A lista não tem exatamente as músicas da playlist: recarregue e tente de novo",
+            description: "A lista não tem exatamente as músicas da playlist: recarregue e tente de novo. Também para a Músicas Curtidas, que não é reordenada (HU-34)",
             content: {
               "application/json": {
                 schema: errorResponse(
@@ -1654,6 +1656,12 @@ export const openApiDocument = {
           "O usuário vê a playlist, mas não tem permissão: só o dono edita, apaga e gerencia os colaboradores, e só o dono e os colaboradores mudam as músicas (HU-19). Sem assinatura ativa, o erro é `SUBSCRIPTION_REQUIRED`",
         content: {
           "application/json": { schema: errorResponse("FORBIDDEN", "Only playlist admins can edit it") },
+        },
+      },
+      LikedSongsUnchangeable: {
+        description: "A playlist é a Músicas Curtidas (HU-34): ela não é renomeada, apagada nem compartilhada",
+        content: {
+          "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "Músicas Curtidas cannot be changed") },
         },
       },
       InternalError: {
