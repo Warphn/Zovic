@@ -212,6 +212,48 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/me/liked-musics/{id}": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+      put: {
+        tags: ["Playlists"],
+        summary: "Curte uma música: põe no topo da Músicas Curtidas",
+        description:
+          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
+        operationId: "likeMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música na Músicas Curtidas" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Música inexistente ou removida",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Playlists"],
+        summary: "Descurte uma música: tira da Músicas Curtidas",
+        description: "HU-34. Tirar uma música que não está lá também responde 204.",
+        operationId: "unlikeMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música fora da Músicas Curtidas" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/history": {
       get: {
         tags: ["Histórico"],
@@ -1908,7 +1950,7 @@ export const openApiDocument = {
       },
       Playlist: {
         type: "object",
-        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics"],
+        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics", "isLikedSongs"],
         properties: {
           id: { type: "integer", example: 42 },
           name: { type: "string", example: "Rock nacional" },
@@ -1925,6 +1967,12 @@ export const openApiDocument = {
             type: "boolean",
             description: "Se o usuário autenticado pode pôr, tirar e reordenar as músicas: o dono e os colaboradores (HU-19).",
             example: true,
+          },
+          isLikedSongs: {
+            type: "boolean",
+            description:
+              "Se é a Músicas Curtidas da conta (HU-34): privada, criada sob demanda, alimentada só pela curtida. Ela não é renomeada, apagada, reordenada nem compartilhada, e não aceita música pelo menu (409).",
+            example: false,
           },
         },
       },

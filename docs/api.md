@@ -116,7 +116,9 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /api/playlists` | Lista as playlists de que o usuário é membro, da mais nova para a mais antiga |
+| `GET /api/playlists` | Lista as playlists de que o usuário é membro: a Músicas Curtidas primeiro (criada aqui se ainda não existe), depois as outras da mais nova para a mais antiga |
+| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404. |
+| `DELETE /api/me/liked-musics/:id` | Descurte a música: ela sai da Músicas Curtidas. Responde 204 mesmo se ela não estava lá. |
 | `POST /api/playlists` | Cria uma playlist. Quem cria vira o primeiro membro, como admin. |
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
 | `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só para o dono (admin) da playlist; os outros, colaboradores inclusive, recebem 403. |
@@ -130,6 +132,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
+
+**Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Tirar uma música pelo `DELETE …/musics/:musicId` funciona, e o front descurte junto. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
 
 **Dono e colaboradores (HU-19).** Quem cria a playlist é o dono (admin em `playlist_user`). O dono adiciona colaboradores pelo email, e eles entram direto, sem convite, como membros sem `is_admin`. O colaborador põe, tira e reordena as músicas, mas não renomeia, não apaga e não gerencia colaboradores. A playlist aparece em `GET /api/playlists` para todos os membros. As respostas de playlist trazem `isAdmin` (é o dono) e `canEditMusics` (é dono ou colaborador). Quem sai ou é removido de uma playlist privada deixa de vê-la.
 

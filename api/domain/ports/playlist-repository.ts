@@ -16,4 +16,11 @@ export interface PlaylistRepository {
   addMember(playlistId: number, userId: number): Promise<void>;
   /** Tira o membro comum. Nunca tira o dono (admin), mesmo se pedido. */
   removeMember(playlistId: number, userId: number): Promise<void>;
+  /** A Músicas Curtidas da conta (HU-34), ou null se ela ainda não foi criada. */
+  findLikedSongs(userId: number): Promise<Playlist | null>;
+  /**
+   * Grava a Músicas Curtidas nova e devolve a que ficou gravada: se outra chamada criou a da mesma
+   * conta ao mesmo tempo, devolve a dela, e a conta continua com uma só.
+   */
+  createLikedSongs(playlist: Playlist): Promise<Playlist>;
 }

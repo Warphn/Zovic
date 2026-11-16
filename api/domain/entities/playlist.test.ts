@@ -79,3 +79,34 @@ describe("playlist apagada", () => {
     expect(() => playlist.rename("Jazz")).toThrow(BusinessRuleError);
   });
 });
+// HU-34: a playlist fixa de cada conta, alimentada pela curtida
+describe("Músicas Curtidas", () => {
+  it("cria a Músicas Curtidas privada, com o nome, a cor e o dono", () => {
+    const likedSongs = Playlist.createLikedSongs({ id: 3, userId: 7, now });
+
+    expect(likedSongs.toData()).toMatchObject({
+      id: 3,
+      name: "Músicas Curtidas",
+      isPrivate: true,
+      color: "#D33A2C",
+      members: [{ userId: 7, isAdmin: true }],
+      likedByUserId: 7,
+    });
+    expect(likedSongs.isLikedSongs).toBe(true);
+  });
+
+  it("a Músicas Curtidas não é renomeada, não muda de cor nem de visibilidade, não é apagada e não recebe membros", () => {
+    const likedSongs = Playlist.createLikedSongs({ id: 3, userId: 7, now });
+
+    expect(() => likedSongs.rename("Outra")).toThrow(BusinessRuleError);
+    expect(() => likedSongs.changeColor("#112233")).toThrow(BusinessRuleError);
+    expect(() => likedSongs.setPrivate(false)).toThrow(BusinessRuleError);
+    expect(() => likedSongs.delete(now)).toThrow(BusinessRuleError);
+    expect(() => likedSongs.addMember(8)).toThrow(BusinessRuleError);
+    expect(likedSongs.name).toBe("Músicas Curtidas");
+  });
+
+  it("uma playlist comum não é a Músicas Curtidas", () => {
+    expect(Playlist.create(valid).isLikedSongs).toBe(false);
+  });
+});

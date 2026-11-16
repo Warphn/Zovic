@@ -12,6 +12,8 @@ export interface PlaylistOutput {
   createdAt: string;
   isAdmin: boolean;
   canEditMusics: boolean;
+  /** A Músicas Curtidas da conta (HU-34): só muda pela curtida. */
+  isLikedSongs: boolean;
 }
 
 export function toPlaylistOutput(playlist: Playlist, viewerId: number): PlaylistOutput {
@@ -23,5 +25,6 @@ export function toPlaylistOutput(playlist: Playlist, viewerId: number): Playlist
     createdAt: playlist.createdAt.toISOString(),
     isAdmin: playlist.isAdmin(viewerId),
     canEditMusics: playlist.isMember(viewerId),
+    isLikedSongs: playlist.isLikedSongs,
   };
 }

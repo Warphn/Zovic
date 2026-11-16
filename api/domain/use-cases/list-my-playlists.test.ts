@@ -21,7 +21,8 @@ describe("ListMyPlaylists", () => {
 
     const output = await new ListMyPlaylists(repository).execute({ userId: ANA });
 
-    expect(output.map((p) => p.name)).toEqual(["Nova", "Antiga"]);
+    // A Músicas Curtidas (HU-34) vem sempre primeiro
+    expect(output.map((playlist) => playlist.name)).toEqual(["Músicas Curtidas", "Nova", "Antiga"]);
   });
 
   it("deixa de fora as playlists apagadas", async () => {
@@ -32,7 +33,7 @@ describe("ListMyPlaylists", () => {
 
     const output = await new ListMyPlaylists(repository).execute({ userId: ANA });
 
-    expect(output).toEqual([]);
+    expect(output.map((playlist) => playlist.name)).toEqual(["Músicas Curtidas"]);
   });
 
   it("marca isAdmin conforme o papel do usuário em cada playlist", async () => {
@@ -43,7 +44,8 @@ describe("ListMyPlaylists", () => {
 
     const output = await new ListMyPlaylists(repository).execute({ userId: ANA });
 
-    expect(output.map((p) => [p.name, p.isAdmin])).toEqual([
+    expect(output.map((playlist) => [playlist.name, playlist.isAdmin])).toEqual([
+      ["Músicas Curtidas", true],
       ["Da Ana", true],
       ["Do Bruno", false],
     ]);
