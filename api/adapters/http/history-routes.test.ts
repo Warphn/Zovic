@@ -173,3 +173,95 @@ describe("GET /history", () => {
     expect(await history(subscriber)).toEqual([]);
   });
 });
+
+interface ListenedEntryBody {
+  musicId: number;
+  name: string;
+  duration: number;
+  artists: { id: number; name: string }[];
+  lastListenedAt: string;
+  isAvailable: boolean;
+}
+
+function markListened(account: Account, musicId: number | string, body: unknown = { playedSeconds: 31 }) {
+  return call("POST", `/musics/${musicId}/listens`, account.cookie, body);
+}
+
+async function listened(account: Account): Promise<ListenedEntryBody[]> {
+  const res = await call("GET", "/history/listened", account.cookie);
+  expect(res.status).toBe(200);
+  return json<ListenedEntryBody[]>(res);
+}
+
+describe("POST /musics/:id/listens e GET /history/listened", () => {
+  it("exigem sessão e assinatura", async () => {
+    const withoutSubscription = await createAccount("ouvidas-sem-plano");
+
+    expect((await call("POST", `/musics/${musicA}/listens`, null, { playedSeconds: 31 })).status).toBe(401);
+    expect((await call("GET", "/history/listened", null)).status).toBe(401);
+    expect((await markListened(withoutSubscription, musicA)).status).toBe(403);
+    expect((await call("GET", "/history/listened", withoutSubscription.cookie)).status).toBe(403);
+  });
+
+  it("não marca com 20 s e marca com 31 s", async () => {
+    const subscriber = await createSubscriber("ouvidas-limite");
+
+    expect((await markListened(subscriber, musicA, { playedSeconds: 20 })).status).toBe(409);
+    expect(await listened(subscriber)).toEqual([]);
+
+    expect((await markListened(subscriber, musicA, { playedSeconds: 31 })).status).toBe(204);
+    expect((await listened(subscriber)).map((entry) => entry.musicId)).toEqual([musicA]);
+  });
+
+  it("lista cada música uma vez, a marca mais recente primeiro", async () => {
+    const subscriber = await createSubscriber("ouvidas-ordem");
+
+    for (const musicId of [musicA, musicB, musicA]) {
+      expect((await markListened(subscriber, musicId)).status).toBe(204);
+    }
+    const entries = await listened(subscriber);
+
+    expect(entries.map((entry) => entry.musicId)).toEqual([musicA, musicB]);
+    expect(entries[0]).toMatchObject({ isAvailable: true, duration: 180 });
+    expect(Date.parse(entries[0]!.lastListenedAt)).toBeGreaterThan(Date.parse(entries[1]!.lastListenedAt));
+  });
+
+  it("separa as marcas de cada membro do mesmo plano", async () => {
+    const manager = await createAccount("ouvidas-gestora");
+    expect((await call("POST", "/plans", manager.cookie, { kind: "family" })).status).toBe(201);
+    const memberEmail = `ouvidas-membro-${crypto.randomUUID().slice(0, 8)}${EMAIL_DOMAIN}`;
+    const invitation = await json<{ token: string }>(
+      await call("POST", "/plans/me/invitations", manager.cookie, { email: memberEmail }),
+    );
+    const member = await createAccount("ouvidas-membro", memberEmail);
+    expect((await call("POST", `/invitations/${invitation.token}/accept`, member.cookie)).status).toBe(200);
+
+    await markListened(manager, musicA);
+    await markListened(member, musicB);
+
+    expect((await listened(manager)).map((entry) => entry.musicId)).toEqual([musicA]);
+    expect((await listened(member)).map((entry) => entry.musicId)).toEqual([musicB]);
+  });
+
+  it("mantém a música removida pelo admin, marcada como indisponível", async () => {
+    const subscriber = await createSubscriber("ouvidas-removida");
+    const removedMusic = await insertMusic("ouvida e removida");
+    expect((await markListened(subscriber, removedMusic)).status).toBe(204);
+
+    await pool.query("UPDATE musics SET deleted_at = now() WHERE id = $1", [removedMusic]);
+
+    expect((await listened(subscriber)).map((entry) => [entry.musicId, entry.isAvailable])).toEqual([[removedMusic, false]]);
+    expect((await markListened(subscriber, removedMusic)).status).toBe(404);
+  });
+
+  it("recusa corpo e id inválidos com 400 e música inexistente com 404", async () => {
+    const subscriber = await createSubscriber("ouvidas-invalido");
+
+    for (const body of [{}, { playedSeconds: -1 }, { playedSeconds: "abc" }]) {
+      expect((await markListened(subscriber, musicA, body)).status).toBe(400);
+    }
+    expect((await markListened(subscriber, "abc")).status).toBe(400);
+    expect((await markListened(subscriber, 2_147_483_647)).status).toBe(404);
+    expect(await listened(subscriber)).toEqual([]);
+  });
+});

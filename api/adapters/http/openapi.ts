@@ -277,6 +277,84 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/history/listened": {
+      get: {
+        tags: ["Histórico"],
+        summary: "Lista as músicas já ouvidas",
+        description:
+          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A marca é registrada por `POST /api/musics/{id}/listens`.",
+        operationId: "listMyListenedMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas já ouvidas (lista vazia se nenhuma passou dos 30 segundos)",
+            content: {
+              "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/ListenedEntry" } },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/musics/{id}/listens": {
+      post: {
+        tags: ["Histórico"],
+        summary: "Marca uma música como ouvida",
+        description:
+          "Chamada pelo player quando a soma do tempo de som de uma reprodução passa de 30 segundos, uma vez por reprodução. Pausar não zera a soma, e pular pela barra não conta. A regra dos 30 segundos é conferida pela API: com 30 segundos ou menos, nada é marcado.",
+        operationId: "markMusicListened",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["playedSeconds"],
+                properties: {
+                  playedSeconds: {
+                    type: "number",
+                    minimum: 0,
+                    description: "Segundos de som tocados nesta reprodução.",
+                    example: 31.5,
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "204": { description: "Música marcada como ouvida" },
+          "400": {
+            description: "Id que não é inteiro positivo, ou `playedSeconds` ausente, negativo ou não numérico",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Música inexistente ou removida",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "409": {
+            description: "A reprodução não passou de 30 segundos",
+            content: {
+              "application/json": {
+                schema: errorResponse(
+                  "BUSINESS_RULE_ERROR",
+                  "A music counts as listened only after more than 30 seconds",
+                ),
+              },
+            },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/playlists": {
       get: {
         tags: ["Playlists"],
@@ -1949,6 +2027,36 @@ export const openApiDocument = {
             },
           },
           lastPlayedAt: { type: "string", format: "date-time", example: "2026-10-13T19:25:03.445Z" },
+          isAvailable: {
+            type: "boolean",
+            description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",
+            example: true,
+          },
+        },
+      },
+      ListenedEntry: {
+        type: "object",
+        description: "Uma música ouvida por mais de 30 segundos numa reprodução. Mesmo formato de `HistoryEntry`, com `lastListenedAt` no lugar de `lastPlayedAt`.",
+        required: ["musicId", "name", "duration", "artists", "lastListenedAt", "isAvailable"],
+        properties: {
+          musicId: { type: "integer", example: 7 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: { id: { type: "integer", example: 3 }, name: { type: "string", example: "Elis Regina" } },
+            },
+          },
+          lastListenedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Quando a música passou dos 30 segundos pela última vez.",
+            example: "2026-11-15T19:25:03.445Z",
+          },
           isAvailable: {
             type: "boolean",
             description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",

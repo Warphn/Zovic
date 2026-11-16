@@ -111,6 +111,9 @@ export const HistoryIcon = svg(
   </>
 )
 export const ListMinusIcon = svg(<path d="M11 12H3M16 6H3M16 18H3M21 12h-6" />)
+export const HeadphonesIcon = svg(
+  <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
+)
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const char = level === "muted" ? "🔇" : level === "low" ? "🔉" : "🔊"

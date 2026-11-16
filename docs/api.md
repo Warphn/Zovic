@@ -131,6 +131,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `POST /api/playlists/:id/collaborators` | Adiciona um colaborador pelo email (`{ email }`). Só o dono. A conta precisa existir (senão 404) e ter assinatura ativa (senão 409); quem já está na playlist recebe 409. |
 | `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
+| `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
+| `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
 
 **Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Na tela, quem tira uma música dela é o coração: a página da Músicas Curtidas troca o botão de tirar pelo menu "Adicionar à playlist", que nunca lista a própria Músicas Curtidas. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
@@ -161,6 +163,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/musics/:id/audio` | Entrega o MP3 da música (`audio/mpeg`). Aceita `Range` e responde 206 com o trecho, que é como o player pula para outro ponto. O cache é `private, no-cache`: o navegador confirma o arquivo guardado com a API (304), que confere a assinatura e a idade de novo. Responde 404 para música removida ou sem arquivo, e 403 para música explícita quando a conta não é maior de idade. |
 
 O player do front toca o áudio pela `GET /api/musics/:id/audio` e chama a `POST /api/musics/:id/plays` quando o som começa, uma vez por audição. A página `/historico` atualiza a lista depois de cada reprodução registrada.
+
+**Músicas ouvidas (HU-15).** O player soma o tempo de som de cada audição. Pausar não zera a soma, e pular pela barra não conta. Quando a soma passa de 30 segundos, ele chama a `POST /api/musics/:id/listens` uma vez naquela audição. A regra dos 30 segundos fica no domínio (`MarkMusicListened`), que grava um evento `music_listened` em `user_event`. A `GET /api/history/listened` alimenta a aba "Já ouvidas" do histórico e o ícone de fone nas listas de faixas.
 
 ### Admin
 

@@ -1,0 +1,28 @@
+meta {
+  name: Listar músicas já ouvidas
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/history/listened
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com uma lista", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+
+  test("cada entrada traz música, artistas, última marca e disponibilidade", function () {
+    expect(res.getBody()[0]).to.have.all.keys("musicId", "name", "duration", "artists", "lastListenedAt", "isAvailable");
+  });
+
+  test("a A, ouvida por 31 segundos, aparece; a B, com 20, não", function () {
+    const ids = res.getBody().map((entry) => entry.musicId);
+    expect(ids).to.include(bru.getVar("musicA"));
+    expect(ids).to.not.include(bru.getVar("musicB"));
+  });
+}

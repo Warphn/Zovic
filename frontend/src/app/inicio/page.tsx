@@ -8,6 +8,7 @@ import { AlbumCard } from "@/components/album-card"
 import Header from "@/components/header"
 import { PlaylistTile } from "@/components/playlist-tile"
 import { TrackRow } from "@/components/track-row"
+import { TrackTitle } from "@/components/track-title"
 import { useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useHistory } from "@/lib/api/history"
@@ -90,10 +91,10 @@ function QueryStatus({ isPending, errorMessage }: { isPending: boolean; errorMes
   return null
 }
 
-function TrackText({ title, meta }: { title: string; meta: string }) {
+function TrackText({ title, musicId, meta }: { title: string; musicId: number; meta: string }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-sm font-medium">{title}</span>
+      <TrackTitle title={title} musicId={musicId} />
       <span className="block truncate text-xs text-muted-foreground">{meta}</span>
     </span>
   )
@@ -155,6 +156,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={music.id}>
               <TrackRow
+                musicId={music.id}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleQueueTrack(tracks, index)}
                 title={music.name}
@@ -171,7 +173,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                   <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <TrackText title={music.name} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
+                  <TrackText title={music.name} musicId={music.id} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
                 </span>
               </TrackRow>
             </li>
@@ -197,6 +199,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
           return (
             <li key={entry.musicId}>
               <TrackRow
+                musicId={entry.musicId}
                 isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                 onClick={() => playOrToggleTrack(track.id, [track, ...catalogTracks])}
                 title={entry.name}
@@ -209,7 +212,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                   </>
                 }
               >
-                <TrackText title={entry.name} meta={artistNames(entry.artists)} />
+                <TrackText title={entry.name} musicId={entry.musicId} meta={artistNames(entry.artists)} />
               </TrackRow>
             </li>
           )

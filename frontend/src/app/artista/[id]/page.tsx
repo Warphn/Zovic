@@ -10,6 +10,7 @@ import { TrackCommentsButton } from "@/components/comments/track-comments-button
 import Header from "@/components/header"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { TrackRow } from "@/components/track-row"
+import { TrackTitle } from "@/components/track-title"
 import { buttonVariants } from "@/components/ui/button"
 import { useAlbums, useArtists, useCatalogMusics } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
@@ -135,6 +136,7 @@ export default function ArtistPage() {
               return (
                 <li key={music.id}>
                   <TrackRow
+                    musicId={music.id}
                     isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
                     onClick={() => playOrToggleQueueTrack(singleTracks, index)}
                     title={music.name}
@@ -148,7 +150,7 @@ export default function ArtistPage() {
                     }
                   >
                     <span className="block min-w-0">
-                      <span className="block truncate text-sm font-medium">{music.name}</span>
+                      <TrackTitle title={music.name} musicId={music.id} />
                       <span className="block truncate text-xs text-muted-foreground">
                         {[track.artist, formatDuration(music.duration)].filter(Boolean).join(" · ")}
                       </span>

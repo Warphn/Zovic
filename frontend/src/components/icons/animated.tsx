@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   CircleAlert,
+  Headphones,
   History,
   House,
   ListMinus,
@@ -118,6 +119,8 @@ export const SkipForwardIcon = staticLucide(SkipForward)
 export const PencilIcon = staticLucide(Pencil)
 export const ListPlusIcon = staticLucide(ListPlus)
 export const ListMinusIcon = staticLucide(ListMinus)
+// A music already listened to (HU-15)
+export const HeadphonesIcon = staticLucide(Headphones)
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const Icon = level === "muted" ? VolumeX : level === "low" ? Volume1 : Volume2

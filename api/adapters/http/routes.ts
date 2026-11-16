@@ -13,6 +13,7 @@ import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import { likedMusicParamsSchema } from "./schemas/liked-musics-schemas.ts";
 import { addCollaboratorSchema, playlistCollaboratorParamsSchema } from "./schemas/playlist-collaborators-schemas.ts";
+import { markListenedSchema, musicIdParamsSchema } from "./schemas/listened-schemas.ts";
 import {
   artistSchema,
   createAlbumSchema,
@@ -121,6 +122,14 @@ export function makeRouter(
   );
 
   router.get("/history", subscriberOnly, history.list);
+  router.get("/history/listened", subscriberOnly, history.listListened);
+  router.post(
+    "/musics/:id/listens",
+    subscriberOnly,
+    validateParams(musicIdParamsSchema),
+    validateBody(markListenedSchema),
+    history.markListened,
+  );
 
   // Músicas Curtidas (HU-34): o coração do front põe e tira a música até a HU-20 levar a curtida para a API
   const likedMusicId = validateParams(likedMusicParamsSchema);
