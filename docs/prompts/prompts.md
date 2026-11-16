@@ -258,3 +258,13 @@ O Victor aprovou o design antes da implementação. A IA escolheu exigir assinat
 | 2 | Vamos só deixar nosso lado pronto. / Vamos com 1, as regras estão excelentes. / Manda bala. | A [spec](../superpowers/specs/2026-11-15-musicas-curtidas-design.md), a issue #136 e o [plano](../superpowers/plans/2026-11-15-musicas-curtidas.md); a coluna `playlists.liked_by_user_id`; as regras na entidade `Playlist` e os casos de uso de [`liked-songs.ts`](../../api/domain/use-cases/liked-songs.ts), com testes; as rotas `/me/liked-musics/:id`, com testes de integração; e o coração, o encarte com coração e as regras na página da playlist no front |
 
 O Victor escolheu a playlist de verdade e aprovou as regras e a issue. A IA escolheu criar a playlist sob demanda (sem gancho no cadastro), a coluna única `liked_by_user_id` e a cor fixa.
+
+### 16/11/2026: receber recomendações (#97, HU-25)
+
+Forma de trabalho: o Claude Opus orquestrou a partir da história da issue. Ele definiu como contar ouvidas e curtidas, o desempate e o caso sem histórico, e o Gabriel decidiu deixar o dislike para depois, porque ele ainda não existe. Um subagente Claude Sonnet implementou o módulo a partir dessa especificação, e o Opus revisou o diff e rodou as verificações.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Implemente a HU-25 a partir da especificação: perfil por gênero e artista das músicas ouvidas e curtidas, candidatas ainda não ouvidas por pontuação, mais tocadas para quem não tem histórico, explícitas escondidas de menores e a seção "Recomendadas para você" na home. A rejeição (dislike) fica de fora, porque ainda não existe. | A porta [`recommendation-source.ts`](../../api/domain/ports/recommendation-source.ts) e o caso de uso [`recommend-musics.ts`](../../api/domain/use-cases/recommend-musics.ts) (`RECOMMENDATION_COUNT = 10`), com o fake e os testes de unidade; o adaptador [`postgres-recommendation-source.ts`](../../api/adapters/db/postgres-recommendation-source.ts), a rota `GET /api/recommendations` e os testes de integração em [`recommendation-routes.test.ts`](../../api/adapters/http/recommendation-routes.test.ts); a seção na [home](../../frontend/src/app/inicio/page.tsx) e a documentação |
+
+A IA seguiu a especificação sem mudar as regras. O dislike da história e o seu critério de aceite ficam para quem fizer a rejeição de músicas.

@@ -42,6 +42,7 @@ export const openApiDocument = {
     { name: "Comentários", description: "Comentários e denúncias em músicas" },
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Histórico", description: "Músicas que o usuário ouviu" },
+    { name: "Recomendações", description: "Sugestões de músicas pelo que o usuário ouviu e curtiu" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Catálogo", description: "Listas de músicas e álbuns" },
     { name: "Admin", description: "Painel dos admins da plataforma: cadastro de músicas (com o áudio) e de álbuns" },
@@ -291,6 +292,29 @@ export const openApiDocument = {
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/ListenedEntry" } },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/recommendations": {
+      get: {
+        tags: ["Recomendações"],
+        summary: "Lista as músicas recomendadas",
+        description:
+          "Até 10 músicas que o usuário autenticado ainda não ouviu (HU-25), da mais parecida com o gosto dele para a menos. O gosto é o peso de cada gênero e artista nas músicas que ele ouviu (`POST /api/musics/{id}/listens`) e curtiu (`PUT /api/me/liked-musics/{id}`); a música ouvida e curtida pesa duas vezes. A pontuação de uma candidata é a soma dos pesos dos gêneros e artistas dela, e o empate vai para a mais tocada. Sem nenhuma música ouvida ou curtida, a resposta são as mais tocadas da plataforma. Músicas removidas ficam de fora. Para menor de idade (ou conta sem data de nascimento), as explícitas também; admins da plataforma veem tudo.",
+        operationId: "listRecommendedMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas recomendadas",
+            content: {
+              "application/json": {
+                schema: { type: "array", maxItems: 10, items: { $ref: "#/components/schemas/RecommendedMusic" } },
               },
             },
           },
@@ -2058,6 +2082,24 @@ export const openApiDocument = {
             type: "boolean",
             description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",
             example: true,
+          },
+        },
+      },
+      RecommendedMusic: {
+        type: "object",
+        required: ["id", "name", "duration", "artists"],
+        properties: {
+          id: { type: "integer", example: 7 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: { id: { type: "integer", example: 3 }, name: { type: "string", example: "Elis Regina" } },
+            },
           },
         },
       },

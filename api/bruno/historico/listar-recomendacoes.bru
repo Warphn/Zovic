@@ -1,0 +1,28 @@
+meta {
+  name: Listar recomendações
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/recommendations
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com no máximo 10 músicas", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    expect(res.getBody().length).to.be.at.most(10);
+  });
+
+  test("cada música traz id, nome, duração e artistas", function () {
+    expect(res.getBody()[0]).to.have.all.keys("id", "name", "duration", "artists");
+  });
+
+  test("não recomenda a A, que a Ana já ouviu", function () {
+    const ids = res.getBody().map((music) => music.id);
+    expect(ids).to.not.include(bru.getVar("musicA"));
+  });
+}
