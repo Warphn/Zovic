@@ -32,6 +32,7 @@ describe("playlist-store", () => {
       createdAt: "2026-01-02T12:00:00.000Z",
       isAdmin: false,
       canEditMusics: true,
+      isLikedSongs: false,
     }
     expect(toPlaylistData({ ...playlist, color: "#F2A541" })).toEqual({
       id: "4",
@@ -42,12 +43,13 @@ describe("playlist-store", () => {
       tracks: [],
       canManage: false,
       canEditMusics: true,
+      isLikedSongs: false,
     })
     expect(toPlaylistData({ ...playlist, color: null }).color).toBe(DEFAULT_PLAYLIST_COLOR)
   })
 
   it("turns a playlist's musics into tracks, in the playlist's order", () => {
-    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true, canEditMusics: true }
+    const playlist = { id: 4, name: "Churrasco", isPrivate: false, color: null, createdAt: "2026-01-02T12:00:00.000Z", isAdmin: true, canEditMusics: true, isLikedSongs: false }
     const musics = [
       { id: 9, name: "Pedra na Água", duration: 201, artists: [{ id: 3, name: "Tomás Lago" }], album: null, addedAt: "2026-01-03T00:00:00.000Z" },
       {
