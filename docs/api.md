@@ -117,7 +117,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | Rota | O que faz |
 | --- | --- |
 | `GET /api/playlists` | Lista as playlists de que o usuário é membro: a Músicas Curtidas primeiro (criada aqui se ainda não existe), depois as outras da mais nova para a mais antiga |
-| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404. |
+| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404, e a explícita também, para menor de idade. |
 | `DELETE /api/me/liked-musics/:id` | Descurte a música: ela sai da Músicas Curtidas. Responde 204 mesmo se ela não estava lá. |
 | `POST /api/playlists` | Cria uma playlist. Quem cria vira o primeiro membro, como admin. |
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
@@ -131,7 +131,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `POST /api/playlists/:id/collaborators` | Adiciona um colaborador pelo email (`{ email }`). Só o dono. A conta precisa existir (senão 404) e ter assinatura ativa (senão 409); quem já está na playlist recebe 409. |
 | `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
-| `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
+| `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
 | `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5). Menor de idade não recebe músicas explícitas, nem nas contagens. |
 

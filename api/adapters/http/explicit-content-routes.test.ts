@@ -129,6 +129,11 @@ async function playlistMusicIds(account: Account, playlistId: number): Promise<n
   return (await json<MusicBody[]>(res)).map((music) => music.id);
 }
 
+async function listenedIds(account: Account): Promise<number[]> {
+  const res = await call("GET", "/history/listened", account.cookie);
+  return (await json<{ musicId: number }[]>(res)).map((entry) => entry.musicId);
+}
+
 beforeAll(async () => {
   const auth = createAuth(pool, {
     secret: "explicit-content-routes-secret-32-chars",
@@ -163,11 +168,11 @@ beforeAll(async () => {
   }
 
   // O menor ouviu a explícita antes de a regra valer; a inserção direta contorna o 404 do play.
-  await pool.query("INSERT INTO user_event (user_id, event_type, music_id) VALUES ($1, 'music_play', $2), ($1, 'music_play', $3)", [
-    minor.id,
-    commonMusic,
-    explicitMusic,
-  ]);
+  await pool.query(
+    `INSERT INTO user_event (user_id, event_type, music_id)
+     VALUES ($1, 'music_play', $2), ($1, 'music_play', $3), ($1, 'music_listened', $2), ($1, 'music_listened', $3)`,
+    [minor.id, commonMusic, explicitMusic],
+  );
 });
 
 afterAll(async () => {
@@ -209,6 +214,30 @@ describe("músicas explícitas para menores (HU-09)", () => {
 
     expect(await entryIds(minor)).toEqual([commonMusic]);
     expect(await entryIds(adult)).toEqual([explicitMusic]);
+  });
+
+  it("o menor não vê a explícita nas músicas já ouvidas, e o maior que a ouviu vê", async () => {
+    await pool.query("INSERT INTO user_event (user_id, event_type, music_id) VALUES ($1, 'music_listened', $2)", [
+      adult.id,
+      explicitMusic,
+    ]);
+    expect(await listenedIds(minor)).toEqual([commonMusic]);
+    expect(await listenedIds(adult)).toEqual([explicitMusic]);
+  });
+
+  it("o menor recebe 404 ao curtir a explícita, e o maior curte", async () => {
+    const likeOfMinor = await call("PUT", `/me/liked-musics/${explicitMusic}`, minor.cookie);
+    const likeOfMinorCommon = await call("PUT", `/me/liked-musics/${commonMusic}`, minor.cookie);
+    const likeOfAdult = await call("PUT", `/me/liked-musics/${explicitMusic}`, adult.cookie);
+
+    expect(likeOfMinor.status).toBe(404);
+    expect(likeOfMinorCommon.status).toBe(204);
+    expect(likeOfAdult.status).toBe(204);
+    const { rows } = await pool.query<{ music_id: number }>(
+      "SELECT mp.music_id FROM music_playlist mp JOIN playlists p ON p.id = mp.playlist_id WHERE p.liked_by_user_id = $1",
+      [minor.id],
+    );
+    expect(rows.map((row) => row.music_id)).toEqual([commonMusic]);
   });
 
   it("o menor recebe 404 ao pedir o áudio e o play da explícita, e o maior toca", async () => {

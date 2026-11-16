@@ -11,13 +11,16 @@ import { ReorderPlaylistMusics } from "./reorder-playlist-musics.ts";
 // HU-34: a Músicas Curtidas de cada conta, alimentada pela curtida (a da HU-20 vai chamar estes casos de uso)
 
 const ANA = 1;
-const [ONDA, RESSACA, MARESIA, FORA_DO_CATALOGO] = [10, 11, 12, 99];
-const adult = { birthdate: "1995-03-12", now: new Date("2026-11-06T15:00:00Z") };
+const [ONDA, RESSACA, MARESIA, FORA_DO_CATALOGO, PROIBIDAO] = [10, 11, 12, 99, 13];
+const NOW = new Date("2026-11-06T15:00:00Z");
+const adult = { birthdate: "1995-03-12", now: NOW };
+const minor = { birthdate: "2010-01-01", now: NOW };
 
 function setup() {
   const playlists = new InMemoryPlaylistRepository();
   const musics = new InMemoryPlaylistMusics();
-  musics.catalog.set(ONDA, "Última Onda").set(RESSACA, "Ressaca").set(MARESIA, "Maresia");
+  musics.catalog.set(ONDA, "Última Onda").set(RESSACA, "Ressaca").set(MARESIA, "Maresia").set(PROIBIDAO, "Proibidão");
+  musics.explicitIds.add(PROIBIDAO);
   const ensure = new EnsureLikedSongs(playlists);
   return {
     playlists,
@@ -48,9 +51,9 @@ describe("LikeMusic e UnlikeMusic", () => {
   it("curtir põe no topo, da mais recente para a mais antiga", async () => {
     const { like, ensure, musics } = setup();
 
-    await like.execute({ userId: ANA, musicId: ONDA });
-    await like.execute({ userId: ANA, musicId: RESSACA });
-    await like.execute({ userId: ANA, musicId: MARESIA });
+    await like.execute({ userId: ANA, musicId: ONDA, ...adult });
+    await like.execute({ userId: ANA, musicId: RESSACA, ...adult });
+    await like.execute({ userId: ANA, musicId: MARESIA, ...adult });
 
     const likedSongs = await ensure.execute({ userId: ANA });
     expect(musicIds(await musics.list(likedSongs.id, true))).toEqual([MARESIA, RESSACA, ONDA]);
@@ -58,10 +61,10 @@ describe("LikeMusic e UnlikeMusic", () => {
 
   it("curtir de novo não duplica nem muda a ordem", async () => {
     const { like, ensure, musics } = setup();
-    await like.execute({ userId: ANA, musicId: ONDA });
-    await like.execute({ userId: ANA, musicId: RESSACA });
+    await like.execute({ userId: ANA, musicId: ONDA, ...adult });
+    await like.execute({ userId: ANA, musicId: RESSACA, ...adult });
 
-    await like.execute({ userId: ANA, musicId: ONDA });
+    await like.execute({ userId: ANA, musicId: ONDA, ...adult });
 
     const likedSongs = await ensure.execute({ userId: ANA });
     expect(musicIds(await musics.list(likedSongs.id, true))).toEqual([RESSACA, ONDA]);
@@ -70,15 +73,50 @@ describe("LikeMusic e UnlikeMusic", () => {
   it("curtir música fora do catálogo dá NotFoundError", async () => {
     const { like } = setup();
 
-    expect(await failure(like.execute({ userId: ANA, musicId: FORA_DO_CATALOGO }))).toBeInstanceOf(NotFoundError);
+    expect(await failure(like.execute({ userId: ANA, musicId: FORA_DO_CATALOGO, ...adult }))).toBeInstanceOf(NotFoundError);
   });
 
   it("descurtir tira a música; descurtir o que não está não dá erro", async () => {
     const { like, unlike, ensure, musics } = setup();
-    await like.execute({ userId: ANA, musicId: ONDA });
+    await like.execute({ userId: ANA, musicId: ONDA, ...adult });
 
     await unlike.execute({ userId: ANA, musicId: ONDA });
     await unlike.execute({ userId: ANA, musicId: RESSACA });
+
+    const likedSongs = await ensure.execute({ userId: ANA });
+    expect(await musics.list(likedSongs.id, true)).toEqual([]);
+  });
+});
+
+describe("curtida de música explícita (HU-09)", () => {
+  it("menor de idade e quem não tem data de nascimento recebem NotFoundError, e nada entra na lista", async () => {
+    const { like, ensure, musics } = setup();
+
+    expect(await failure(like.execute({ userId: ANA, musicId: PROIBIDAO, ...minor }))).toBeInstanceOf(NotFoundError);
+    expect(await failure(like.execute({ userId: ANA, musicId: PROIBIDAO, birthdate: null, now: NOW }))).toBeInstanceOf(
+      NotFoundError,
+    );
+
+    const likedSongs = await ensure.execute({ userId: ANA });
+    expect(await musics.list(likedSongs.id, true)).toEqual([]);
+  });
+
+  it("maior de idade e admin da plataforma curtem a explícita", async () => {
+    for (const viewer of [adult, { birthdate: null, now: NOW, isAdmin: true }]) {
+      const { like, ensure, musics } = setup();
+
+      await like.execute({ userId: ANA, musicId: PROIBIDAO, ...viewer });
+
+      const likedSongs = await ensure.execute({ userId: ANA });
+      expect(musicIds(await musics.list(likedSongs.id, true))).toEqual([PROIBIDAO]);
+    }
+  });
+
+  it("descurtir tira a explícita mesmo de quem não a vê mais", async () => {
+    const { like, unlike, ensure, musics } = setup();
+    await like.execute({ userId: ANA, musicId: PROIBIDAO, ...adult });
+
+    await unlike.execute({ userId: ANA, musicId: PROIBIDAO });
 
     const likedSongs = await ensure.execute({ userId: ANA });
     expect(await musics.list(likedSongs.id, true)).toEqual([]);
@@ -101,8 +139,8 @@ describe("Músicas Curtidas nas outras telas", () => {
 
   it("não deixa pôr música pelo menu nem reordenar a Músicas Curtidas", async () => {
     const { playlists, musics, like, ensure } = setup();
-    await like.execute({ userId: ANA, musicId: ONDA });
-    await like.execute({ userId: ANA, musicId: RESSACA });
+    await like.execute({ userId: ANA, musicId: ONDA, ...adult });
+    await like.execute({ userId: ANA, musicId: RESSACA, ...adult });
     const likedSongs = await ensure.execute({ userId: ANA });
 
     const add = new AddMusicToPlaylist(playlists, musics);

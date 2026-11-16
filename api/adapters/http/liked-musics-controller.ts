@@ -16,7 +16,13 @@ export interface LikedMusicsController {
 export function makeLikedMusicsController(useCases: LikedMusicsUseCases): LikedMusicsController {
   return {
     like: async (req, res) => {
-      await useCases.likeMusic.execute({ userId: res.locals.userId, musicId: Number(req.params.id) });
+      await useCases.likeMusic.execute({
+        userId: res.locals.userId,
+        musicId: Number(req.params.id),
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
+      });
 
       res.sendStatus(204);
     },
