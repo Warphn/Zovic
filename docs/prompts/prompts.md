@@ -220,6 +220,17 @@ O Felipe criou o logo e escolheu onde cada imagem aparece. A IA só tirou o fund
 
 O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no navegador do Claude Code, com a conta do seed.
 
+### 13/11/2026: conteúdo explícito escondido de menores (#87, HU-09)
+
+Forma de trabalho: o Claude Opus leu a issue e o código, fez o plano e levou as dúvidas ao usuário. Um subagente Claude Sonnet implementou a partir do plano, e o Opus revisou o diff e rodou as verificações.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Veja quais issues estão atribuídas a mim e quais eu já posso resolver; suponho que podemos fazer a #87 agora. Você é um orquestrador e deve verificar, analisar e planejar, mas use o Sonnet para implementar. | O levantamento: a #87 está pronta para começar e a #97 depende das curtidas (#94). O plano cobre catálogo, busca, playlists, histórico, áudio e play. Ficaram para o usuário quatro decisões: o 404 no lugar do 403, não criar a rota de ficha, `Closes #87` e o refactor da regra de idade |
+| 2 | Escolho o 1. *(não criar `GET /musics/:id`)* | A implementação: [`canSeeExplicit` e `isMinor`](../../api/domain/shared/age.ts), o filtro nas consultas e nos casos de uso, o 404 no áudio e no play, os testes de integração em [`explicit-content-routes.test.ts`](../../api/adapters/http/explicit-content-routes.test.ts), o `openapi.ts` e o [`docs/api.md`](../api.md); e os comentários usando a mesma regra de idade |
+
+O usuário tomou cada decisão de regra antes da implementação. A IA conferiu o resultado com os testes de unidade e de integração, o lint e o typecheck.
+
 ### 15/11/2026: músicas já ouvidas (#91, HU-15)
 
 | # | Prompt | Resultado |

@@ -14,6 +14,9 @@ export function makeSearchController(searchCatalog: SearchCatalogUseCase): Searc
         userId: res.locals.userId,
         term: String(q),
         limit: Number(limit),
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
       });
 
       res.json(results);

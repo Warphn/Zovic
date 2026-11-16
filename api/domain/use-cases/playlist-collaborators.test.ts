@@ -15,7 +15,7 @@ const CARLA = 3;
 const DIEGO = 4;
 
 function profile(id: number, name: string): UserProfile {
-  return { id, name, birthdate: new Date("1995-03-12"), deletedAt: null };
+  return { id, name, birthdate: "1995-03-12", deletedAt: null };
 }
 
 async function setup({ isPrivate = false } = {}) {

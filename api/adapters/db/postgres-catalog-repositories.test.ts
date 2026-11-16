@@ -274,7 +274,7 @@ describe("PostgresCatalogQueries", () => {
       await musics.save(track);
     }
 
-    const listed = await catalog.listMusics({ search: name, includeDeleted: false });
+    const listed = await catalog.listMusics({ search: name, includeDeleted: false, includeExplicit: true });
 
     expect(listed.map((music) => [music.id, music.album])).toEqual(
       tracks.map((track, index) => [

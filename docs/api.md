@@ -123,17 +123,17 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
 | `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só para o dono (admin) da playlist; os outros, colaboradores inclusive, recebem 403. |
 | `DELETE /api/playlists/:id` | Apaga com soft delete. Só para o dono da playlist. |
-| `GET /api/playlists/:id/musics` | Músicas da playlist, na ordem dela. Quem vê a playlist vê as músicas. |
-| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Para o dono e os colaboradores. A mesma música não entra duas vezes (409). |
-| `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Para o dono e os colaboradores. |
-| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Para o dono e os colaboradores. |
+| `GET /api/playlists/:id/musics` | Músicas da playlist, na ordem dela. Quem vê a playlist vê as músicas, menos as explícitas para menor de idade, mesmo na playlist de outra pessoa. |
+| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Para o dono e os colaboradores. A mesma música não entra duas vezes (409). Menor de idade recebe 404 para música explícita. |
+| `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Para o dono e os colaboradores. Menor de idade envia só as músicas que vê. |
+| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Para o dono e os colaboradores. Menor de idade recebe 404 para música explícita. |
 | `GET /api/playlists/:id/collaborators` | O dono e os colaboradores (`{ userId, name, isOwner }`), com o dono primeiro e os outros pelo nome. Quem vê a playlist vê a lista, sem email. |
 | `POST /api/playlists/:id/collaborators` | Adiciona um colaborador pelo email (`{ email }`). Só o dono. A conta precisa existir (senão 404) e ter assinatura ativa (senão 409); quem já está na playlist recebe 409. |
 | `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
-| `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
+| `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
 | `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
-| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
+| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5). Menor de idade não recebe músicas explícitas, nem nas contagens. |
 
 **Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Na tela, quem tira uma música dela é o coração: a página da Músicas Curtidas troca o botão de tirar pelo menu "Adicionar à playlist", que nunca lista a própria Músicas Curtidas. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
 
@@ -154,13 +154,13 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano e o número da faixa, `trackNumber`), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. |
+| `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano e o número da faixa, `trackNumber`), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. Menor de idade não recebe as explícitas. |
 | `GET /api/artists` | Lista os artistas |
-| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`) e o endereço da capa (`coverUrl`, ou `null`) |
+| `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`, sem as explícitas para menor de idade) e o endereço da capa (`coverUrl`, ou `null`) |
 | `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |
 | `GET /api/genres` | Lista os gêneros |
-| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. |
-| `GET /api/musics/:id/audio` | Entrega o MP3 da música (`audio/mpeg`). Aceita `Range` e responde 206 com o trecho, que é como o player pula para outro ponto. O cache é `private, no-cache`: o navegador confirma o arquivo guardado com a API (304), que confere a assinatura e a idade de novo. Responde 404 para música removida ou sem arquivo, e 403 para música explícita quando a conta não é maior de idade. |
+| `POST /api/musics/:id/plays` | Registra uma reprodução: um evento em `user_event` e `streams + 1`. É ela que alimenta o `GET /api/history`. Responde 404 para música explícita quando a conta não é maior de idade. |
+| `GET /api/musics/:id/audio` | Entrega o MP3 da música (`audio/mpeg`). Aceita `Range` e responde 206 com o trecho, que é como o player pula para outro ponto. O cache é `private, no-cache`: o navegador confirma o arquivo guardado com a API (304), que confere a assinatura e a idade de novo. Responde 404 para música removida, sem arquivo ou explícita quando a conta não é maior de idade. |
 
 O player do front toca o áudio pela `GET /api/musics/:id/audio` e chama a `POST /api/musics/:id/plays` quando o som começa, uma vez por audição. A página `/historico` atualiza a lista depois de cada reprodução registrada.
 
@@ -227,4 +227,4 @@ O arquivo só é gravado depois dessas conferências. Se a música não chegar a
 - A API cria os dois planos, Individual e Família (`POST /api/plans`). O Família tem até 4 pessoas e é gerenciado por convites (veja [Planos](#planos)).
 - Cancelar é imediato, em `/meu-plano`. No plano familiar, todos perdem o acesso, mas as contas continuam.
 - Menor de idade só se cadastra por convite do plano familiar.
-- A restrição de conteúdo para menores ainda não existe, porque a API não marca conteúdo explícito.
+- **Conteúdo explícito (HU-09):** para quem não é maior de idade, a música com `isExplicit` some do catálogo, da busca, das playlists (também as de outras pessoas) e do histórico, e não toca nem registra reprodução (404). A idade é calculada a cada requisição, pelo dia de São Paulo, então quem faz 18 anos já vê a música no aniversário. Conta sem data de nascimento conta como menor. Admins da plataforma veem tudo, porque gerenciam o catálogo. O filtro é feito na API.

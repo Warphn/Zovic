@@ -57,9 +57,9 @@ class MockUserRepository implements UserRepository {
 
 function setup() {
   const users = new Map<number, UserProfile>([
-    [1, { id: 1, name: "Autor", birthdate: new Date("1990-01-01"), deletedAt: null }],
-    [2, { id: 2, name: "Denunciante", birthdate: new Date("1992-01-01"), deletedAt: null }],
-    [3, { id: 3, name: "Menor", birthdate: new Date("2010-01-01"), deletedAt: null }],
+    [1, { id: 1, name: "Autor", birthdate: "1990-01-01", deletedAt: null }],
+    [2, { id: 2, name: "Denunciante", birthdate: "1992-01-01", deletedAt: null }],
+    [3, { id: 3, name: "Menor", birthdate: "2010-01-01", deletedAt: null }],
   ]);
 
   const repo = new MockCommentRepository();

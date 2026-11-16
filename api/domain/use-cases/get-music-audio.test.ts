@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { Music } from "../entities/music.ts";
-import { ForbiddenError, NotFoundError } from "../errors/domain-error.ts";
+import { NotFoundError } from "../errors/domain-error.ts";
 import type { MusicRepository } from "../ports/music-repository.ts";
 import { GetMusicAudio } from "./get-music-audio.ts";
 
@@ -67,8 +67,8 @@ describe("GetMusicAudio", () => {
       .execute({ musicId: 1, birthdate: MINOR, now: NOW })
       .catch((error: unknown) => error);
 
-    expect(failure).toBeInstanceOf(ForbiddenError);
-    expect(failure).toHaveProperty("message", "Música explícita: só para maiores de 18 anos");
+    expect(failure).toBeInstanceOf(NotFoundError);
+    expect(failure).toHaveProperty("message", "Audio not found");
   });
 
   it("recusa a música explícita sem data de nascimento", async () => {
@@ -76,7 +76,13 @@ describe("GetMusicAudio", () => {
       .execute({ musicId: 1, birthdate: null, now: NOW })
       .catch((error: unknown) => error);
 
-    expect(failure).toBeInstanceOf(ForbiddenError);
+    expect(failure).toBeInstanceOf(NotFoundError);
+  });
+
+  it("entrega a música explícita para admin, mesmo sem data de nascimento", async () => {
+    const output = await makeUseCase(makeMusic(1, true)).execute({ musicId: 1, birthdate: null, now: NOW, isAdmin: true });
+
+    expect(output).toEqual({ audioFile: AUDIO_FILE });
   });
 
   it("entrega a música explícita para quem faz 18 anos hoje", async () => {

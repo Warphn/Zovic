@@ -2,7 +2,7 @@ import { Comment } from "../entities/comment.ts";
 import { ForbiddenError, NotFoundError } from "../errors/domain-error.ts";
 import type { CommentRepository } from "../ports/comment-repository.ts";
 import type { UserRepository } from "../ports/user-repository.ts";
-import { isUnderage } from "../shared/user-age.ts";
+import { isMinor } from "../shared/age.ts";
 
 export interface CreateCommentInput {
   userId: number;
@@ -36,7 +36,7 @@ export class CreateComment implements CreateCommentUseCase {
       throw new NotFoundError("User not found");
     }
 
-    if (isUnderage(user.birthdate)) {
+    if (isMinor(user.birthdate, new Date())) {
       throw new ForbiddenError("Underage users cannot comment");
     }
 

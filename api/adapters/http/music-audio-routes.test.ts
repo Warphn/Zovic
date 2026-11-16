@@ -176,7 +176,7 @@ describe("GET /musics/:id/audio", () => {
     const minor = await createSubscriber("menor-cache");
     await pool.query('UPDATE "user" SET birthdate = $1 WHERE id = $2', [MINOR_BIRTHDATE, minor.id]);
 
-    expect((await getAudio(explicitMusic, minor.cookie, { "If-None-Match": etag })).status).toBe(403);
+    expect((await getAudio(explicitMusic, minor.cookie, { "If-None-Match": etag })).status).toBe(404);
     expect((await getAudio(explicitMusic, null, { "If-None-Match": etag })).status).toBe(401);
   });
 
@@ -186,7 +186,7 @@ describe("GET /musics/:id/audio", () => {
 
     const res = await getAudio(explicitMusic, minor.cookie);
 
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ message: "Música explícita: só para maiores de 18 anos" });
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ message: "Audio not found" });
   });
 });

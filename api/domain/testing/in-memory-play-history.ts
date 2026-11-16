@@ -15,6 +15,7 @@ interface Listen {
 interface CatalogMusic {
   name: string;
   isAvailable: boolean;
+  isExplicit?: boolean;
 }
 
 /** Fake do port para os testes de domínio: agrupa por música e ordena como a consulta real. */
@@ -23,8 +24,10 @@ export class InMemoryPlayHistory implements PlayHistory {
   readonly listens: Listen[] = [];
   readonly catalog = new Map<number, CatalogMusic>();
 
-  listForUser(userId: number): Promise<HistoryEntry[]> {
-    const ownPlays = this.plays.filter((play) => play.userId === userId);
+  listForUser(userId: number, includeExplicit: boolean): Promise<HistoryEntry[]> {
+    const ownPlays = this.plays.filter(
+      (play) => play.userId === userId && (includeExplicit || !this.catalog.get(play.musicId)!.isExplicit),
+    );
     const entries = this.latestByMusic(ownPlays.map((play) => ({ musicId: play.musicId, at: play.playedAt }))).map(
       ({ musicId, at }) => ({ ...this.entryBase(musicId), lastPlayedAt: at.toISOString() }),
     );

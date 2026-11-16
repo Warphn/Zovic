@@ -12,6 +12,7 @@ import { ReorderPlaylistMusics } from "./reorder-playlist-musics.ts";
 
 const ANA = 1;
 const [ONDA, RESSACA, MARESIA, FORA_DO_CATALOGO] = [10, 11, 12, 99];
+const adult = { birthdate: "1995-03-12", now: new Date("2026-11-06T15:00:00Z") };
 
 function setup() {
   const playlists = new InMemoryPlaylistRepository();
@@ -52,7 +53,7 @@ describe("LikeMusic e UnlikeMusic", () => {
     await like.execute({ userId: ANA, musicId: MARESIA });
 
     const likedSongs = await ensure.execute({ userId: ANA });
-    expect(musicIds(await musics.list(likedSongs.id))).toEqual([MARESIA, RESSACA, ONDA]);
+    expect(musicIds(await musics.list(likedSongs.id, true))).toEqual([MARESIA, RESSACA, ONDA]);
   });
 
   it("curtir de novo não duplica nem muda a ordem", async () => {
@@ -63,7 +64,7 @@ describe("LikeMusic e UnlikeMusic", () => {
     await like.execute({ userId: ANA, musicId: ONDA });
 
     const likedSongs = await ensure.execute({ userId: ANA });
-    expect(musicIds(await musics.list(likedSongs.id))).toEqual([RESSACA, ONDA]);
+    expect(musicIds(await musics.list(likedSongs.id, true))).toEqual([RESSACA, ONDA]);
   });
 
   it("curtir música fora do catálogo dá NotFoundError", async () => {
@@ -80,7 +81,7 @@ describe("LikeMusic e UnlikeMusic", () => {
     await unlike.execute({ userId: ANA, musicId: RESSACA });
 
     const likedSongs = await ensure.execute({ userId: ANA });
-    expect(await musics.list(likedSongs.id)).toEqual([]);
+    expect(await musics.list(likedSongs.id, true)).toEqual([]);
   });
 });
 
@@ -107,11 +108,11 @@ describe("Músicas Curtidas nas outras telas", () => {
     const add = new AddMusicToPlaylist(playlists, musics);
     const reorder = new ReorderPlaylistMusics(playlists, musics);
 
-    expect(await failure(add.execute({ userId: ANA, playlistId: likedSongs.id, musicId: MARESIA }))).toBeInstanceOf(
+    expect(await failure(add.execute({ userId: ANA, playlistId: likedSongs.id, musicId: MARESIA, ...adult }))).toBeInstanceOf(
       BusinessRuleError,
     );
     expect(
-      await failure(reorder.execute({ userId: ANA, playlistId: likedSongs.id, musicIds: [ONDA, RESSACA] })),
+      await failure(reorder.execute({ userId: ANA, playlistId: likedSongs.id, musicIds: [ONDA, RESSACA], ...adult })),
     ).toBeInstanceOf(BusinessRuleError);
   });
 });

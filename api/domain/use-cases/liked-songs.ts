@@ -66,6 +66,7 @@ export class UnlikeMusic implements UnlikeMusicUseCase {
 
   async execute({ userId, musicId }: LikedMusicInput): Promise<void> {
     const likedSongs = await this.playlists.findLikedSongs(userId);
-    if (likedSongs) await this.musics.remove(likedSongs.id, musicId);
+    // Descurtir sempre funciona, mesmo a explícita que a conta não vê mais (HU-09).
+    if (likedSongs) await this.musics.remove(likedSongs.id, musicId, true);
   }
 }

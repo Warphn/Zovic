@@ -1,7 +1,7 @@
 import { NotFoundError } from "../errors/domain-error.ts";
 import type { CommentRepository } from "../ports/comment-repository.ts";
 import type { UserRepository } from "../ports/user-repository.ts";
-import { isUnderage } from "../shared/user-age.ts";
+import { isMinor } from "../shared/age.ts";
 
 export interface ListMusicCommentsInput {
   viewerId: number;
@@ -36,7 +36,7 @@ export class ListMusicComments implements ListMusicCommentsUseCase {
     }
 
     // Regra: menores de idade (ou birthdate vazio) não têm visualização de comentários
-    if (isUnderage(viewer.birthdate)) {
+    if (isMinor(viewer.birthdate, new Date())) {
       return [];
     }
 
