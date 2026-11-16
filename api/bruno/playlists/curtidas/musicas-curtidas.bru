@@ -1,0 +1,18 @@
+meta {
+  name: A música A está no topo
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{likedSongsId}}/musics
+  body: none
+  auth: none
+}
+
+tests {
+  test("a música A é a primeira", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("musicA"));
+  });
+}

@@ -20,9 +20,38 @@ export class InMemoryPlaylistRepository implements PlaylistRepository {
     return this.lastId;
   }
 
+  // Como o banco: os membros só entram na criação; depois, mudam por addMember e removeMember
   async save(playlist: Playlist): Promise<void> {
     this.saveCount += 1;
-    this.rows.set(playlist.id, copy(playlist));
+    const stored = this.rows.get(playlist.id);
+    const data = playlist.toData();
+    this.rows.set(playlist.id, Playlist.restore(stored ? { ...data, members: stored.members } : data));
+  }
+
+  async addMember(playlistId: number, userId: number): Promise<void> {
+    const stored = this.rows.get(playlistId);
+    if (!stored || stored.isMember(userId)) return;
+    stored.addMember(userId);
+  }
+
+  async findLikedSongs(userId: number): Promise<Playlist | null> {
+    const likedSongs = [...this.rows.values()].find(
+      (playlist) => playlist.isLikedSongs && playlist.toData().likedByUserId === userId,
+    );
+    return likedSongs ? copy(likedSongs) : null;
+  }
+
+  async createLikedSongs(playlist: Playlist): Promise<Playlist> {
+    const existing = await this.findLikedSongs(playlist.toData().likedByUserId ?? 0);
+    if (existing) return existing;
+    await this.save(playlist);
+    return copy(playlist);
+  }
+
+  async removeMember(playlistId: number, userId: number): Promise<void> {
+    const stored = this.rows.get(playlistId);
+    if (!stored || !stored.isMember(userId) || stored.isAdmin(userId)) return;
+    stored.removeMember(userId);
   }
 
   async findById(id: number): Promise<Playlist | null> {

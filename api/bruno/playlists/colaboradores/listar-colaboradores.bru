@@ -1,0 +1,24 @@
+meta {
+  name: Listar colaboradores
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/collaborators
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const bruno = res.getBody().find((collaborator) => !collaborator.isOwner);
+  if (bruno) bru.setVar("collaboratorId", bruno.userId);
+}
+
+tests {
+  test("responde 200 com o dono primeiro e sem email", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].isOwner).to.equal(true);
+    expect(res.getBody()[0]).to.have.all.keys("userId", "name", "isOwner");
+  });
+}

@@ -1,0 +1,17 @@
+meta {
+  name: Descurtir a música A
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/me/liked-musics/{{musicA}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

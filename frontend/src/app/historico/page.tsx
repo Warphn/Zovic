@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import Header from "@/components/header"
 import { PauseIcon, PlayIcon } from "@/components/icons"
@@ -63,7 +64,7 @@ function HistoryList() {
   const { data: entries, isPending, error } = useHistory()
   const catalogTracks = useCatalogTracks()
   const playback = usePlayback()
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [queued, setQueued] = React.useState<string | null>(null)
 
   if (error) {
@@ -104,6 +105,7 @@ function HistoryList() {
                   {/* Beside the row, never inside it: the row is a button of its own */}
                   <AddToQueueButton track={track} onResult={setQueued} />
                   <TrackLikeButton trackId={track.id} />
+                  <AddToPlaylistMenu musicId={entry.musicId} title={entry.name} onResult={setQueued} />
                 </>
               ) : (
                 <UnavailableRow entry={entry} />

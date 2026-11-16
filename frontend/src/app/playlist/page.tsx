@@ -1,5 +1,6 @@
 "use client"
 
+import { PlaylistMark } from "@/components/playlist-mark"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -18,7 +19,6 @@ import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
 import {
   MAX_PLAYLIST_NAME_LENGTH,
   type PlaylistData,
-  getPlaylistInitials,
   useMyPlaylistsData,
 } from "@/lib/playlist-store"
 import { GRID_BREAKPOINTS, GRID_COLS, usePlaylistLayouts } from "@/lib/playlist-layout"
@@ -266,7 +266,7 @@ export default function PlaylistPage() {
                         )}
                         style={{ backgroundColor: playlist.color }}
                       >
-                        {getPlaylistInitials(playlist.name)}
+                        <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={16} />
                       </div>
 
                       <div className="pointer-events-none min-w-0 flex-1">
@@ -298,7 +298,7 @@ export default function PlaylistPage() {
                         <span className="pointer-events-none w-14 text-right font-mono text-xs text-muted-foreground">
                           {playlist.isPrivate ? "Privada" : "Pública"}
                         </span>
-                        {playlist.canEdit && (
+                        {playlist.canManage && !playlist.isLikedSongs && (
                           <button
                             type="button"
                             onClick={(e) => handleDeletePlaylist(playlist.id, e)}
@@ -364,7 +364,7 @@ export default function PlaylistPage() {
                       {/* Art: the initials */}
                       <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-center">
                         <span className="text-6xl leading-none font-medium tracking-[-0.03em] @xs:text-7xl @lg:text-8xl">
-                          {getPlaylistInitials(playlist.name)}
+                          <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={64} />
                         </span>
                       </div>
 
@@ -385,7 +385,7 @@ export default function PlaylistPage() {
                         className="absolute inset-0 z-20 rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-current"
                       />
 
-                      {playlist.canEdit && (
+                      {playlist.canManage && !playlist.isLikedSongs && (
                         <button
                           type="button"
                           onClick={(e) => handleDeletePlaylist(playlist.id, e)}

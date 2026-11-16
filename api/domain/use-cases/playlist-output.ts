@@ -1,6 +1,9 @@
 import type { Playlist } from "../entities/playlist.ts";
 
-/** Playlist como sai dos use cases, vista por um usuário: `isAdmin` diz se ele pode editá-la e apagá-la. */
+/**
+ * Playlist como sai dos use cases, vista por um usuário: `isAdmin` diz se ele é o dono (edita,
+ * apaga e gerencia os colaboradores), e `canEditMusics` se ele mexe nas músicas (dono ou colaborador).
+ */
 export interface PlaylistOutput {
   id: number;
   name: string;
@@ -8,6 +11,9 @@ export interface PlaylistOutput {
   color: string | null;
   createdAt: string;
   isAdmin: boolean;
+  canEditMusics: boolean;
+  /** A Músicas Curtidas da conta (HU-34): só muda pela curtida. */
+  isLikedSongs: boolean;
 }
 
 export function toPlaylistOutput(playlist: Playlist, viewerId: number): PlaylistOutput {
@@ -18,5 +24,7 @@ export function toPlaylistOutput(playlist: Playlist, viewerId: number): Playlist
     color: playlist.color,
     createdAt: playlist.createdAt.toISOString(),
     isAdmin: playlist.isAdmin(viewerId),
+    canEditMusics: playlist.isMember(viewerId),
+    isLikedSongs: playlist.isLikedSongs,
   };
 }

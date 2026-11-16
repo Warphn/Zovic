@@ -1,0 +1,26 @@
+meta {
+  name: Adicionar colaborador
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/collaborators
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "bruno.andrade@zovic.test"
+  }
+}
+
+tests {
+  test("responde 201 com o dono e o Bruno", function () {
+    expect(res.getStatus()).to.equal(201);
+    const names = res.getBody().map((collaborator) => collaborator.name);
+    expect(res.getBody()[0].isOwner).to.equal(true);
+    expect(names).to.include("Bruno Andrade");
+  });
+}
