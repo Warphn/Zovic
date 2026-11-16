@@ -11,7 +11,7 @@ Como no Spotify, toda conta tem uma playlist fixa "Músicas Curtidas". Curtir um
 - Toda conta tem exatamente uma "Músicas Curtidas". Ela é privada, e a conta é a dona.
 - Ela não pode ser renomeada, nem mudar de visibilidade ou de cor, nem ser excluída, nem receber colaboradores.
 - Uma música só entra pela curtida. Ela não aparece no menu "Adicionar à playlist", e a API recusa pôr música nela por outra rota.
-- Tirar uma música dela pela página da playlist também descurte a música.
+- Quem tira uma música dela é o coração. Na página dela, o botão de tirar dá lugar ao menu "Adicionar à playlist", que não lista a própria Músicas Curtidas (mudança pedida pelo Victor na conferência da tela).
 - A ordem é da curtida mais recente para a mais antiga. Reordenar fica desligado na tela e é recusado pela API.
 - Ela aparece primeiro em "Minhas playlists", com visual próprio (coração).
 
@@ -20,7 +20,7 @@ Como no Spotify, toda conta tem uma playlist fixa "Músicas Curtidas". Curtir um
 1. Dado uma conta nova, quando ela abre "Minhas playlists", então "Músicas Curtidas" aparece primeiro, vazia.
 2. Dado uma música, quando o assinante a curte, então ela entra no topo de "Músicas Curtidas". Quando ele descurte, ela sai.
 3. Dado "Músicas Curtidas", quando o dono tenta renomear, excluir, reordenar, pôr música pelo menu ou adicionar colaborador, então o pedido é recusado.
-4. Dado uma música em "Músicas Curtidas", quando o dono a tira pela página da playlist, então ela também deixa de estar curtida.
+4. Dado uma música em "Músicas Curtidas", quando o dono a descurte na página da playlist, então ela sai da playlist, e o menu da linha oferece as outras playlists, sem a própria Músicas Curtidas.
 
 ## Abordagens consideradas
 

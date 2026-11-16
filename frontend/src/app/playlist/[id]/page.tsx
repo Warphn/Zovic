@@ -6,8 +6,6 @@ import { useParams } from "next/navigation"
 import Header from "@/components/header"
 import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PlaylistMark } from "@/components/playlist-mark"
-import { useSession } from "@/lib/auth/client"
-import { useLikedTracks } from "@/lib/likes-store"
 import { RecordSleeve } from "@/components/record-sleeve"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { TrackLikeButton } from "@/components/track-like-button"
@@ -36,6 +34,7 @@ import {
   usePlaylistData,
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -62,9 +61,6 @@ export default function PlaylistDetailPage() {
   const updatePlaylist = useUpdatePlaylist()
   const reorderTracks = useReorderPlaylistMusics()
   const removeTrack = useRemovePlaylistMusic()
-  // The heart of this browser (HU-20); taking a track out of "Músicas Curtidas" unlikes it too
-  const { data: session } = useSession()
-  const { setLike } = useLikedTracks(Number(session?.user.id) || 0)
 
   // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
   // color is previewed on the page; nothing is saved until "Salvar"
@@ -72,7 +68,7 @@ export default function PlaylistDetailPage() {
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = React.useState(false)
   const numericPlaylistId = parsePlaylistId(playlistId)
   const [searchQuery, setSearchQuery] = React.useState("")
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [queued, setQueued] = React.useState<string | null>(null)
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
@@ -105,16 +101,10 @@ export default function PlaylistDetailPage() {
     updatePlaylist.mutate({ id, input: changes }, { onSuccess: closeEditor })
   }
 
-  // Takes a track out of the playlist (owner and collaborators); the list refreshes from the API.
-  // Out of "Músicas Curtidas" (HU-34) it is also unliked, so the heart and the playlist agree.
+  // Takes a track out of the playlist (owner and collaborators); the list refreshes from the API
   const handleRemoveTrack = (trackId: string) => {
     const id = parsePlaylistId(playlistId)
-    if (id === null) return
-    // Unliked only once the API took it out, so a failed removal keeps the heart
-    removeTrack.mutate(
-      { id, musicId: Number(trackId) },
-      { onSuccess: () => currentPlaylist?.isLikedSongs && setLike(trackId, false) }
-    )
+    if (id !== null) removeTrack.mutate({ id, musicId: Number(trackId) })
   }
 
   // Reorder tracks (drag in the tracklist): saved for everyone who sees the playlist. The list
@@ -395,7 +385,13 @@ export default function PlaylistDetailPage() {
                           <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
                         </span>
 
-                        {currentPlaylist.canEditMusics && (
+                        {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
+                            playlists instead; the menu never lists "Músicas Curtidas" itself */}
+                        {currentPlaylist.isLikedSongs ? (
+                          <span className="pointer-events-auto">
+                            <AddToPlaylistMenu musicId={Number(track.id)} title={track.title} onResult={setQueued} />
+                          </span>
+                        ) : currentPlaylist.canEditMusics && (
                           <button
                             type="button"
                             onClick={() => handleRemoveTrack(track.id)}
