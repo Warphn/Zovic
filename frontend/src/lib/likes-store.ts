@@ -90,5 +90,17 @@ export function useLikedTracks(userId: number) {
     [userId],
   )
 
-  return { isLiked, toggleLike }
+  // An explicit state instead of a toggle: the "Músicas Curtidas" page (HU-34) shows a heart from
+  // the API, which this browser may not have yet
+  const setLike = React.useCallback(
+    (trackId: string, liked: boolean) => {
+      if (likedIds.has(trackId) !== liked) toggleLike(trackId)
+    },
+    [likedIds, toggleLike],
+  )
+
+  // In the order they were liked, oldest first
+  const likedTrackIds = React.useMemo(() => allLikes[String(userId)] ?? [], [allLikes, userId])
+
+  return { isLiked, toggleLike, setLike, likedTrackIds }
 }

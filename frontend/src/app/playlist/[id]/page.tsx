@@ -64,7 +64,7 @@ export default function PlaylistDetailPage() {
   const removeTrack = useRemovePlaylistMusic()
   // The heart of this browser (HU-20); taking a track out of "Músicas Curtidas" unlikes it too
   const { data: session } = useSession()
-  const { isLiked, toggleLike } = useLikedTracks(Number(session?.user.id) || 0)
+  const { setLike } = useLikedTracks(Number(session?.user.id) || 0)
 
   // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
   // color is previewed on the page; nothing is saved until "Salvar"
@@ -110,8 +110,11 @@ export default function PlaylistDetailPage() {
   const handleRemoveTrack = (trackId: string) => {
     const id = parsePlaylistId(playlistId)
     if (id === null) return
-    removeTrack.mutate({ id, musicId: Number(trackId) })
-    if (currentPlaylist?.isLikedSongs && isLiked(trackId)) toggleLike(trackId)
+    // Unliked only once the API took it out, so a failed removal keeps the heart
+    removeTrack.mutate(
+      { id, musicId: Number(trackId) },
+      { onSuccess: () => currentPlaylist?.isLikedSongs && setLike(trackId, false) }
+    )
   }
 
   // Reorder tracks (drag in the tracklist): saved for everyone who sees the playlist. The list
@@ -389,7 +392,7 @@ export default function PlaylistDetailPage() {
                         </span>
 
                         <span className="pointer-events-auto">
-                          <TrackLikeButton trackId={track.id} />
+                          <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
                         </span>
 
                         {currentPlaylist.canEditMusics && (
