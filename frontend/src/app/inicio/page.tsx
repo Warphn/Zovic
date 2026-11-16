@@ -12,6 +12,7 @@ import { TrackTitle } from "@/components/track-title"
 import { useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useHistory } from "@/lib/api/history"
+import { useRecommendations } from "@/lib/api/recommendations"
 import { useSession } from "@/lib/auth/client"
 import { formatDuration } from "@/lib/format-duration"
 import {
@@ -222,6 +223,44 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
   )
 }
 
+function Recommended({ onAnnounce }: { onAnnounce: Announce }) {
+  const { data: musics, isPending, error } = useRecommendations()
+  const playback = usePlayback()
+  const tracks = React.useMemo(() => (musics ?? []).map(musicToTrack), [musics])
+
+  return (
+    <HomeSection id="inicio-recomendadas" title="Recomendadas para você">
+      <QueryStatus isPending={isPending} errorMessage={error ? apiErrorMessage(error) : null} />
+      <ul className="space-y-1">
+        {(musics ?? []).map((music, index) => {
+          const track = tracks[index]
+          if (!track) return null
+          return (
+            <li key={music.id}>
+              <TrackRow
+                musicId={music.id}
+                isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === track.id}
+                onClick={() => playOrToggleQueueTrack(tracks, index)}
+                title={music.name}
+                actions={
+                  <>
+                    <AddToQueueButton track={track} onResult={onAnnounce} />
+                    <TrackCommentsButton track={track} />
+                    <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
+                  </>
+                }
+              >
+                <TrackText title={music.name} musicId={music.id} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
+              </TrackRow>
+            </li>
+          )
+        })}
+      </ul>
+    </HomeSection>
+  )
+}
+
 const NEW_PLAYLIST_CARD_CLASSES =
   "flex aspect-square items-center justify-center rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
 
@@ -335,6 +374,7 @@ export default function HomePage() {
             </div>
           )}
 
+          <Recommended onAnnounce={announce} />
           <YourPlaylists />
           <NewestAlbums />
           <Genres />
