@@ -43,8 +43,8 @@ export class InMemoryPlaylistMusics implements PlaylistMusics {
     return Promise.resolve("added");
   }
 
-  addToTop(playlistId: number, musicId: number, now: Date = new Date()): Promise<AddMusicResult> {
-    if (!this.catalog.has(musicId)) return Promise.resolve("music_not_found");
+  addToTop(playlistId: number, musicId: number, includeExplicit: boolean, now: Date = new Date()): Promise<AddMusicResult> {
+    if (!this.isVisible(musicId, includeExplicit)) return Promise.resolve("music_not_found");
     const inPlaylist = this.entries.filter((entry) => entry.playlistId === playlistId);
     if (inPlaylist.some((entry) => entry.musicId === musicId)) return Promise.resolve("already_in_playlist");
 

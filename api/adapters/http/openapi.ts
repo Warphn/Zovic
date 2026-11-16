@@ -218,7 +218,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Curte uma música: põe no topo da Músicas Curtidas",
         description:
-          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
+          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Para menor de idade, uma música explícita responde 404, como se não existisse. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
         operationId: "likeMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -230,7 +230,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "404": {
-            description: "Música inexistente ou removida",
+            description: "Música inexistente, removida ou explícita para menor de idade",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
           },
           "500": { $ref: "#/components/responses/InternalError" },
@@ -282,7 +282,7 @@ export const openApiDocument = {
         tags: ["Histórico"],
         summary: "Lista as músicas já ouvidas",
         description:
-          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A marca é registrada por `POST /api/musics/{id}/listens`.",
+          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. Menor de idade não vê as explícitas. A marca é registrada por `POST /api/musics/{id}/listens`.",
         operationId: "listMyListenedMusics",
         security: [{ cookieAuth: [] }],
         responses: {
