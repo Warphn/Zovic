@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import Header from "@/components/header"
 import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
+import { PlaylistMark } from "@/components/playlist-mark"
 import { RecordSleeve } from "@/components/record-sleeve"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { TrackLikeButton } from "@/components/track-like-button"
@@ -27,13 +28,13 @@ import {
 import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
 import { Label } from "@/components/ui/label"
 import {
-  getPlaylistInitials,
   MAX_PLAYLIST_NAME_LENGTH,
   type PlaylistDraft,
   playlistChanges,
   usePlaylistData,
 } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { SortableList } from "@/components/sortable-list"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
@@ -67,7 +68,7 @@ export default function PlaylistDetailPage() {
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = React.useState(false)
   const numericPlaylistId = parsePlaylistId(playlistId)
   const [searchQuery, setSearchQuery] = React.useState("")
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [queued, setQueued] = React.useState<string | null>(null)
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
@@ -100,7 +101,7 @@ export default function PlaylistDetailPage() {
     updatePlaylist.mutate({ id, input: changes }, { onSuccess: closeEditor })
   }
 
-  // Takes a track out of the playlist (admins only); the list refreshes from the API
+  // Takes a track out of the playlist (owner and collaborators); the list refreshes from the API
   const handleRemoveTrack = (trackId: string) => {
     const id = parsePlaylistId(playlistId)
     if (id !== null) removeTrack.mutate({ id, musicId: Number(trackId) })
@@ -186,14 +187,14 @@ export default function PlaylistDetailPage() {
 
             <div className="flex items-center gap-2">
               {/* The owner and the collaborators see who builds it (HU-19) */}
-              {currentPlaylist.canEditMusics && numericPlaylistId !== null && (
+              {currentPlaylist.canEditMusics && !currentPlaylist.isLikedSongs && numericPlaylistId !== null && (
                 <Button variant="outline" size="lg" onClick={() => setIsCollaboratorsOpen(true)} className="gap-2">
                   <UserIcon size={16} className="text-muted-foreground" />
                   Colaboradores
                 </Button>
               )}
-              {/* Only the owner can edit it; the API refuses anyone else */}
-              {currentPlaylist.canManage && (
+              {/* Only the owner can edit it, and never "Músicas Curtidas"; the API refuses anyone else */}
+              {currentPlaylist.canManage && !currentPlaylist.isLikedSongs && (
                 <Button variant="outline" size="lg" onClick={openEditor} className="gap-2">
                   <PencilIcon size={16} className="text-muted-foreground" />
                   Editar playlist
@@ -214,7 +215,7 @@ export default function PlaylistDetailPage() {
           <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
             <RecordSleeve
               color={color}
-              initials={getPlaylistInitials(currentPlaylist.name)}
+              initials={<PlaylistMark name={currentPlaylist.name} isLikedSongs={currentPlaylist.isLikedSongs} iconSize={56} />}
               playing={isPlaying}
             />
 
@@ -273,7 +274,11 @@ export default function PlaylistDetailPage() {
               </p>
             ) : tracks.length === 0 ? (
               // An empty playlist: the owner and collaborators get the way to fill it, everyone else just an empty list
-              currentPlaylist.canEditMusics && (
+              currentPlaylist.isLikedSongs ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Curta uma música no coração para ela aparecer aqui.
+                </p>
+              ) : currentPlaylist.canEditMusics && (
                 <p className="py-12 text-center text-sm text-muted-foreground">
                   Busque uma música e use{" "}
                   <Link href="/busca" className="text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground">
@@ -290,7 +295,7 @@ export default function PlaylistDetailPage() {
                 ids={filteredTracks.map((t) => t.id)}
                 rowHeight={56}
                 gap={2}
-                disabled={isSearching || !currentPlaylist.canEditMusics}
+                disabled={isSearching || !currentPlaylist.canEditMusics || Boolean(currentPlaylist.isLikedSongs)}
                 onReorder={handleReorderTracks}
               >
                 {filteredTracks.map((track) => {
@@ -307,7 +312,7 @@ export default function PlaylistDetailPage() {
                       className={cn(
                         // Pointer: a click plays the track; grabbing only while a drag is held
                         "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
-                        !isSearching && currentPlaylist.canEditMusics && "active:cursor-grabbing",
+                        !isSearching && currentPlaylist.canEditMusics && !currentPlaylist.isLikedSongs && "active:cursor-grabbing",
                         isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
                       )}
                     >
@@ -377,10 +382,16 @@ export default function PlaylistDetailPage() {
                         </span>
 
                         <span className="pointer-events-auto">
-                          <TrackLikeButton trackId={track.id} />
+                          <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
                         </span>
 
-                        {currentPlaylist.canEditMusics && (
+                        {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
+                            playlists instead; the menu never lists "Músicas Curtidas" itself */}
+                        {currentPlaylist.isLikedSongs ? (
+                          <span className="pointer-events-auto">
+                            <AddToPlaylistMenu musicId={Number(track.id)} title={track.title} onResult={setQueued} />
+                          </span>
+                        ) : currentPlaylist.canEditMusics && (
                           <button
                             type="button"
                             onClick={() => handleRemoveTrack(track.id)}

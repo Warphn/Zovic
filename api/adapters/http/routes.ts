@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import type { AdminController, CatalogController } from "./admin-controller.ts";
 import type { CommentController } from "./comment-controller.ts";
 import type { HistoryController } from "./history-controller.ts";
+import type { LikedMusicsController } from "./liked-musics-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
 import type { SubscriptionController } from "./subscription-controller.ts";
@@ -10,6 +11,7 @@ import { validateInvitationToken } from "./middlewares/validate-invitation-token
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
 import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
+import { likedMusicParamsSchema } from "./schemas/liked-musics-schemas.ts";
 import { addCollaboratorSchema, playlistCollaboratorParamsSchema } from "./schemas/playlist-collaborators-schemas.ts";
 import {
   artistSchema,
@@ -42,10 +44,11 @@ export interface Controllers {
   comments: CommentController;
   subscriptions: SubscriptionController;
   history: HistoryController;
+  likedMusics: LikedMusicsController;
 }
 
 export function makeRouter(
-  { playlists, search, catalog, admin, comments, subscriptions, history }: Controllers,
+  { playlists, search, catalog, admin, comments, subscriptions, history, likedMusics }: Controllers,
   authenticate: RequestHandler,
   requireSubscription: RequestHandler,
 ): Router {
@@ -118,6 +121,11 @@ export function makeRouter(
   );
 
   router.get("/history", subscriberOnly, history.list);
+
+  // Músicas Curtidas (HU-34): o coração do front põe e tira a música até a HU-20 levar a curtida para a API
+  const likedMusicId = validateParams(likedMusicParamsSchema);
+  router.put("/me/liked-musics/:id", subscriberOnly, likedMusicId, likedMusics.like);
+  router.delete("/me/liked-musics/:id", subscriberOnly, likedMusicId, likedMusics.unlike);
 
   router.get("/search", subscriberOnly, validateQuery(searchQuerySchema), search.search);
 

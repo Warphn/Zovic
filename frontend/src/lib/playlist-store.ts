@@ -30,6 +30,8 @@ export interface PlaylistData {
   canManage?: boolean
   /** Whether the viewer puts, takes out and reorders its musics: the owner and the collaborators (HU-19). */
   canEditMusics?: boolean
+  /** The account's "Músicas Curtidas" (HU-34): fed by the heart, never renamed, deleted or reordered. */
+  isLikedSongs?: boolean
 }
 
 /** Cover color of a playlist that has none. */
@@ -228,6 +230,7 @@ export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = [])
     tracks: musics.map(musicToTrack),
     canManage: playlist.isAdmin,
     canEditMusics: playlist.canEditMusics,
+    isLikedSongs: playlist.isLikedSongs,
   }
 }
 

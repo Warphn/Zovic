@@ -2,6 +2,7 @@ import { BusinessRuleError } from "../errors/domain-error.ts";
 import type { PlaylistMusicItem, PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
 import { findMusicEditablePlaylist } from "./find-music-editable-playlist.ts";
+import { LIKED_SONGS_ONLY_THROUGH_LIKES } from "./liked-songs.ts";
 
 export interface ReorderPlaylistMusicsInput {
   userId: number;
@@ -29,7 +30,13 @@ export class ReorderPlaylistMusics implements ReorderPlaylistMusicsUseCase {
   ) {}
 
   async execute(input: ReorderPlaylistMusicsInput): Promise<ReorderPlaylistMusicsOutput> {
-    await findMusicEditablePlaylist(this.playlists, input.playlistId, input.userId, "Only playlist members can reorder musics");
+    const playlist = await findMusicEditablePlaylist(
+      this.playlists,
+      input.playlistId,
+      input.userId,
+      "Only playlist members can reorder musics",
+    );
+    if (playlist.isLikedSongs) throw new BusinessRuleError(LIKED_SONGS_ONLY_THROUGH_LIKES);
 
     if (new Set(input.musicIds).size !== input.musicIds.length) {
       throw new BusinessRuleError("The new order cannot repeat a music");

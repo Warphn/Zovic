@@ -34,6 +34,20 @@ export class InMemoryPlaylistRepository implements PlaylistRepository {
     stored.addMember(userId);
   }
 
+  async findLikedSongs(userId: number): Promise<Playlist | null> {
+    const likedSongs = [...this.rows.values()].find(
+      (playlist) => playlist.isLikedSongs && playlist.toData().likedByUserId === userId,
+    );
+    return likedSongs ? copy(likedSongs) : null;
+  }
+
+  async createLikedSongs(playlist: Playlist): Promise<Playlist> {
+    const existing = await this.findLikedSongs(playlist.toData().likedByUserId ?? 0);
+    if (existing) return existing;
+    await this.save(playlist);
+    return copy(playlist);
+  }
+
   async removeMember(playlistId: number, userId: number): Promise<void> {
     const stored = this.rows.get(playlistId);
     if (!stored || !stored.isMember(userId) || stored.isAdmin(userId)) return;

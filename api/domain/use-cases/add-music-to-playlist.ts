@@ -2,6 +2,7 @@ import { BusinessRuleError, NotFoundError } from "../errors/domain-error.ts";
 import type { PlaylistMusicItem, PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
 import { findMusicEditablePlaylist } from "./find-music-editable-playlist.ts";
+import { LIKED_SONGS_ONLY_THROUGH_LIKES } from "./liked-songs.ts";
 
 export interface AddMusicToPlaylistInput {
   userId: number;
@@ -25,7 +26,13 @@ export class AddMusicToPlaylist implements AddMusicToPlaylistUseCase {
   ) {}
 
   async execute(input: AddMusicToPlaylistInput): Promise<AddMusicToPlaylistOutput> {
-    await findMusicEditablePlaylist(this.playlists, input.playlistId, input.userId, "Only playlist members can add musics");
+    const playlist = await findMusicEditablePlaylist(
+      this.playlists,
+      input.playlistId,
+      input.userId,
+      "Only playlist members can add musics",
+    );
+    if (playlist.isLikedSongs) throw new BusinessRuleError(LIKED_SONGS_ONLY_THROUGH_LIKES);
 
     const result = await this.musics.add(input.playlistId, input.musicId, input.now);
     if (result === "music_not_found") throw new NotFoundError("Music not found");

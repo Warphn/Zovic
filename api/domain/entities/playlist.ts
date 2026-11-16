@@ -14,6 +14,8 @@ export interface ExistingPlaylistData {
     members: PlaylistMember[];
     createdAt: Date;
     deletedAt: Date|null;
+    /** Só na Músicas Curtidas (HU-34): a conta dona dela. Nula ou ausente nas playlists comuns. */
+    likedByUserId?: number|null;
 }
 
 export interface NewPlaylistData {
@@ -27,6 +29,9 @@ export interface NewPlaylistData {
 
 export class Playlist {
     static readonly MAX_NAME_LENGTH = 150;
+    /** A playlist fixa de cada conta, que a curtida alimenta (HU-34). */
+    static readonly LIKED_SONGS_NAME = "Músicas Curtidas";
+    static readonly LIKED_SONGS_COLOR = "#D33A2C";
 
     private constructor( private readonly input: ExistingPlaylistData ) {}
 
@@ -39,6 +44,20 @@ export class Playlist {
             members: [{ userId: input.creatorId, isAdmin: true }],
             createdAt: input.now ?? new Date(),
             deletedAt: null
+        });
+    }
+
+    /** A Músicas Curtidas da conta: privada, com nome e cor fixos, e a conta como dona. */
+    static createLikedSongs({ id, userId, now }: { id: number; userId: number; now?: Date }): Playlist {
+        return new Playlist({
+            id,
+            name: Playlist.LIKED_SONGS_NAME,
+            isPrivate: true,
+            color: Playlist.LIKED_SONGS_COLOR,
+            members: [{ userId, isAdmin: true }],
+            createdAt: now ?? new Date(),
+            deletedAt: null,
+            likedByUserId: userId,
         });
     }
 
@@ -68,6 +87,11 @@ export class Playlist {
 
     get createdAt(): Date {
         return new Date(this.input.createdAt);
+    }
+
+    /** A Músicas Curtidas só muda pela curtida: não é renomeada, apagada nem compartilhada. */
+    get isLikedSongs(): boolean {
+        return this.input.likedByUserId !== undefined && this.input.likedByUserId !== null;
     }
 
     get deletedAt(): Date|null {
@@ -109,6 +133,7 @@ export class Playlist {
 
     addMember(userId: number): void {
         this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
         if (this.isMember(userId)) {
             throw new BusinessRuleError("User is already a member of this playlist");
         }
@@ -139,22 +164,32 @@ export class Playlist {
 
     rename(name: string): void {
         this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
         this.input.name = Playlist.validateName(name);
     }
 
     changeColor(color: string | null): void {
         this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
         this.input.color = Playlist.normalizeHexColor(color);
     }
 
     setPrivate(isPrivate: boolean): void {
         this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
         this.input.isPrivate = isPrivate;
     }
 
     delete(now: Date = new Date()): void {
         this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
         this.input.deletedAt = now;
+    }
+
+    private ensureNotLikedSongs(): void {
+        if (this.isLikedSongs) {
+            throw new BusinessRuleError("Músicas Curtidas cannot be changed");
+        }
     }
 
     private ensureNotDeleted(): void {

@@ -16,6 +16,8 @@ export interface Playlist {
   isAdmin: boolean
   /** Whether the viewer puts, takes out and reorders the musics: the owner and the collaborators (HU-19). */
   canEditMusics: boolean
+  /** The account's "Músicas Curtidas" (HU-34): it only changes through likes. */
+  isLikedSongs: boolean
 }
 
 /** Someone who builds the playlist, as GET /playlists/:id/collaborators lists them (no email). */
@@ -76,6 +78,13 @@ export const playlistsApi = {
   /** The owner removes a collaborator; a collaborator passes their own id to leave. */
   removeCollaborator: (id: number, userId: number) =>
     request<void>(`/playlists/${id}/collaborators/${userId}`, { method: "DELETE" }),
+}
+
+// /api/me/liked-musics (HU-34): the heart puts the music on top of "Músicas Curtidas" and takes it out,
+// until the like itself (HU-20) is kept by the API
+export const likedMusicsApi = {
+  like: (musicId: number) => request<void>(`/me/liked-musics/${musicId}`, { method: "PUT" }),
+  unlike: (musicId: number) => request<void>(`/me/liked-musics/${musicId}`, { method: "DELETE" }),
 }
 
 export const playlistKeys = {
