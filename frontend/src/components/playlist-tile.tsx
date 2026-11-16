@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getContrastTextColor } from "@/components/color-picker"
-import { type PlaylistData, getPlaylistInitials } from "@/lib/playlist-store"
+import { PlaylistMark } from "@/components/playlist-mark"
+import type { PlaylistData } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 
 // A playlist's sleeve in small, as on /playlist: its color, the printed frame, the initials and
@@ -20,7 +21,7 @@ export function PlaylistTile({ playlist }: { playlist: PlaylistData }) {
     >
       <span aria-hidden="true" className="pointer-events-none absolute inset-2.5 rounded-sm border border-current opacity-25" />
       <span aria-hidden="true" className="relative text-5xl leading-none font-medium tracking-[-0.03em]">
-        {getPlaylistInitials(playlist.name)}
+        <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={44} />
       </span>
       <span className="relative truncate text-sm font-medium">{playlist.name}</span>
     </Link>

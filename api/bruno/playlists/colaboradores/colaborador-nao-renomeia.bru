@@ -1,0 +1,23 @@
+meta {
+  name: Colaborador não renomeia
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Invasão"
+  }
+}
+
+tests {
+  test("responde 403: só o dono renomeia", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}

@@ -29,6 +29,7 @@ import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
 import { makeRequireSubscription } from "../adapters/http/middlewares/require-subscription.ts";
 import { makeHistoryController } from "../adapters/http/history-controller.ts";
+import { makeLikedMusicsController } from "../adapters/http/liked-musics-controller.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
 import { makeRouter } from "../adapters/http/routes.ts";
 import { makeSearchController } from "../adapters/http/search-controller.ts";
@@ -41,6 +42,7 @@ import { DeletePlaylist } from "../domain/use-cases/delete-playlist.ts";
 import { GetMusicAudio } from "../domain/use-cases/get-music-audio.ts";
 import { GetPlaylist } from "../domain/use-cases/get-playlist.ts";
 import { ListMusicComments } from "../domain/use-cases/list-music-comments.ts";
+import { EnsureLikedSongs, LikeMusic, UnlikeMusic } from "../domain/use-cases/liked-songs.ts";
 import { ListMyHistory } from "../domain/use-cases/list-my-history.ts";
 import { ListMyListenedMusics } from "../domain/use-cases/list-my-listened-musics.ts";
 import { MarkMusicListened } from "../domain/use-cases/mark-music-listened.ts";
@@ -49,6 +51,7 @@ import { ListPlaylistMusics } from "../domain/use-cases/list-playlist-musics.ts"
 import { ManageCatalog } from "../domain/use-cases/manage-catalog.ts";
 import { ManageUsers } from "../domain/use-cases/manage-users.ts";
 import { RemoveMusicFromPlaylist } from "../domain/use-cases/remove-music-from-playlist.ts";
+import { AddCollaborator, ListCollaborators, RemoveCollaborator } from "../domain/use-cases/playlist-collaborators.ts";
 import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musics.ts";
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
@@ -70,6 +73,8 @@ export function composeApp(
   db: Pool = pool,
   storages: MediaStorages = { audio: new LocalFileStorage(config.audioDir), covers: new LocalFileStorage(config.coverDir) },
 ) {
+  const userRepository = new PostgresUserRepository(db);
+  const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const playlistRepository = new PostgresPlaylistRepository(db);
   const playlistMusics = new PostgresPlaylistMusics(db);
   const playlistController = makePlaylistController({
@@ -82,6 +87,9 @@ export function composeApp(
     addMusicToPlaylist: new AddMusicToPlaylist(playlistRepository, playlistMusics),
     removeMusicFromPlaylist: new RemoveMusicFromPlaylist(playlistRepository, playlistMusics),
     reorderPlaylistMusics: new ReorderPlaylistMusics(playlistRepository, playlistMusics),
+    listCollaborators: new ListCollaborators(playlistRepository, userRepository),
+    addCollaborator: new AddCollaborator(playlistRepository, userRepository, subscriptionRepository),
+    removeCollaborator: new RemoveCollaborator(playlistRepository),
   });
   const searchController = makeSearchController(new SearchCatalog(new PostgresSearchQuery(db)));
 
@@ -106,7 +114,6 @@ export function composeApp(
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
   const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);
 
-  const userRepository = new PostgresUserRepository(db);
   const commentRepository = new PostgresCommentRepository(db);
   const createComment = new CreateComment(commentRepository, userRepository);
   const listComments = new ListMusicComments(commentRepository, userRepository);
@@ -114,7 +121,6 @@ export function composeApp(
   const reportComment = new ReportComment(commentRepository, userRepository);
   const commentController = makeCommentController(createComment, listComments, deleteComment, reportComment);
 
-  const subscriptionRepository = new PostgresSubscriptionRepository(db);
   const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({
     subscribePlan: new SubscribePlan(subscriptionRepository),
@@ -145,6 +151,10 @@ export function composeApp(
       comments: commentController,
       subscriptions: subscriptionController,
       history: historyController,
+      likedMusics: makeLikedMusicsController({
+        likeMusic: new LikeMusic(new EnsureLikedSongs(playlistRepository), playlistMusics),
+        unlikeMusic: new UnlikeMusic(playlistRepository, playlistMusics),
+      }),
     },
     makeAuthenticate(auth),
     makeRequireSubscription(getMySubscription),

@@ -73,13 +73,10 @@ describe("AddMusicToPlaylist", () => {
     expect(ids(output)).toEqual([ONDA, RESSACA, MARESIA]);
   });
 
-  it("recusa quem não é admin: 403 para quem vê a playlist, 404 na privada de outra pessoa", async () => {
+  it("recusa quem não é membro: 403 para quem vê a playlist, 404 na privada de outra pessoa", async () => {
     const publica = await setup();
     const privada = await setup({ isPrivate: true });
 
-    expect(await failure(publica.add.execute({ userId: BRUNO, playlistId: publica.playlistId, musicId: MARESIA }))).toBeInstanceOf(
-      ForbiddenError,
-    );
     expect(await failure(publica.add.execute({ userId: CARLA, playlistId: publica.playlistId, musicId: MARESIA }))).toBeInstanceOf(
       ForbiddenError,
     );
@@ -106,11 +103,11 @@ describe("RemoveMusicFromPlaylist", () => {
     expect(ids(await musics.list(playlistId))).toEqual([RESSACA]);
   });
 
-  it("dá NotFoundError para música que não está na playlist e ForbiddenError para quem não é admin", async () => {
+  it("dá NotFoundError para música que não está na playlist e ForbiddenError para quem não é membro", async () => {
     const { remove, playlistId } = await setup();
 
     expect(await failure(remove.execute({ userId: ANA, playlistId, musicId: MARESIA }))).toBeInstanceOf(NotFoundError);
-    expect(await failure(remove.execute({ userId: BRUNO, playlistId, musicId: ONDA }))).toBeInstanceOf(ForbiddenError);
+    expect(await failure(remove.execute({ userId: CARLA, playlistId, musicId: ONDA }))).toBeInstanceOf(ForbiddenError);
   });
 });
 
@@ -133,9 +130,22 @@ describe("ReorderPlaylistMusics", () => {
     expect(ids(await musics.list(playlistId))).toEqual([ONDA, RESSACA]);
   });
 
-  it("recusa quem não é admin com ForbiddenError", async () => {
+  it("recusa quem não é membro com ForbiddenError", async () => {
     const { reorder, playlistId } = await setup();
 
-    expect(await failure(reorder.execute({ userId: BRUNO, playlistId, musicIds: [RESSACA, ONDA] }))).toBeInstanceOf(ForbiddenError);
+    expect(await failure(reorder.execute({ userId: CARLA, playlistId, musicIds: [RESSACA, ONDA] }))).toBeInstanceOf(ForbiddenError);
+  });
+});
+
+// HU-19: o colaborador (membro sem ser admin) mexe nas músicas como o dono
+describe("Colaborador da playlist", () => {
+  it("deixa o colaborador pôr, tirar e reordenar músicas", async () => {
+    const { add, remove, reorder, musics, playlistId } = await setup();
+
+    await add.execute({ userId: BRUNO, playlistId, musicId: MARESIA });
+    await remove.execute({ userId: BRUNO, playlistId, musicId: ONDA });
+    await reorder.execute({ userId: BRUNO, playlistId, musicIds: [MARESIA, RESSACA] });
+
+    expect(ids(await musics.list(playlistId))).toEqual([MARESIA, RESSACA]);
   });
 });

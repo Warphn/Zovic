@@ -91,8 +91,8 @@
 ### Tarefa 2: Banco, rotas e documentação da API
 
 **Arquivos:**
-- Criar: `db/migrations/V261115_120000__Adiciona_evento_de_musica_ouvida.sql`, com `ALTER TYPE user_event_type ADD VALUE 'music_listened';` e um cabeçalho no estilo das outras migrações.
-- Criar: `db/migrations/V261115_120100__Aceita_musica_no_evento_de_ouvida.sql`, que derruba `user_event_music_id_check` e recria a restrição com `event_type IN ('music_play', 'music_skip', 'music_listened')`. Fica separada porque o Postgres não deixa usar um valor de enum na mesma transação em que ele foi criado.
+- Criar: `db/migrations/V261116_090000__Adiciona_evento_de_musica_ouvida.sql`, com `ALTER TYPE user_event_type ADD VALUE 'music_listened';` e um cabeçalho no estilo das outras migrações.
+- Criar: `db/migrations/V261116_090100__Aceita_musica_no_evento_de_ouvida.sql`, que derruba `user_event_music_id_check` e recria a restrição com `event_type IN ('music_play', 'music_skip', 'music_listened')`. Fica separada porque o Postgres não deixa usar um valor de enum na mesma transação em que ele foi criado.
 - Modificar: `api/adapters/db/postgres-play-history.ts`, com `markListened` e `listListenedForUser`.
 - Criar: `api/adapters/http/schemas/listened-schemas.ts`, com `musicIdParamsSchema = Joi.object({ id: positiveIntParam("id") })` e `markListenedSchema = Joi.object({ playedSeconds: Joi.number().min(0).required() })`.
 - Modificar: `api/adapters/http/history-controller.ts`, que ganha `markListened` (responde 204) e `listListened` (responde JSON). `HistoryUseCases` ganha `markMusicListened` e `listMyListenedMusics`.

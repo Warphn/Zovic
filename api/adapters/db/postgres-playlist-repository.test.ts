@@ -65,19 +65,56 @@ describe("PostgresPlaylistRepository", () => {
     expect(await members(playlist.id)).toEqual([{ user_id: userId, is_admin: true }]);
   });
 
-  it("atualiza a playlist e regrava os membros ao salvar de novo", async () => {
+  it("atualiza a playlist ao salvar de novo, e os membros mudam por addMember e removeMember", async () => {
     const playlist = await newPlaylist(userId);
     await repository.save(playlist);
 
     playlist.rename("Renamed");
-    playlist.addMember(otherUserId);
     await repository.save(playlist);
+    await repository.addMember(playlist.id, otherUserId);
 
     expect(await countPlaylists(playlist.id)).toBe(1);
     expect(await members(playlist.id)).toEqual([
       { user_id: userId, is_admin: true },
       { user_id: otherUserId, is_admin: false },
     ]);
+
+    await repository.removeMember(playlist.id, otherUserId);
+    expect(await members(playlist.id)).toEqual([{ user_id: userId, is_admin: true }]);
+  });
+
+  // HU-19: salvar uma cópia carregada antes não pode desfazer quem entrou ou saiu depois
+  it("salvar uma cópia antiga não muda os membros", async () => {
+    const playlist = await newPlaylist(userId);
+    await repository.save(playlist);
+    await repository.addMember(playlist.id, otherUserId);
+    const staleWithMember = (await repository.findById(playlist.id))!;
+    const staleWithoutMember = await newPlaylist(userId);
+    await repository.save(staleWithoutMember);
+    const staleOwnerOnly = (await repository.findById(staleWithoutMember.id))!;
+
+    // Quem entrou depois da cópia continua; quem saiu depois da cópia não volta
+    await repository.addMember(staleWithoutMember.id, otherUserId);
+    staleOwnerOnly.rename("Renomeada com cópia antiga");
+    await repository.save(staleOwnerOnly);
+    await repository.removeMember(playlist.id, otherUserId);
+    staleWithMember.rename("Renomeada com cópia antiga");
+    await repository.save(staleWithMember);
+
+    expect(await members(staleWithoutMember.id)).toEqual([
+      { user_id: userId, is_admin: true },
+      { user_id: otherUserId, is_admin: false },
+    ]);
+    expect(await members(playlist.id)).toEqual([{ user_id: userId, is_admin: true }]);
+  });
+
+  it("removeMember nunca tira o dono", async () => {
+    const playlist = await newPlaylist(userId);
+    await repository.save(playlist);
+
+    await repository.removeMember(playlist.id, userId);
+
+    expect(await members(playlist.id)).toEqual([{ user_id: userId, is_admin: true }]);
   });
 
   it("traduz usuário inexistente em NotFoundError sem deixar playlist órfã", async () => {
@@ -107,6 +144,7 @@ describe("PostgresPlaylistRepository", () => {
       ],
       createdAt: new Date("2026-01-01T12:00:00Z"),
       deletedAt: null,
+      likedByUserId: null,
     });
   });
 

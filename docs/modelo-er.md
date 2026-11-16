@@ -30,6 +30,7 @@ erDiagram
     user ||--o{ user_event : "gera"
     musics |o--o{ user_event : "tocada em"
     user ||--o{ playlist_user : "participa"
+    user |o--o| playlists : "curte em"
     playlists ||--|{ playlist_user : "tem membros"
     user ||--o{ music_user : "salva"
     musics ||--o{ music_user : "salva por"
@@ -187,6 +188,7 @@ erDiagram
         char color "#RRGGBB"
         timestamptz deleted_at
         timestamptz created_at
+        int liked_by_user_id FK, UK "só na Músicas Curtidas"
     }
     music_playlist {
         int music_id PK, FK
@@ -279,7 +281,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
-| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional |
+| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional. `liked_by_user_id` só é preenchida na Músicas Curtidas (HU-34) e guarda a conta dona dela; é única, então cada conta tem uma só. Apagar a conta apaga a playlist. |
 | `playlist_user` | Os membros de cada playlist e quem é admin | Toda playlist tem ao menos um membro |
 | `music_playlist` | As músicas de cada playlist, com a posição e a data em que entraram | `position` é única em cada playlist e pode ter buracos. A unicidade só é conferida no `COMMIT`, para a reordenação trocar as posições num `UPDATE` só. |
 

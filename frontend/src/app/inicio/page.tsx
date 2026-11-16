@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { AlbumCard } from "@/components/album-card"
 import Header from "@/components/header"
@@ -164,6 +165,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
                   </>
                 }
               >
@@ -206,6 +208,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <AddToPlaylistMenu musicId={entry.musicId} title={entry.name} onResult={onAnnounce} />
                   </>
                 }
               >
@@ -296,7 +299,7 @@ function Genres() {
 
 export default function HomePage() {
   const history = useHistory()
-  // What the last "Adicionar à fila" did, announced to screen readers too
+  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
   const [announcement, setAnnouncement] = React.useState<{ message: string; ok: boolean } | null>(null)
   const announce = React.useCallback<Announce>((message, ok) => setAnnouncement({ message, ok }), [])
   // A new account has no history: the chart then takes the reading width on its own

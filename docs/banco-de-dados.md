@@ -56,7 +56,7 @@ Exemplo: `V261013_143000__Cria_tabela_de_letras.sql`, criada em 13/10/2026 às 1
 - **Nunca edite uma migration que já está no `main`.** O Flyway guarda um checksum de cada arquivo aplicado e se recusa a subir se ele mudar. Para corrigir algo, crie uma migration nova.
 - **Dados de teste não entram em migration**, porque as migrations rodam também em produção. Os dados fictícios ficam no [seed](#seed).
 - **O Better Auth não altera o banco.** Nunca rode `better-auth migrate`. Se um recurso novo do Better Auth precisar de tabelas ou colunas, gere o SQL de referência com `bunx @better-auth/cli generate` e escreva uma migration com as convenções do projeto.
-- **Valor novo de enum e o uso dele vão em migrations separadas.** O Postgres não deixa usar um valor de enum na mesma transação em que ele foi criado, e o Flyway roda cada migration numa transação. Por isso o `music_listened` entrou em `V261115_120000__Adiciona_evento_de_musica_ouvida.sql`, e o CHECK que o usa entrou na seguinte, `V261115_120100__Aceita_musica_no_evento_de_ouvida.sql`.
+- **Valor novo de enum e o uso dele vão em migrations separadas.** O Postgres não deixa usar um valor de enum na mesma transação em que ele foi criado, e o Flyway roda cada migration numa transação. Por isso o `music_listened` entrou em `V261116_090000__Adiciona_evento_de_musica_ouvida.sql`, e o CHECK que o usa entrou na seguinte, `V261116_090100__Aceita_musica_no_evento_de_ouvida.sql`.
 - **Extensões do Postgres também entram por migration**, com `CREATE EXTENSION IF NOT EXISTS`. Hoje há uma só, a `unaccent`, que a busca usa para não diferenciar acentos (`V261103_151718__Ativa_unaccent_para_busca.sql`).
 
 ## Prisma

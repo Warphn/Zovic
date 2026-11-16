@@ -116,21 +116,30 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /api/playlists` | Lista as playlists de que o usuário é membro, da mais nova para a mais antiga |
+| `GET /api/playlists` | Lista as playlists de que o usuário é membro: a Músicas Curtidas primeiro (criada aqui se ainda não existe), depois as outras da mais nova para a mais antiga |
+| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404. |
+| `DELETE /api/me/liked-musics/:id` | Descurte a música: ela sai da Músicas Curtidas. Responde 204 mesmo se ela não estava lá. |
 | `POST /api/playlists` | Cria uma playlist. Quem cria vira o primeiro membro, como admin. |
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
-| `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só para admins da playlist (os outros recebem 403). |
-| `DELETE /api/playlists/:id` | Apaga com soft delete. Só para admins da playlist. |
+| `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só para o dono (admin) da playlist; os outros, colaboradores inclusive, recebem 403. |
+| `DELETE /api/playlists/:id` | Apaga com soft delete. Só para o dono da playlist. |
 | `GET /api/playlists/:id/musics` | Músicas da playlist, na ordem dela. Quem vê a playlist vê as músicas. |
-| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Só para admins. A mesma música não entra duas vezes (409). |
-| `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Só para admins. |
-| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Só para admins. |
+| `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Para o dono e os colaboradores. A mesma música não entra duas vezes (409). |
+| `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Para o dono e os colaboradores. |
+| `DELETE /api/playlists/:id/musics/:musicId` | Tira uma música da playlist. Para o dono e os colaboradores. |
+| `GET /api/playlists/:id/collaborators` | O dono e os colaboradores (`{ userId, name, isOwner }`), com o dono primeiro e os outros pelo nome. Quem vê a playlist vê a lista, sem email. |
+| `POST /api/playlists/:id/collaborators` | Adiciona um colaborador pelo email (`{ email }`). Só o dono. A conta precisa existir (senão 404) e ter assinatura ativa (senão 409); quem já está na playlist recebe 409. |
+| `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
 | `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5) |
 
-**Ordem das músicas.** A ordem é da playlist, então todos os membros veem a mesma. Ela fica em `music_playlist.position`. Para reordenar, o cliente manda a lista inteira. Se faltar ou sobrar uma música (porque outro admin mexeu na playlist depois que a lista foi carregada), a API responde 409 e não muda nada. As rotas que mudam as músicas respondem com a lista atualizada.
+**Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Na tela, quem tira uma música dela é o coração: a página da Músicas Curtidas troca o botão de tirar pelo menu "Adicionar à playlist", que nunca lista a própria Músicas Curtidas. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
+
+**Dono e colaboradores (HU-19).** Quem cria a playlist é o dono (admin em `playlist_user`). O dono adiciona colaboradores pelo email, e eles entram direto, sem convite, como membros sem `is_admin`. O colaborador põe, tira e reordena as músicas, mas não renomeia, não apaga e não gerencia colaboradores. A playlist aparece em `GET /api/playlists` para todos os membros. As respostas de playlist trazem `isAdmin` (é o dono) e `canEditMusics` (é dono ou colaborador). Quem sai ou é removido de uma playlist privada deixa de vê-la.
+
+**Ordem das músicas.** A ordem é da playlist, então todos os membros veem a mesma. Ela fica em `music_playlist.position`. Para reordenar, o cliente manda a lista inteira. Se faltar ou sobrar uma música (porque o dono ou um colaborador mexeu na playlist depois que a lista foi carregada), a API responde 409 e não muda nada. As rotas que mudam as músicas respondem com a lista atualizada.
 
 **Busca.**
 

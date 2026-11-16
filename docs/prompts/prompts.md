@@ -229,3 +229,21 @@ O Carlos aprovou o plano e cada PR antes de abrir. A IA conferiu a página no na
 | 3 | Manda bala, implementa aqui mesmo. | O caso de uso [`mark-music-listened.ts`](../../api/domain/use-cases/mark-music-listened.ts) (`LISTENED_THRESHOLD_SECONDS = 30`) e a lista das ouvidas, com testes; as duas migrações e as rotas `POST /api/musics/:id/listens` e `GET /api/history/listened`, com testes de integração; a soma do tempo de som em [`listen-tracker.ts`](../../frontend/src/lib/listen-tracker.ts), com testes; o fone de "Já ouvida" em [`track-title.tsx`](../../frontend/src/components/track-title.tsx), nas listas de faixas; e a aba "Já ouvidas" no [histórico](../../frontend/src/app/historico/page.tsx) |
 
 O Victor escolheu deixar a contagem com o front e aprovou a spec e o plano antes da implementação. A IA escolheu o evento em `user_event` (sem tabela nova), o ícone de fone e a recusa com 409 para 30 segundos ou menos.
+
+### 15/11/2026: playlist colaborativa (#93, HU-19)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Manda bala no 93. | O levantamento do que a história toca: o colaborador já cabia em `playlist_user` como membro sem `is_admin`, então não há migração, e a mudança central é de permissão (músicas para todo membro, o resto só para o dono). Resultado: a proposta de rotas, casos de uso e diálogo |
+| 2 | Aprovo. | A [spec](../superpowers/specs/2026-11-15-playlist-colaborativa-design.md) e o [plano](../superpowers/plans/2026-11-15-playlist-colaborativa.md); o `findMusicEditablePlaylist` e os casos de uso de [`playlist-collaborators.ts`](../../api/domain/use-cases/playlist-collaborators.ts), com testes; as rotas `…/collaborators`, com testes de integração; o `canEditMusics` na resposta; e o [diálogo de colaboradores](../../frontend/src/components/playlist-collaborators-dialog.tsx) na página da playlist |
+
+O Victor aprovou o design antes da implementação. A IA escolheu exigir assinatura ativa de quem entra como colaborador, mostrar só o nome (sem email) na lista e separar a busca por email numa interface própria (`UserEmailLookup`).
+
+### 15/11/2026: playlist Músicas Curtidas (#136, HU-34)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Vamos adicionar uma feature parecida com a do Spotify: todo usuário terá uma playlist padrão criada chamada "Músicas Curtidas" e toda vez que o usuário der like em uma música, ela será automaticamente adicionada a essa playlist. | O levantamento mostrou que a curtida ainda não existe na API (só no `localStorage`) e que a HU-20 já pede uma lista "Curtidas". Resultado: duas formas de construir (playlist de verdade ou "virtual" a partir dos votos) e as regras da playlist especial |
+| 2 | Vamos só deixar nosso lado pronto. / Vamos com 1, as regras estão excelentes. / Manda bala. | A [spec](../superpowers/specs/2026-11-15-musicas-curtidas-design.md), a issue #136 e o [plano](../superpowers/plans/2026-11-15-musicas-curtidas.md); a coluna `playlists.liked_by_user_id`; as regras na entidade `Playlist` e os casos de uso de [`liked-songs.ts`](../../api/domain/use-cases/liked-songs.ts), com testes; as rotas `/me/liked-musics/:id`, com testes de integração; e o coração, o encarte com coração e as regras na página da playlist no front |
+
+O Victor escolheu a playlist de verdade e aprovou as regras e a issue. A IA escolheu criar a playlist sob demanda (sem gancho no cadastro), a coluna única `liked_by_user_id` e a cor fixa.
