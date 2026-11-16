@@ -2,8 +2,11 @@
 
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
+import { TrackLikeButton } from "@/components/track-like-button"
 import { apiUrl } from "@/lib/api/client"
 import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
 import { seekTo, setVolume, toggleMute, useAudioPlayer } from "@/lib/audio-player"
@@ -20,6 +23,12 @@ const HIDDEN_ON = new Set(["/", "/entrar", "/cadastro"])
 
 // The arrow keys on the progress bar move this many seconds
 const SEEK_STEP_SECONDS = 5
+
+// How long "Adicionar à playlist"'s outcome takes the artist's place under the title
+const ACTION_RESULT_VISIBLE_MS = 3000
+
+// Catalog tracks have the music's numeric id; only they can be liked, commented or saved
+const CATALOG_TRACK_ID = /^\d+$/
 
 // Where the queue button returns to when it closes the player: the page it was opened from.
 // Module state, so it survives the client-side navigation; after a reload the fallback is used.
@@ -116,6 +125,14 @@ export function PlaybackBar({
   const totalSec = duration ?? track?.durationSec ?? 0
   const progressPercent = totalSec > 0 ? Math.min(100, (currentTime / totalSec) * 100) : 0
   const volumePercent = Math.round(volume * 100)
+  const hasTrackActions = Boolean(track) && !isUnavailable && CATALOG_TRACK_ID.test(track?.id ?? "")
+
+  // The outcome of the last "Adicionar à playlist", shown for a moment where the artist is
+  const [actionResult, setActionResult] = React.useState<{ message: string; ok: boolean } | null>(null)
+  React.useEffect(() => {
+    const timer = actionResult ? setTimeout(() => setActionResult(null), ACTION_RESULT_VISIBLE_MS) : undefined
+    return () => clearTimeout(timer)
+  }, [actionResult])
 
   const toggleQueue = () => {
     if (queueOpen) {
@@ -156,8 +173,29 @@ export function PlaybackBar({
         )}
         <div className="min-w-0 hidden sm:block">
           <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
-          <div className="text-[11px] text-muted-foreground truncate">{isUnavailable ? "Indisponível" : track?.artist}</div>
+          {actionResult ? (
+            <div className={cn("text-[11px] truncate", actionResult.ok ? "text-muted-foreground" : "text-destructive")}>
+              {actionResult.message}
+            </div>
+          ) : (
+            <div className="text-[11px] text-muted-foreground truncate">{isUnavailable ? "Indisponível" : track?.artist}</div>
+          )}
         </div>
+        {/* Always rendered, so screen readers hear the outcome even on phones, where the title is hidden */}
+        <output className="sr-only">{actionResult?.message}</output>
+        {/* The current track's actions, as in the track lists. From 1024 px only: below that, the
+            quarter-width column would leave the title no room */}
+        {hasTrackActions && track && (
+          <div className="hidden lg:flex items-center shrink-0">
+            <TrackLikeButton trackId={track.id} />
+            <TrackCommentsButton track={track} />
+            <AddToPlaylistMenu
+              musicId={Number(track.id)}
+              title={track.title}
+              onResult={(message, ok) => setActionResult({ message, ok })}
+            />
+          </div>
+        )}
       </div>
 
       {/* Center: Playback Controls & Progress Scrubber */}

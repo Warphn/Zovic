@@ -20,14 +20,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="pt-BR" className={cn("h-full antialiased", "font-sans", inter.variable)}>
       <body className="min-h-full flex flex-col">
         <QueryProvider>
-          {/* One comments panel for the whole app: any track list opens it from its 💬 button */}
-          <CommentsPanelProvider>{children}</CommentsPanelProvider>
+          {/* One comments panel for the whole app: any track list, and the playback bar, opens it from its 💬 button */}
+          <CommentsPanelProvider>
+            {children}
+            {/* Every page but the landing and sign-in/sign-up ends with the playback bar */}
+            <AppPlaybackBar />
+          </CommentsPanelProvider>
           {/* The sound plays on every page, the landing and sign-in included, so it never stops on a page change */}
           <PlaybackAudio />
           {/* The hearts this browser already had go into "Músicas Curtidas" (HU-34), once per session */}
           <LikedSongsSync />
-          {/* Every page but the landing and sign-in/sign-up ends with the playback bar */}
-          <AppPlaybackBar />
         </QueryProvider>
       </body>
     </html>
