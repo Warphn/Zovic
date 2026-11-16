@@ -1,10 +1,11 @@
+import type * as React from "react"
 import { getContrastTextColor } from "@/components/color-picker"
 import { Record } from "@/components/playback-marks"
 import { cn } from "@/lib/utils"
 
 // A record sleeve in the playlist color, with the printed frame around its artwork and the
 // playlist initials. `className` sets its size and position.
-export function Sleeve({ color, initials, className }: { color: string; initials: string; className?: string }) {
+export function Sleeve({ color, initials, className }: { color: string; initials: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -24,7 +25,7 @@ export function Sleeve({ color, initials, className }: { color: string; initials
 
 // The playlist cover as a record sleeve, with the record half out of it. While the playlist
 // plays, the record slides a little further out and turns
-export function RecordSleeve({ color, initials, playing }: { color: string; initials: string; playing: boolean }) {
+export function RecordSleeve({ color, initials, playing }: { color: string; initials: React.ReactNode; playing: boolean }) {
   return (
     <div className="relative h-48 w-64 shrink-0 md:h-52 md:w-72">
       {/* Record */}

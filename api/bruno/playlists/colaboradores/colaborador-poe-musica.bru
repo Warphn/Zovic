@@ -1,0 +1,23 @@
+meta {
+  name: Colaborador põe música
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/musics
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "musicId": {{musicB}}
+  }
+}
+
+tests {
+  test("responde 201 ou 409 (a música já estava na playlist de outra execução)", function () {
+    expect([201, 409]).to.include(res.getStatus());
+  });
+}
