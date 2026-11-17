@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { ValidationError } from "../errors/domain-error.ts";
-import { coverImageType, MAX_COVER_BYTES, validateCover } from "./cover-image.ts";
+import { coverImageType, MAX_COVER_BYTES, validateCover, versionedImageUrl } from "./cover-image.ts";
 
 const JPEG_HEADER = [0xff, 0xd8, 0xff, 0xe0];
 const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -49,5 +49,17 @@ describe("validateCover", () => {
 
   it("recusa um arquivo que não é JPEG, PNG nem WebP", () => {
     expect(() => validateCover(file(MP3_HEADER))).toThrow(new ValidationError("Cover image must be a JPEG, PNG or WebP"));
+  });
+});
+
+describe("validateCover com a mensagem de outra imagem", () => {
+  it("usa a mensagem dada quando nenhuma imagem veio", () => {
+    expect(() => validateCover(null, "Artist image is required")).toThrow(new ValidationError("Artist image is required"));
+  });
+});
+
+describe("versionedImageUrl", () => {
+  it("põe o nome do arquivo sem a extensão como versão", () => {
+    expect(versionedImageUrl("/api/playlists/3/cover", "0b1f.webp")).toBe("/api/playlists/3/cover?v=0b1f");
   });
 });

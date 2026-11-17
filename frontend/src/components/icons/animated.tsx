@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   SkipBack,
   SkipForward,
+  ThumbsDown,
   Volume1,
   Volume2,
   VolumeX,
@@ -121,6 +122,8 @@ export const ListPlusIcon = staticLucide(ListPlus)
 export const ListMinusIcon = staticLucide(ListMinus)
 // A music already listened to (HU-15)
 export const HeadphonesIcon = staticLucide(Headphones)
+export const ThumbsDownIcon = staticLucide(ThumbsDown)
+export const DislikeIcon = ThumbsDownIcon
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const Icon = level === "muted" ? VolumeX : level === "low" ? Volume1 : Volume2

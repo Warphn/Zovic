@@ -6,9 +6,9 @@ import { Music } from "../entities/music.ts";
 import { BusinessRuleError, NotFoundError, ValidationError } from "../errors/domain-error.ts";
 import type { AlbumRepository } from "../ports/album-repository.ts";
 import type { ArtistRepository } from "../ports/artist-repository.ts";
-import type { FileStorage } from "../ports/file-storage.ts";
 import type { GenreRepository } from "../ports/genre-repository.ts";
 import type { MusicRepository } from "../ports/music-repository.ts";
+import { InMemoryFileStorage } from "../testing/in-memory-file-storage.ts";
 import { ManageCatalog } from "./manage-catalog.ts";
 
 /** O erro com que a promessa rejeita; falha o teste se ela resolver. */
@@ -51,22 +51,6 @@ class InMemoryArtists extends InMemory<Artist> implements ArtistRepository {}
 class InMemoryGenres extends InMemory<Genre> implements GenreRepository {}
 class InMemoryAlbums extends InMemory<Album> implements AlbumRepository {}
 
-/** Guarda em memória o que foi gravado e o que foi removido, sem tocar no disco. */
-class FakeFileStorage implements FileStorage {
-  readonly saved = new Map<string, Uint8Array>();
-  readonly removed: string[] = [];
-
-  async save(bytes: Uint8Array, extension: string): Promise<string> {
-    const fileName = `file-${this.saved.size + 1}${extension}`;
-    this.saved.set(fileName, bytes);
-    return fileName;
-  }
-
-  async remove(fileName: string): Promise<void> {
-    this.removed.push(fileName);
-  }
-}
-
 /** Um MP3 mínimo para o domínio: só a tag ID3 do começo importa. */
 const MP3 = new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
@@ -75,8 +59,8 @@ let musics: InMemoryMusics;
 let artists: InMemoryArtists;
 let genres: InMemoryGenres;
 let albums: InMemoryAlbums;
-let audioStorage: FakeFileStorage;
-let coverStorage: FakeFileStorage;
+let audioStorage: InMemoryFileStorage;
+let coverStorage: InMemoryFileStorage;
 let catalog: ManageCatalog;
 
 beforeEach(async () => {
@@ -84,8 +68,8 @@ beforeEach(async () => {
   artists = new InMemoryArtists();
   genres = new InMemoryGenres();
   albums = new InMemoryAlbums();
-  audioStorage = new FakeFileStorage();
-  coverStorage = new FakeFileStorage();
+  audioStorage = new InMemoryFileStorage();
+  coverStorage = new InMemoryFileStorage();
   catalog = new ManageCatalog(musics, artists, genres, albums, audioStorage, coverStorage);
   for (const name of ["Chico Buarque", "Elis Regina", "Tom Jobim"]) {
     await artists.save(Artist.create({ id: await artists.nextId(), name }));
@@ -328,5 +312,70 @@ describe("ManageCatalog: artistas", () => {
 
   it("recusa nome em branco", async () => {
     expect(await rejection(catalog.createArtist("   "))).toBeInstanceOf(ValidationError);
+  });
+});
+
+// HU-36: a foto fica no mesmo armazenamento das capas
+describe("ManageCatalog: foto do artista", () => {
+  it("o artista novo vem sem foto", async () => {
+    expect(await catalog.createArtist("Lô Borges")).toMatchObject({ hasImage: false });
+  });
+
+  it("grava a foto com a extensão do tipo, sem expor o nome do arquivo", async () => {
+    const updated = await catalog.changeArtistImage(1, PNG);
+
+    expect(updated).toMatchObject({ id: 1, hasImage: true });
+    expect(updated).not.toHaveProperty("imageFile");
+    expect(artists.items.get(1)?.imageFile).toBe("file-1.png");
+  });
+
+  it("troca a foto e só então apaga a antiga", async () => {
+    await catalog.changeArtistImage(1, PNG);
+
+    await catalog.changeArtistImage(1, PNG);
+
+    expect(artists.items.get(1)?.imageFile).toBe("file-2.png");
+    expect(coverStorage.removed).toEqual(["file-1.png"]);
+  });
+
+  it("mantém a foto antiga quando a troca não é salva", async () => {
+    await catalog.changeArtistImage(1, PNG);
+    const failure = new Error("banco fora do ar");
+    artists.save = async () => {
+      throw failure;
+    };
+
+    expect(await rejection(catalog.changeArtistImage(1, PNG))).toBe(failure);
+    expect(coverStorage.removed).toEqual(["file-2.png"]);
+  });
+
+  it("recusa um arquivo que não é imagem, ou nenhum, sem gravar nada", async () => {
+    expect(await rejection(catalog.changeArtistImage(1, MP3))).toEqual(new ValidationError("Cover image must be a JPEG, PNG or WebP"));
+    expect(await rejection(catalog.changeArtistImage(1, null))).toEqual(new ValidationError("Artist image is required"));
+    expect(coverStorage.saved.size).toBe(0);
+    expect(artists.items.get(1)?.imageFile).toBeNull();
+  });
+
+  it("remove a foto e apaga o arquivo", async () => {
+    await catalog.changeArtistImage(1, PNG);
+
+    const updated = await catalog.removeArtistImage(1);
+
+    expect(updated).toMatchObject({ hasImage: false });
+    expect(artists.items.get(1)?.imageFile).toBeNull();
+    expect(coverStorage.removed).toEqual(["file-1.png"]);
+  });
+
+  it("remover a foto de quem não tem não é erro e não apaga nada", async () => {
+    expect(await catalog.removeArtistImage(1)).toMatchObject({ hasImage: false });
+    expect(coverStorage.removed).toEqual([]);
+  });
+
+  it("recusa artista inexistente ou removido sem gravar a foto", async () => {
+    await catalog.deleteArtist(2);
+
+    expect(await rejection(catalog.changeArtistImage(2, PNG))).toEqual(new NotFoundError("Artist not found"));
+    expect(await rejection(catalog.removeArtistImage(99))).toEqual(new NotFoundError("Artist not found"));
+    expect(coverStorage.saved.size).toBe(0);
   });
 });

@@ -27,10 +27,13 @@ export function coverImageType(bytes: Uint8Array): CoverImageType | null {
   return null;
 }
 
-/** Confere a capa e devolve a extensão com que ela deve ser guardada. */
-export function validateCover(bytes: Uint8Array | null): string {
+/**
+ * Confere a imagem (capa de álbum ou de playlist, foto de artista) e devolve a extensão com que ela
+ * deve ser guardada. `missingMessage` é o erro de quando nenhuma imagem veio.
+ */
+export function validateCover(bytes: Uint8Array | null, missingMessage = "Album must have a cover image"): string {
   if (bytes === null || bytes.length === 0) {
-    throw new ValidationError("Album must have a cover image");
+    throw new ValidationError(missingMessage);
   }
   if (bytes.length > MAX_COVER_BYTES) {
     throw new ValidationError("Cover image must be at most 2 MB");
@@ -40,4 +43,13 @@ export function validateCover(bytes: Uint8Array | null): string {
     throw new ValidationError("Cover image must be a JPEG, PNG or WebP");
   }
   return COVER_EXTENSIONS[type];
+}
+
+/**
+ * Endereço da imagem na API com a versão no fim (`?v=`): a versão é o nome do arquivo sem a
+ * extensão, que muda a cada troca. Assim o navegador guarda a imagem em cache sem nunca mostrar
+ * a antiga. O nome em si não é segredo (é um UUID).
+ */
+export function versionedImageUrl(path: string, fileName: string): string {
+  return `${path}?v=${fileName.slice(0, fileName.lastIndexOf("."))}`;
 }

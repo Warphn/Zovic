@@ -32,6 +32,8 @@ export interface PlaylistData {
   canEditMusics?: boolean
   /** The account's "Músicas Curtidas" (HU-34): fed by the heart, never renamed, deleted or reordered. */
   isLikedSongs?: boolean
+  /** API path of the cover image (HU-35); without one, the sleeve shows the color and the initials. */
+  coverUrl?: string | null
 }
 
 /** Cover color of a playlist that has none. */
@@ -231,6 +233,7 @@ export function toPlaylistData(playlist: Playlist, musics: PlaylistMusic[] = [])
     canManage: playlist.isAdmin,
     canEditMusics: playlist.canEditMusics,
     isLikedSongs: playlist.isLikedSongs,
+    coverUrl: playlist.coverUrl,
   }
 }
 

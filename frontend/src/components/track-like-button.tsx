@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { HeartIcon } from "@/components/icons"
 import { likedMusicsApi, playlistKeys } from "@/lib/api/playlists"
 import { useSession } from "@/lib/auth/client"
+import { useDislikedTracks } from "@/lib/dislikes-store"
 import { useLikedTracks } from "@/lib/likes-store"
 import { cn } from "@/lib/utils"
 
@@ -16,7 +17,9 @@ export function TrackLikeButton({ trackId, isInLikedSongs = false }: { trackId: 
   const { data: session } = useSession()
   const queryClient = useQueryClient()
   const userId = Number(session?.user.id)
-  const { isLiked, setLike } = useLikedTracks(Number.isFinite(userId) ? userId : 0)
+  const effectiveUserId = Number.isFinite(userId) ? userId : 0
+  const { isLiked, setLike } = useLikedTracks(effectiveUserId)
+  const { isDisliked, setDislike } = useDislikedTracks(effectiveUserId)
 
   if (!session?.user) return null
 
@@ -26,6 +29,9 @@ export function TrackLikeButton({ trackId, isInLikedSongs = false }: { trackId: 
   const toggle = () => {
     const nextLiked = !liked
     setLike(trackId, nextLiked)
+    if (nextLiked && isDisliked(trackId)) {
+      setDislike(trackId, false)
+    }
     if (!CATALOG_TRACK_ID.test(trackId)) return
     const musicId = Number(trackId)
     const request = nextLiked ? likedMusicsApi.like(musicId) : likedMusicsApi.unlike(musicId)

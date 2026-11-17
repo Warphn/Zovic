@@ -1,6 +1,6 @@
 # Zovic
 
-Plataforma de streaming de música feita para a disciplina de Engenharia de Software (Poli-USP) por 5 integrantes. A entrega final e a apresentação são em **24/11/2026**. Stack: API em Bun + Express + PostgreSQL (migrações Flyway em `db/migrations`, auth com Better Auth) e front em Next.js (`frontend/`).
+Plataforma de streaming de música feita para a disciplina de Engenharia de Software (Poli-USP) por 5 integrantes. A entrega final e a apresentação são em **01/12/2026**. Stack: API em Bun + Express + PostgreSQL (migrações Flyway em `db/migrations`, auth com Better Auth) e front em Next.js (`frontend/`).
 
 ## Organização do projeto (board, issues, branches e commits)
 
@@ -10,7 +10,7 @@ Esta seção vale para qualquer integrante que use o Claude para mexer no board,
 
 | Nível | Onde fica | Exemplo |
 | --- | --- | --- |
-| Milestone | "Entrega final" (24/11) | Toda issue nova entra nele |
+| Milestone | "Entrega final" (01/12) | Toda issue nova entra nele |
 | Épico | Issue com label `épico`. É uma seção do `main.pdf` | #75 Épico: Autenticação e assinaturas |
 | Funcionalidade | Issue com label `história`, sub-issue do épico. Contém as histórias | #86 Plano familiar (HU-04 a HU-07) |
 | História | Seção `#### HU-NN · Nome` dentro da funcionalidade | HU-05 · Convidar membros para o plano |
@@ -41,7 +41,7 @@ Como **papel**, quero ação, para benefício.
 - [ ] Dado um contexto, quando uma ação acontece, então um resultado verificável.
 ```
 
-- **IDs:** `HU-NN` é sequencial e único. Uma história nova recebe o próximo número livre (hoje, HU-33). Um ID nunca é reutilizado nem renumerado, mesmo se a história sair do escopo.
+- **IDs:** `HU-NN` é sequencial e único. Uma história nova recebe o próximo número livre (hoje, HU-39). Um ID nunca é reutilizado nem renumerado, mesmo se a história sair do escopo.
 - **Papéis:** use só os do glossário: visitante, usuário, assinante, gestor do plano, membro do plano e admin.
 - **Critérios:** cada um vira pelo menos um teste, unitário no domínio ou de integração na API. Marque o checkbox quando o teste existir ou o critério tiver sido conferido na tela.
 - **Mudança de regra:** edite a história na issue e avise o time. A issue é a fonte da verdade, e o documento de planejamento é só o histórico das decisões.

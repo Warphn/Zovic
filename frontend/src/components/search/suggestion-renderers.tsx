@@ -3,6 +3,7 @@
 import * as React from "react"
 import { SearchIcon } from "@/components/icons"
 import { getContrastTextColor } from "@/components/color-picker"
+import { CoverPhoto } from "@/components/cover-photo"
 import { getPlaylistInitials } from "@/lib/playlist-store"
 import { normalize, type SearchSuggestion, type SuggestionKind } from "@/lib/search/suggestions"
 import { cn } from "@/lib/utils"
@@ -50,17 +51,19 @@ function Row({ media, title, subtitle }: { media: React.ReactNode; title: React.
 }
 
 // A small sleeve, like the playlist page's: the cover color with the sleeve's printed frame
-// (a round one for artists, who have no sleeve)
-function Cover({ label, color, round }: { label: string; color: string; round?: boolean }) {
+// (a round one for artists, who have no sleeve). With an image (playlist cover or artist photo),
+// the image takes the place of the initials.
+function Cover({ label, color, round, imageUrl }: { label: string; color: string; round?: boolean; imageUrl?: string | null }) {
   return (
     <span
       className={cn(
-        "relative flex size-9 shrink-0 items-center justify-center border border-black/10 text-[11px] font-medium",
+        "relative flex size-9 shrink-0 items-center justify-center overflow-hidden border border-black/10 text-[11px] font-medium",
         round ? "rounded-full" : "rounded-md",
         getContrastTextColor(color)
       )}
       style={{ backgroundColor: color }}
     >
+      <CoverPhoto url={imageUrl} />
       <span
         aria-hidden="true"
         className={cn(
@@ -68,7 +71,7 @@ function Cover({ label, color, round }: { label: string; color: string; round?: 
           round ? "rounded-full" : "rounded-[4px]"
         )}
       />
-      {label}
+      {!imageUrl && label}
     </span>
   )
 }
@@ -93,14 +96,14 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
   ),
   artist: ({ suggestion, query, showKind }) => (
     <Row
-      media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round />}
+      media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round imageUrl={suggestion.imageUrl} />}
       title={<Highlight text={suggestion.name} query={query} />}
       subtitle={subtitleOf("Artista", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`, showKind)}
     />
   ),
   playlist: ({ suggestion, query, showKind }) => (
     <Row
-      media={<Cover label={getPlaylistInitials(suggestion.name)} color={suggestion.color} />}
+      media={<Cover label={getPlaylistInitials(suggestion.name)} color={suggestion.color} imageUrl={suggestion.coverUrl} />}
       title={<Highlight text={suggestion.name} query={query} />}
       subtitle={subtitleOf("Playlist", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "faixa" : "faixas"}`, showKind)}
     />

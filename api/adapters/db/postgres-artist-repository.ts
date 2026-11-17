@@ -9,6 +9,7 @@ interface ArtistRow {
   name: string;
   created_at: Date;
   deleted_at: Date | null;
+  image_file: string | null;
 }
 
 export class PostgresArtistRepository implements ArtistRepository {
@@ -22,12 +23,13 @@ export class PostgresArtistRepository implements ArtistRepository {
     const data = artist.toData();
     try {
       await this.pool.query(
-        `INSERT INTO artist (id, name, created_at, deleted_at)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO artist (id, name, created_at, deleted_at, image_file)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
-           deleted_at = EXCLUDED.deleted_at`,
-        [data.id, data.name, data.createdAt, data.deletedAt],
+           deleted_at = EXCLUDED.deleted_at,
+           image_file = EXCLUDED.image_file`,
+        [data.id, data.name, data.createdAt, data.deletedAt, data.imageFile ?? null],
       );
     } catch (error) {
       // Índice único em lower(name) entre os ativos: "Lô Borges" e "lô borges" são o mesmo artista
@@ -39,10 +41,12 @@ export class PostgresArtistRepository implements ArtistRepository {
 
   async findById(id: number): Promise<Artist | null> {
     const { rows } = await this.pool.query<ArtistRow>(
-      "SELECT id, name, created_at, deleted_at FROM artist WHERE id = $1 AND deleted_at IS NULL",
+      "SELECT id, name, created_at, deleted_at, image_file FROM artist WHERE id = $1 AND deleted_at IS NULL",
       [id],
     );
     const row = rows[0];
-    return row ? Artist.restore({ id: row.id, name: row.name, createdAt: row.created_at, deletedAt: row.deleted_at }) : null;
+    return row
+      ? Artist.restore({ id: row.id, name: row.name, createdAt: row.created_at, deletedAt: row.deleted_at, imageFile: row.image_file })
+      : null;
   }
 }

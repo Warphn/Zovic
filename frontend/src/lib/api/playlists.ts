@@ -18,6 +18,8 @@ export interface Playlist {
   canEditMusics: boolean
   /** The account's "Músicas Curtidas" (HU-34): it only changes through likes. */
   isLikedSongs: boolean
+  /** API path of the cover image (load it through `apiUrl`); null when it has none (HU-35). */
+  coverUrl: string | null
 }
 
 /** Someone who builds the playlist, as GET /playlists/:id/collaborators lists them (no email). */
@@ -56,6 +58,14 @@ export const playlistsApi = {
   create: (input: PlaylistInput & { name: string }) => request<Playlist>("/playlists", json("POST", input)),
   update: (id: number, input: PlaylistInput) => request<Playlist>(`/playlists/${id}`, json("PATCH", input)),
   remove: (id: number) => request<void>(`/playlists/${id}`, { method: "DELETE" }),
+  /** Owner only: puts or replaces the cover (HU-35); answers the updated playlist. */
+  changeCover: (id: number, cover: File) => {
+    const form = new FormData()
+    form.append("cover", cover)
+    return request<Playlist>(`/playlists/${id}/cover`, { method: "PUT", body: form })
+  },
+  /** Owner only: takes the cover out; answers the updated playlist. */
+  removeCover: (id: number) => request<Playlist>(`/playlists/${id}/cover`, { method: "DELETE" }),
 
   /** The playlist's active musics, in its order. Same visibility as `get`. */
   musics: (id: number, signal?: AbortSignal) => request<PlaylistMusic[]>(`/playlists/${id}/musics`, { signal }),
@@ -137,6 +147,20 @@ export function useUpdatePlaylist() {
     mutationFn: ({ id, input }: { id: number; input: PlaylistInput }) => playlistsApi.update(id, input),
     onSuccess: (playlist) => {
       // The answer is the new state: show it right away, then refresh the rest
+      queryClient.setQueryData(playlistKeys.detail(playlist.id), playlist)
+      return invalidate()
+    },
+  })
+}
+
+/** Puts the cover (a file) or takes it out (null); the cover shows in the lists and the search too. */
+export function useSetPlaylistCover() {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidatePlaylists()
+  return useMutation({
+    mutationFn: ({ id, cover }: { id: number; cover: File | null }) =>
+      cover ? playlistsApi.changeCover(id, cover) : playlistsApi.removeCover(id),
+    onSuccess: (playlist) => {
       queryClient.setQueryData(playlistKeys.detail(playlist.id), playlist)
       return invalidate()
     },

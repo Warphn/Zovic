@@ -7,7 +7,9 @@ import Header from "@/components/header"
 import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PlaylistMark } from "@/components/playlist-mark"
 import { RecordSleeve } from "@/components/record-sleeve"
+import { FileInput, useObjectUrl } from "@/components/file-input"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { Input } from "@/components/ui/input"
 import {
@@ -23,8 +25,10 @@ import {
   parsePlaylistId,
   useRemovePlaylistMusic,
   useReorderPlaylistMusics,
+  useSetPlaylistCover,
   useUpdatePlaylist,
 } from "@/lib/api/playlists"
+import { COVER_ACCEPT, coverSizeError } from "@/lib/cover-image"
 import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
 import { Label } from "@/components/ui/label"
 import {
@@ -60,12 +64,17 @@ export default function PlaylistDetailPage() {
   // The playlist and its musics, in the playlist's order, from the API
   const { data: currentPlaylist, isPending, error, tracksError } = usePlaylistData(playlistId)
   const updatePlaylist = useUpdatePlaylist()
+  const setCover = useSetPlaylistCover()
   const reorderTracks = useReorderPlaylistMusics()
   const removeTrack = useRemovePlaylistMusic()
 
   // The playlist being edited (name, visibility, color); null while the dialog is closed. Its
   // color is previewed on the page; nothing is saved until "Salvar"
   const [draft, setDraft] = React.useState<PlaylistDraft | null>(null)
+  // The cover in the editor (HU-35): a new image, "remove" to take it out, or null to keep it
+  const [coverChoice, setCoverChoice] = React.useState<File | "remove" | null>(null)
+  const [coverError, setCoverError] = React.useState<string | null>(null)
+  const coverPreviewUrl = useObjectUrl(coverChoice instanceof File ? coverChoice : null)
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = React.useState(false)
   const numericPlaylistId = parsePlaylistId(playlistId)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -80,14 +89,26 @@ export default function PlaylistDetailPage() {
   const openEditor = () => {
     if (!currentPlaylist) return
     updatePlaylist.reset()
+    setCover.reset()
+    setCoverChoice(null)
+    setCoverError(null)
     setDraft({ name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color })
   }
 
-  // Closing without saving drops the draft, color preview included
-  const closeEditor = () => setDraft(null)
+  // Closing without saving drops the draft, color and cover previews included
+  const closeEditor = () => {
+    setDraft(null)
+    setCoverChoice(null)
+  }
 
-  // One PATCH with only what changed; on failure the dialog stays open with the reason
-  const saveEditor = (e: React.FormEvent) => {
+  const chooseCover = (file: File | null) => {
+    const sizeError = file ? coverSizeError(file) : null
+    setCoverError(sizeError)
+    setCoverChoice(sizeError ? null : file)
+  }
+
+  // One PATCH with only what changed, then the cover; on failure the dialog stays open with the reason
+  const saveEditor = async (e: React.FormEvent) => {
     e.preventDefault()
     const id = parsePlaylistId(playlistId)
     if (!currentPlaylist || !draft || id === null) return
@@ -95,11 +116,17 @@ export default function PlaylistDetailPage() {
       { name: currentPlaylist.name, isPrivate: currentPlaylist.isPrivate, color: currentPlaylist.color },
       draft
     )
-    if (!changes) {
+    if (!changes && coverChoice === null) {
       if (draft.name.trim()) closeEditor()
       return
     }
-    updatePlaylist.mutate({ id, input: changes }, { onSuccess: closeEditor })
+    try {
+      if (changes) await updatePlaylist.mutateAsync({ id, input: changes })
+      if (coverChoice !== null) await setCover.mutateAsync({ id, cover: coverChoice === "remove" ? null : coverChoice })
+      closeEditor()
+    } catch {
+      // The mutation that failed shows its error in the dialog
+    }
   }
 
   // Takes a track out of the playlist (owner and collaborators); the list refreshes from the API
@@ -218,6 +245,8 @@ export default function PlaylistDetailPage() {
               color={color}
               initials={<PlaylistMark name={currentPlaylist.name} isLikedSongs={currentPlaylist.isLikedSongs} iconSize={56} />}
               playing={isPlaying}
+              coverUrl={coverChoice === "remove" ? null : currentPlaylist.coverUrl}
+              coverPreviewUrl={coverPreviewUrl}
             />
 
             <div className="min-w-0 flex-1 md:pb-2">
@@ -389,6 +418,10 @@ export default function PlaylistDetailPage() {
                           <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
                         </span>
 
+                        <span className="pointer-events-auto">
+                          <TrackDislikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
+                        </span>
+
                         {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
                             playlists instead; the menu never lists "Músicas Curtidas" itself */}
                         {currentPlaylist.isLikedSongs ? (
@@ -422,7 +455,7 @@ export default function PlaylistDetailPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar playlist</DialogTitle>
-            <DialogDescription>A cor vale para o encarte, o disco e os destaques desta página</DialogDescription>
+            <DialogDescription>A cor vale para o disco e os destaques desta página, e a capa, para o encarte</DialogDescription>
           </DialogHeader>
 
           {draft && (
@@ -442,6 +475,37 @@ export default function PlaylistDetailPage() {
 
               <ColorPicker color={draft.color} onChange={(next) => setDraft({ ...draft, color: next })} />
 
+              <div className="space-y-2">
+                <Label htmlFor="edit-playlist-cover" className="text-sm font-medium">
+                  Capa (JPEG, PNG ou WebP, até 2 MB)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <FileInput
+                      id="edit-playlist-cover"
+                      file={coverChoice instanceof File ? coverChoice : null}
+                      accept={COVER_ACCEPT}
+                      onChange={chooseCover}
+                    />
+                  </div>
+                  {(coverChoice instanceof File || (currentPlaylist.coverUrl && coverChoice !== "remove")) && (
+                    <Button type="button" variant="outline" onClick={() => setCoverChoice(currentPlaylist.coverUrl ? "remove" : null)}>
+                      Tirar capa
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {coverChoice === "remove"
+                    ? "A capa sai ao salvar, e o encarte volta a mostrar a cor e as iniciais."
+                    : "Sem capa, o encarte mostra a cor e as iniciais."}
+                </p>
+                {coverError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {coverError}
+                  </p>
+                )}
+              </div>
+
               <PlaylistPrivacyField isPrivate={draft.isPrivate} onChange={(next) => setDraft({ ...draft, isPrivate: next })} />
 
               {updatePlaylist.isError && (
@@ -449,13 +513,18 @@ export default function PlaylistDetailPage() {
                   {apiErrorMessage(updatePlaylist.error)}
                 </p>
               )}
+              {setCover.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {apiErrorMessage(setCover.error)}
+                </p>
+              )}
 
               <DialogFooter className="pt-2">
                 <Button type="button" variant="outline" size="lg" onClick={closeEditor}>
                   Cancelar
                 </Button>
-                <Button type="submit" size="lg" disabled={!draft.name.trim() || updatePlaylist.isPending}>
-                  {updatePlaylist.isPending ? "Salvando…" : "Salvar"}
+                <Button type="submit" size="lg" disabled={!draft.name.trim() || updatePlaylist.isPending || setCover.isPending}>
+                  {updatePlaylist.isPending || setCover.isPending ? "Salvando…" : "Salvar"}
                 </Button>
               </DialogFooter>
             </form>

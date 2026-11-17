@@ -2,21 +2,27 @@
 
 import * as React from "react"
 import { Loading, Notice, Section } from "@/components/admin/panel"
+import { ArtistPhoto } from "@/components/artist-photo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useCreateArtist, useRemoveArtist, useRenameArtist } from "@/lib/api/admin"
-import type { NamedItem } from "@/lib/api/catalog"
+import { useCreateArtist, useRemoveArtist, useRenameArtist, useSetArtistImage } from "@/lib/api/admin"
+import type { Artist } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
+import { COVER_ACCEPT, coverSizeError } from "@/lib/cover-image"
 import { ConfirmDialog } from "./confirm-dialog"
 
 // Every change here refreshes the artist list and the musics (their credits) on its own
-export function ArtistsSection({ artists, error }: { artists: NamedItem[] | null; error: string | null }) {
+export function ArtistsSection({ artists, error }: { artists: Artist[] | null; error: string | null }) {
   const createArtist = useCreateArtist()
   const renameArtist = useRenameArtist()
   const removeArtist = useRemoveArtist()
+  const setArtistImage = useSetArtistImage()
+  // One hidden file input for every row: "Foto" says whose photo the chosen file is (HU-36)
+  const photoInputRef = React.useRef<HTMLInputElement>(null)
+  const [photoArtistId, setPhotoArtistId] = React.useState<number | null>(null)
   const [newName, setNewName] = React.useState("")
   const [editing, setEditing] = React.useState<{ id: number; name: string } | null>(null)
-  const [removing, setRemoving] = React.useState<NamedItem | null>(null)
+  const [removing, setRemoving] = React.useState<Artist | null>(null)
   const [actionError, setActionError] = React.useState<string | null>(null)
   const [filter, setFilter] = React.useState("")
 
@@ -31,10 +37,37 @@ export function ArtistsSection({ artists, error }: { artists: NamedItem[] | null
     }
   }
 
+  const choosePhoto = (artistId: number) => {
+    setPhotoArtistId(artistId)
+    photoInputRef.current?.click()
+  }
+
+  const uploadPhoto = async (file: File | undefined) => {
+    if (!file || photoArtistId === null) return
+    const sizeError = coverSizeError(file)
+    if (sizeError) return setActionError(sizeError)
+    await run(() => setArtistImage.mutateAsync({ id: photoArtistId, image: file }))
+  }
+
   const visible = (artists ?? []).filter((a) => a.name.toLowerCase().includes(filter.trim().toLowerCase()))
 
   return (
-    <Section title="Artistas" description="Renomear um artista muda o nome em todas as músicas dele.">
+    <Section
+      title="Artistas"
+      description="Renomear um artista muda o nome em todas as músicas dele. A foto (JPEG, PNG ou WebP, até 2 MB) aparece na página do artista e na busca."
+    >
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept={COVER_ACCEPT}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          // Cleared, so choosing the same file again (after an error) still fires onChange
+          event.target.value = ""
+          void uploadPhoto(file)
+        }}
+      />
       <div className="space-y-4">
         <form
           className="flex flex-wrap gap-2"
@@ -72,7 +105,20 @@ export function ArtistsSection({ artists, error }: { artists: NamedItem[] | null
                   </form>
                 ) : (
                   <>
+                    <ArtistPhoto artist={artist} className="size-8 text-[11px]" />
                     <span className="flex-1 truncate text-sm">{artist.name}</span>
+                    <Button variant="ghost" onClick={() => choosePhoto(artist.id)} aria-label={`Escolher a foto de ${artist.name}`}>
+                      Foto
+                    </Button>
+                    {artist.imageUrl && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => run(() => setArtistImage.mutateAsync({ id: artist.id, image: null }))}
+                        aria-label={`Tirar a foto de ${artist.name}`}
+                      >
+                        Tirar foto
+                      </Button>
+                    )}
                     <Button variant="ghost" onClick={() => setEditing({ id: artist.id, name: artist.name })}>
                       Renomear
                     </Button>

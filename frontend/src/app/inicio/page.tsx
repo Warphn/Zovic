@@ -35,6 +35,7 @@ import {
   usePlayback,
 } from "@/lib/playback-store"
 import { musicToTrack, useMyPlaylistsData } from "@/lib/playlist-store"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
@@ -166,6 +167,7 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <TrackDislikeButton trackId={track.id} />
                     <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
                   </>
                 }
@@ -209,6 +211,7 @@ function RecentlyPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <TrackDislikeButton trackId={track.id} />
                     <AddToPlaylistMenu musicId={entry.musicId} title={entry.name} onResult={onAnnounce} />
                   </>
                 }
@@ -247,6 +250,7 @@ function Recommended({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToQueueButton track={track} onResult={onAnnounce} />
                     <TrackCommentsButton track={track} />
                     <TrackLikeButton trackId={track.id} />
+                    <TrackDislikeButton trackId={track.id} />
                     <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
                   </>
                 }

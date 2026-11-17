@@ -18,10 +18,10 @@ const RESULTS: SearchResults = {
     CLUBE,
     { id: 9, name: "O Trem Azul", duration: 245, artists: [{ id: 7, name: "Lô Borges" }] },
   ],
-  artists: [{ id: 7, name: "Lô Borges", musicCount: 2 }],
+  artists: [{ id: 7, name: "Lô Borges", musicCount: 2, imageUrl: "/api/artists/7/image?v=abc" }],
   playlists: [
-    { id: 12, name: "Clube do Vinil", isPrivate: false, color: "#4f46e5", musicCount: 4 },
-    { id: 13, name: "Clube", isPrivate: true, color: null, musicCount: 1 },
+    { id: 12, name: "Clube do Vinil", isPrivate: false, color: "#4f46e5", musicCount: 4, coverUrl: null },
+    { id: 13, name: "Clube", isPrivate: true, color: null, musicCount: 1, coverUrl: "/api/playlists/13/cover?v=def" },
   ],
 }
 
@@ -64,15 +64,16 @@ describe("search suggestions from the API", () => {
     expect(track).toMatchObject({ id: "9", title: "O Trem Azul", artist: "Lô Borges", track: { id: "9" } })
   })
 
-  it("maps artist and playlist counts, with a default cover color", () => {
+  it("maps artist and playlist counts, with a default cover color and the images (HU-35, HU-36)", () => {
     const suggestions = toSuggestions(RESULTS, "lo")
-    expect(suggestions).toContainEqual({ kind: "artist", id: 7, name: "Lô Borges", trackCount: 2 })
+    expect(suggestions).toContainEqual({ kind: "artist", id: 7, name: "Lô Borges", trackCount: 2, imageUrl: "/api/artists/7/image?v=abc" })
     expect(suggestions).toContainEqual({
       kind: "playlist",
       id: "13",
       name: "Clube",
       color: DEFAULT_PLAYLIST_COLOR,
       trackCount: 1,
+      coverUrl: "/api/playlists/13/cover?v=def",
     })
   })
 })

@@ -143,7 +143,7 @@ describe("PostgresSearchQuery", () => {
     const porArtista = await search(`contado${T}`);
     const porMusica = await search(`faixa${T}`);
 
-    expect(porArtista.artists).toEqual([{ id: ativo.id, name: `Contado${T}`, musicCount: 2 }]);
+    expect(porArtista.artists).toEqual([{ id: ativo.id, name: `Contado${T}`, musicCount: 2, imageUrl: null }]);
     expect(names(porMusica.musics)).toEqual([`Faixa${T} dois`, `Faixa${T} um`]);
   });
 
@@ -170,7 +170,7 @@ describe("PostgresSearchQuery", () => {
 
     const { playlists: found } = await search(`contagem${T}`);
 
-    expect(found).toEqual([{ id: lista.id, name: `Contagem${T}`, isPrivate: false, color: null, musicCount: 1 }]);
+    expect(found).toEqual([{ id: lista.id, name: `Contagem${T}`, isPrivate: false, color: null, musicCount: 1, coverUrl: null }]);
   });
 
   it("respeita o limite em cada grupo", async () => {

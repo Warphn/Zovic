@@ -70,9 +70,8 @@ export interface AlbumInput {
   year: number
 }
 
-/** The API's limits (api/domain/shared/), repeated here only to warn before uploading. */
+/** The API's limit (api/domain/shared/audio.ts), repeated here only to warn before uploading. */
 export const MAX_AUDIO_BYTES = 20 * 1024 * 1024
-export const MAX_COVER_BYTES = 2 * 1024 * 1024
 
 /** POST /api/admin/musics is multipart: the fields as JSON in "data" and the MP3 in "audio". */
 export function musicFormData({ audio, ...fields }: NewMusicInput): FormData {
@@ -159,6 +158,13 @@ export const adminApi = {
   createArtist: (name: string) => request<NamedItem>("/admin/artists", json("POST", { name })),
   renameArtist: (id: number, name: string) => request<NamedItem>(`/admin/artists/${id}`, json("PATCH", { name })),
   removeArtist: (id: number) => request<void>(`/admin/artists/${id}`, { method: "DELETE" }),
+  /** Puts or replaces the artist's photo (HU-36), multipart with the image in "image". */
+  changeArtistImage: (id: number, image: File) => {
+    const form = new FormData()
+    form.append("image", image)
+    return request<unknown>(`/admin/artists/${id}/image`, { method: "PUT", body: form })
+  },
+  removeArtistImage: (id: number) => request<unknown>(`/admin/artists/${id}/image`, { method: "DELETE" }),
 }
 
 export const adminKeys = {
@@ -291,4 +297,14 @@ export function useRenameArtist() {
 export function useRemoveArtist() {
   const invalidate = useInvalidate("catalog")
   return useMutation({ mutationFn: adminApi.removeArtist, onSuccess: invalidate })
+}
+
+/** Puts the artist's photo (a file) or takes it out (null). */
+export function useSetArtistImage() {
+  const invalidate = useInvalidate("catalog")
+  return useMutation({
+    mutationFn: ({ id, image }: { id: number; image: File | null }) =>
+      image ? adminApi.changeArtistImage(id, image) : adminApi.removeArtistImage(id),
+    onSuccess: invalidate,
+  })
 }

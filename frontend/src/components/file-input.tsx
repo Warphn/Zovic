@@ -3,6 +3,15 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/** A preview address for a chosen file, released when the file changes or the form closes. */
+export function useObjectUrl(file: File | null): string | null {
+  const url = React.useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+  React.useEffect(() => () => {
+    if (url) URL.revokeObjectURL(url)
+  }, [url])
+  return url
+}
+
 /**
  * The native file input prints "Escolher arquivo Nenhum arquivo escolhido" and can't be styled, so
  * it stays hidden and this box opens it: "Escolher arquivo" until a file is chosen, then its name.
