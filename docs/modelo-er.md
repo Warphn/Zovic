@@ -26,7 +26,7 @@ O modelo lógico: cada entidade e cada relacionamento N:M viram uma tabela, e os
 
 Os dois diagramas ficam no [`modelo-er.drawio`](assets/modelo-er.drawio), uma página cada. Para mudar, edite no draw.io e exporte de novo a página como PNG: a página "DER conceitual" vira o `der-conceitual.png`, e a "Modelo relacional" vira o `modelo-er.png`.
 
-O [`modelo-er-pe-de-galinha.drawio`](assets/modelo-er-pe-de-galinha.drawio) é a versão anterior, em notação pé de galinha, que misturava os dois modelos: cada relação aparecia na linha com cardinalidade e também na chave estrangeira ou na tabela associativa. Ele fica só como referência e não é atualizado.
+O [`modelo-er-pe-de-galinha.drawio`](assets/modelo-er-pe-de-galinha.drawio) (imagem em [`modelo-er-pe-de-galinha.png`](assets/modelo-er-pe-de-galinha.png)) é a versão anterior, em notação pé de galinha, que misturava os dois modelos: cada relação aparecia na linha com cardinalidade e também na chave estrangeira ou na tabela associativa. Ele fica só como referência e não é atualizado.
 
 ## Diagrama
 
