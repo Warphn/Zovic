@@ -258,3 +258,11 @@ O Victor aprovou o design antes da implementação. A IA escolheu exigir assinat
 | 2 | Vamos só deixar nosso lado pronto. / Vamos com 1, as regras estão excelentes. / Manda bala. | A [spec](../superpowers/specs/2026-11-15-musicas-curtidas-design.md), a issue #136 e o [plano](../superpowers/plans/2026-11-15-musicas-curtidas.md); a coluna `playlists.liked_by_user_id`; as regras na entidade `Playlist` e os casos de uso de [`liked-songs.ts`](../../api/domain/use-cases/liked-songs.ts), com testes; as rotas `/me/liked-musics/:id`, com testes de integração; e o coração, o encarte com coração e as regras na página da playlist no front |
 
 O Victor escolheu a playlist de verdade e aprovou as regras e a issue. A IA escolheu criar a playlist sob demanda (sem gancho no cadastro), a coluna única `liked_by_user_id` e a cor fixa.
+
+### 17/11/2026: documentação do modelo ER (#103)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Atualize a documentação, e coloque em prompts.md que eu coloquei pra vc atualizar a documentação. | O [`modelo-er.md`](../modelo-er.md) passa a explicar o `modelo-er-pe-de-galinha.drawio`, a versão anterior do diagrama, mantida só como referência. A tabela "Documentação junto com o código" do `CLAUDE.md` passa a pedir as duas imagens exportadas do `modelo-er.drawio` (`der-conceitual.png` e `modelo-er.png`). |
+
+O Felipe pediu a atualização. A IA escolheu os arquivos afetados e o texto.
