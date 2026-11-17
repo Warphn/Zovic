@@ -287,3 +287,15 @@ Forma de trabalho: o Claude Opus levantou o código, propôs e implementou as tr
 | 1 | Crie uma worktree. Implemente deduplicação de artistas (não devem haver artistas com nomes iguais), permita scroll no modal de incluir músicas (verifique também outros modais) e integre a API de comentários ao front. | A migration [`V261117_160000__Nome_de_artista_unico.sql`](../../db/migrations/V261117_160000__Nome_de_artista_unico.sql), que funde os artistas repetidos e cria o índice único em `lower(name)`; o 409 no [`postgres-artist-repository.ts`](../../api/adapters/db/postgres-artist-repository.ts), com testes de integração em [`admin-flow.test.ts`](../../api/adapters/http/admin-flow.test.ts); a altura máxima com rolagem no [`dialog.tsx`](../../frontend/src/components/ui/dialog.tsx), que vale para todos os modais; o service e os hooks de [`comments.ts`](../../frontend/src/lib/api/comments.ts) no lugar do `localStorage` do painel de comentários; e a documentação |
 
 A IA escolheu não diferenciar maiúsculas no nome do artista ("Lô Borges" e "lô borges" são o mesmo) e, nos duplicados que já existiam, manter o de menor id.
+
+### 17/11/2026: telas de álbum, gênero, artista e playlist unificadas (#88, #92)
+
+Forma de trabalho: o Claude Opus levantou as telas parecidas, propôs os grupos e implementou a unificação, rodou as verificações e testou as telas no navegador com o seed LOCAL.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Há diversas telas bastante parecidas na aplicação. Verifique quais telas virtualmente idênticas estão sendo feitas com implementações e códigos diferentes. | Cinco grupos de telas repetidas: as páginas de álbum, gênero e artista (cópias quase idênticas), a linha de música em quatro versões, o card de playlist, a tela de "não encontrado" e o diálogo de confirmação |
+| 2 | Unifique todas essas telas. Deixe de mostrar o número de minutos na tela de gênero. | O [`catalog-page.tsx`](../../frontend/src/components/catalog-page.tsx), com a moldura e os estados da página, o cabeçalho e a lista de faixas; as páginas de álbum, gênero e artista passam a usá-lo, e o gênero mostra só o número de músicas |
+| 3 | Unifique a tela de playlist com as demais. Edição: apenas playlists. Mudança de ordem: só playlists (verifique se o back suporta hoje e o front está integrado). Busca dentro: playlists, álbuns e gênero. | A página da playlist no mesmo padrão, com a edição e os colaboradores no cabeçalho; a busca na lista ligada por `searchLabel` no álbum, no gênero e na playlist; e o arrastar ligado por `onReorder` só na playlist, sobre a rota `PUT /playlists/:id/musics/order`, que já existia com testes |
+
+O Carlos escolheu quais recursos cada tela tem. A IA escolheu a largura e as linhas do álbum para a playlist, que perde as barrinhas animadas da faixa tocando e o link "← Playlists" do topo, e manter a lista de faixas da playlist com o botão de tirar a faixa.
