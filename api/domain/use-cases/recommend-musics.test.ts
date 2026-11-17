@@ -109,6 +109,20 @@ describe("RecommendMusics", () => {
     expect(await recommendedIds(source, ADULT)).toEqual([explicitRock.id, commonRock.id]);
   });
 
+  it("não entrega música com dislike da conta, com perfil ou sem histórico", async () => {
+    const heardRock = music({ genreIds: [ROCK] });
+    const dislikedRock = music({ genreIds: [ROCK], streams: 500 });
+    const otherRock = music({ genreIds: [ROCK] });
+    const source = makeSource(heardRock, dislikedRock, otherRock);
+    source.dislikedByUser.set(ANA, [dislikedRock.id]);
+    source.dislikedByUser.set(ANA + 1, [otherRock.id]);
+
+    expect(await recommendedIds(source)).toEqual([heardRock.id, otherRock.id]);
+
+    source.listenedByUser.set(ANA, [heardRock.id]);
+    expect(await recommendedIds(source)).toEqual([otherRock.id]);
+  });
+
   it("não entrega música removida", async () => {
     const heardRock = music({ genreIds: [ROCK] });
     const removedRock = music({ genreIds: [ROCK], isRemoved: true });

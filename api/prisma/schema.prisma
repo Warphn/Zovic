@@ -77,6 +77,7 @@ model User {
   commentReports  CommentReport[]
   removedComments Comment[]       @relation("comments_deleted_byTouser")
   comments        Comment[]
+  dislikedMusics  MusicDislike[]
   savedMusics     MusicUser[]
   plans           PlanUser[]
   playlists       PlaylistUser[]
@@ -127,6 +128,7 @@ model Music {
   artists    ArtistMusic[]
   comments   Comment[]
   genres     GenreMusic[]
+  dislikes   MusicDislike[]
   playlists  MusicPlaylist[]
   savedBy    MusicUser[]
   ratings    Rating[]
@@ -396,6 +398,18 @@ model PlanInvitation {
 
   @@index([planId])
   @@map("plan_invitation")
+}
+
+/// O dislike de uma conta numa música (HU-20).
+model MusicDislike {
+  userId    Int      @map("user_id")
+  musicId   Int      @map("music_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  music     Music    @relation(fields: [musicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, musicId])
+  @@map("music_dislikes")
 }
 
 enum UserEventType {

@@ -5,6 +5,7 @@ import type { CommentController } from "./comment-controller.ts";
 import type { HistoryController } from "./history-controller.ts";
 import type { RecommendationController } from "./recommendation-controller.ts";
 import type { LikedMusicsController } from "./liked-musics-controller.ts";
+import type { DislikedMusicsController } from "./disliked-musics-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
 import type { SubscriptionController } from "./subscription-controller.ts";
@@ -48,10 +49,11 @@ export interface Controllers {
   history: HistoryController;
   recommendations: RecommendationController;
   likedMusics: LikedMusicsController;
+  dislikedMusics: DislikedMusicsController;
 }
 
 export function makeRouter(
-  { playlists, search, catalog, admin, comments, subscriptions, history, recommendations, likedMusics }: Controllers,
+  { playlists, search, catalog, admin, comments, subscriptions, history, recommendations, likedMusics, dislikedMusics }: Controllers,
   authenticate: RequestHandler,
   requireSubscription: RequestHandler,
 ): Router {
@@ -139,10 +141,13 @@ export function makeRouter(
     history.markListened,
   );
 
-  // Músicas Curtidas (HU-34): o coração do front põe e tira a música até a HU-20 levar a curtida para a API
-  const likedMusicId = validateParams(likedMusicParamsSchema);
-  router.put("/me/liked-musics/:id", subscriberOnly, likedMusicId, likedMusics.like);
-  router.delete("/me/liked-musics/:id", subscriberOnly, likedMusicId, likedMusics.unlike);
+  // O voto da HU-20: o like põe a música na Músicas Curtidas (HU-34), e o dislike tira o like
+  const votedMusicId = validateParams(likedMusicParamsSchema);
+  router.put("/me/liked-musics/:id", subscriberOnly, votedMusicId, likedMusics.like);
+  router.delete("/me/liked-musics/:id", subscriberOnly, votedMusicId, likedMusics.unlike);
+  router.get("/me/disliked-musics", subscriberOnly, dislikedMusics.list);
+  router.put("/me/disliked-musics/:id", subscriberOnly, votedMusicId, dislikedMusics.dislike);
+  router.delete("/me/disliked-musics/:id", subscriberOnly, votedMusicId, dislikedMusics.removeDislike);
 
   router.get("/search", subscriberOnly, validateQuery(searchQuerySchema), search.search);
 

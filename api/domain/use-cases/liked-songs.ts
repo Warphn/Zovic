@@ -1,11 +1,12 @@
 import { Playlist } from "../entities/playlist.ts";
 import { NotFoundError } from "../errors/domain-error.ts";
 import { canSeeExplicit } from "../shared/age.ts";
+import type { MusicDislikes } from "../ports/music-dislikes.ts";
 import type { PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
 
-// Músicas Curtidas (HU-34): a playlist fixa de cada conta, que a curtida alimenta. A curtida em si
-// é da HU-20; quando ela for para a API, o voto chama LikeMusic e UnlikeMusic.
+// Músicas Curtidas (HU-34): a playlist fixa de cada conta, que a curtida (HU-20) alimenta. O like é a
+// música estar nessa playlist; o dislike fica em MusicDislikes (veja disliked-musics.ts).
 
 /** A Músicas Curtidas só muda pela curtida: o menu e a reordenação a recusam. */
 export const LIKED_SONGS_ONLY_THROUGH_LIKES = "Músicas Curtidas only changes through likes";
@@ -49,13 +50,15 @@ export interface LikeMusicUseCase {
 }
 
 /**
- * Põe a música curtida no topo da Músicas Curtidas. Curtir de novo não muda nada. Para menor de
- * idade, a explícita é NotFoundError, como se não existisse (HU-09).
+ * Põe a música curtida no topo da Músicas Curtidas e tira o dislike dela, porque cada conta tem um
+ * voto por música (HU-20). Curtir de novo não muda nada. Para menor de idade, a explícita é
+ * NotFoundError, como se não existisse (HU-09).
  */
 export class LikeMusic implements LikeMusicUseCase {
   constructor(
     private readonly ensureLikedSongs: EnsureLikedSongsUseCase,
     private readonly musics: PlaylistMusics,
+    private readonly dislikes: MusicDislikes,
   ) {}
 
   async execute({ userId, musicId, birthdate, now, isAdmin }: LikeMusicInput): Promise<void> {
@@ -63,6 +66,7 @@ export class LikeMusic implements LikeMusicUseCase {
     const includeExplicit = canSeeExplicit(birthdate, now, isAdmin);
     const result = await this.musics.addToTop(likedSongs.id, musicId, includeExplicit, now);
     if (result === "music_not_found") throw new NotFoundError("Music not found");
+    await this.dislikes.remove(userId, musicId);
   }
 }
 

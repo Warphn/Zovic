@@ -58,8 +58,8 @@ function toRecommendedMusic({ id, name, duration, artists }: RecommendationCandi
 
 /**
  * Recomendação por conteúdo (HU-25): as músicas ainda não ouvidas com maior pontuação no perfil
- * da conta. Sem histórico, a conta recebe as mais tocadas da plataforma. Menor de idade não
- * recebe músicas explícitas (HU-09).
+ * da conta. Sem histórico, a conta recebe as mais tocadas da plataforma. Nunca entra uma música
+ * com dislike da conta (HU-20), e menor de idade não recebe músicas explícitas (HU-09).
  */
 export class RecommendMusics implements RecommendMusicsUseCase {
   constructor(private readonly source: RecommendationSource) {}
@@ -69,7 +69,7 @@ export class RecommendMusics implements RecommendMusicsUseCase {
     const { listened, liked } = await this.source.listTasteSignals(userId);
 
     if (listened.length === 0 && liked.length === 0) {
-      return this.source.listMostPlayed(RECOMMENDATION_COUNT, includeExplicit);
+      return this.source.listMostPlayed(userId, RECOMMENDATION_COUNT, includeExplicit);
     }
 
     const profile = buildProfile([...listened, ...liked]);
