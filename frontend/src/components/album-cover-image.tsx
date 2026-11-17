@@ -24,7 +24,7 @@ export function AlbumCoverImage({
   return (
     <div
       aria-hidden="true"
-      className={cn("grid place-items-center rounded-lg font-semibold tracking-wide", getContrastTextColor(cover.color), className)}
+      className={cn("grid place-items-center rounded-lg font-medium", getContrastTextColor(cover.color), className)}
       style={{ background: cover.color }}
     >
       {cover.initials}

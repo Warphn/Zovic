@@ -37,8 +37,8 @@ export default function AdminReportsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">{item.author.name}</span> em{" "}
-                      <span className="font-semibold text-foreground">{item.music.name}</span>
+                      <span className="font-medium text-foreground">{item.author.name}</span> em{" "}
+                      <span className="font-medium text-foreground">{item.music.name}</span>
                       {item.timestamp !== null && <span className="font-mono"> · {formatTime(item.timestamp)}</span>}
                       <span> · {formatDateTime(item.createdAt)}</span>
                     </p>

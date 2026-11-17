@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { PRESET_COLORS } from "@/components/color-picker"
-import { albumCover } from "./album-cover"
+import { ALBUM_COVER_COLORS, albumCover } from "./album-cover"
 
 describe("albumCover", () => {
   it("uses the initials of the first and last words", () => {
@@ -12,10 +11,10 @@ describe("albumCover", () => {
     expect(albumCover({ id: 1, name: "Varanda" }).initials).toBe("VA")
   })
 
-  it("gives the same album the same color every time, from the playlist palette", () => {
+  it("gives the same album the same color every time, from the cover palette", () => {
     const first = albumCover({ id: 7, name: "Solstício" })
     expect(albumCover({ id: 7, name: "Solstício" }).color).toBe(first.color)
-    expect(PRESET_COLORS.map((preset) => preset.color)).toContain(first.color)
+    expect(ALBUM_COVER_COLORS).toContain(first.color)
   })
 
   it("spreads neighboring albums over different colors", () => {

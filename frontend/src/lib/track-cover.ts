@@ -30,8 +30,3 @@ export function useTrackAlbum(trackId: string | null | undefined): Album | null 
   if (!trackId || !isCatalogTrack) return null
   return albumOfTrack(trackId, musics.data ?? [], albums.data ?? [])
 }
-
-/** Same, from the cached catalog; queries only while a catalog track (numeric id) is given. */
-export function useTrackCover(trackId: string | null | undefined): string | null {
-  return useTrackAlbum(trackId)?.coverUrl ?? null
-}

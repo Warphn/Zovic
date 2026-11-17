@@ -25,7 +25,7 @@ export function Section({
     <section className={cn("rounded-2xl bg-surface/70 p-5 sm:p-6", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold tracking-tight">{title}</h2>
+          <h2 className="text-base font-medium">{title}</h2>
           {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
         </div>
         {actions}
@@ -39,7 +39,7 @@ export function StatTile({ label, value, hint }: { label: string; value: number;
   return (
     <div className="rounded-2xl bg-surface/70 p-4">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-3xl font-black tabular-nums tracking-tight">{value.toLocaleString("pt-BR")}</div>
+      <div className="mt-1 text-3xl font-medium tabular-nums tracking-[-0.02em]">{value.toLocaleString("pt-BR")}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   )
@@ -81,11 +81,11 @@ export function RankedBars({ items, unit, empty }: { items: RankedItem[]; unit: 
           <div className="flex items-center gap-2">
             <div className="h-3 flex-1" aria-hidden="true">
               <div
-                className="h-full rounded-r-[4px] bg-[var(--color-red)]"
+                className="h-full rounded-r-[4px] bg-primary"
                 style={{ width: `${Math.max(1, (item.value / max) * 100)}%` }}
               />
             </div>
-            <span className="w-14 shrink-0 text-right text-sm font-semibold tabular-nums">
+            <span className="w-14 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
               {item.value.toLocaleString("pt-BR")}
               <span className="sr-only">
                 {" "}
@@ -99,7 +99,7 @@ export function RankedBars({ items, unit, empty }: { items: RankedItem[]; unit: 
               aria-hidden="true"
               className="pointer-events-none absolute right-2 top-full z-10 mt-1 hidden rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs shadow-lg group-hover:block"
             >
-              <span className="font-semibold">
+              <span className="font-medium">
                 {item.value.toLocaleString("pt-BR")} {unit}
               </span>
               <span className="text-muted-foreground"> · {item.detail}</span>

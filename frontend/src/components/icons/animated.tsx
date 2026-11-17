@@ -2,12 +2,15 @@
 
 import * as React from "react"
 import {
+  Check,
   CircleAlert,
+  Flag,
   Headphones,
   Pencil,
   SkipBack,
   SkipForward,
   ThumbsDown,
+  Trash2,
   Volume1,
   Volume2,
   VolumeX,
@@ -139,6 +142,9 @@ export const UserIcon = withParentHover(AnimatedUser, "UserIcon")
 export const QueueIcon = withParentHover(AnimatedGalleryHorizontalEnd, "QueueIcon")
 
 export const AlertIcon = staticLucide(CircleAlert)
+export const CheckIcon = staticLucide(Check)
+export const FlagIcon = staticLucide(Flag)
+export const TrashIcon = staticLucide(Trash2)
 export const HomeIcon = withParentHover(AnimatedHome, "HomeIcon")
 export const HistoryIcon = withParentHover(AnimatedHistory, "HistoryIcon")
 export const LogOutIcon = withParentHover(AnimatedLogout, "LogOutIcon")

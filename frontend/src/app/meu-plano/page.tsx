@@ -37,7 +37,7 @@ function MyPlan() {
 
   return (
     <>
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Meu plano</h1>
+      <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">Meu plano</h1>
 
       {isError && (
         <div className="mt-3">
@@ -81,7 +81,7 @@ function PlanSummary({ subscription }: { subscription: Subscription }) {
   return (
     <section className="mt-6 rounded-2xl bg-surface/70 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-bold tracking-tight">Plano {type.name}</h2>
+        <h2 className="text-xl font-medium tracking-[-0.02em]">Plano {type.name}</h2>
         <p className="text-sm">
           <span className="font-semibold tabular-nums">{formatPlanPrice(type.price)}</span>
           <span className="text-muted-foreground"> /mês</span>

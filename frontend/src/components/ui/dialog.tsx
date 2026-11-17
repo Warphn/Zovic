@@ -133,7 +133,7 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
         open
         aria-modal="true"
         className={cn(
-          "relative z-10 w-full max-w-lg max-h-full overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-6 shadow-2xl transition-all duration-200",
+          "relative z-10 w-full max-w-lg max-h-full overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-6 shadow-2xl transition-[transform,opacity] duration-200",
           "text-foreground animate-in zoom-in-95 m-0 block",
           className
         )}
@@ -172,7 +172,7 @@ export function DialogFooter({ className, children, ...props }: React.HTMLAttrib
 
 export function DialogTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h2 className={cn("text-lg font-bold leading-none tracking-tight text-foreground", className)} {...props}>
+    <h2 className={cn("text-lg font-medium leading-tight tracking-[-0.01em] text-foreground", className)} {...props}>
       {children}
     </h2>
   )

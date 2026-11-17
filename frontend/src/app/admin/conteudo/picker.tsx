@@ -23,7 +23,7 @@ export function Picker({
 
   return (
     <fieldset className="space-y-1.5">
-      <legend className="text-xs font-medium tracking-wide text-foreground/80">
+      <legend className="text-xs font-medium text-foreground/80">
         {label} <span className="text-muted-foreground">({selected.length} selecionado{selected.length === 1 ? "" : "s"})</span>
       </legend>
       {items.length > 12 && (

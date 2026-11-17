@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { AlertIcon, CloseIcon, FlagIcon, PlayIcon, TrashIcon } from "@/components/icons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useRemoveComment } from "@/lib/api/admin"
@@ -88,7 +89,7 @@ function CommentTimePicker({
           <StepButton label="−5s" onClick={() => onChange(clampSeconds(value - 5, duration))} />
           <StepButton label="−1s" onClick={() => onChange(clampSeconds(value - 1, duration))} />
           <span
-            className="min-w-[3.5rem] text-center text-sm font-mono font-bold text-primary tabular-nums"
+            className="min-w-[3.5rem] text-center text-sm font-mono font-medium text-primary tabular-nums"
             aria-live="polite"
           >
             {formatTime(value)}
@@ -111,18 +112,18 @@ function CommentTimePicker({
             type="button"
             onClick={() => onPreview(value)}
             title="Levar o player até este momento"
-            className="h-6 px-2 rounded-md border border-primary/30 bg-primary/10 text-[10px] font-mono font-bold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+            className="h-6 px-2 rounded-md border border-primary/30 bg-primary/10 inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary hover:bg-primary/20 transition-colors cursor-pointer"
           >
-            ▶ Ouvir trecho
+            <PlayIcon size={12} /> Ouvir trecho
           </button>
           <button
             type="button"
             onClick={onClear}
             aria-label="Remover marcação de tempo"
             title="Comentar sem ligar a um momento"
-            className="h-6 w-6 rounded-md text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
           >
-            ✕
+            <CloseIcon size={14} />
           </button>
         </div>
       </div>
@@ -276,7 +277,7 @@ export function TrackComments({
       {/* Sub-header com contexto e contagem */}
       <div className="px-6 py-2.5 border-b border-border/80 flex items-center justify-between bg-surface/40">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
+          <Badge variant="outline" className="text-xs font-normal">
             Comentários
           </Badge>
           <span className="text-xs font-semibold text-foreground truncate max-w-[220px] sm:max-w-md">
@@ -307,15 +308,15 @@ export function TrackComments({
       {reportingCommentId && (
         <div className="mx-6 mt-3 p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
-              <span>⚠</span> Denunciar comentário
+            <span className="text-xs font-medium text-destructive flex items-center gap-1.5">
+              <AlertIcon size={14} /> Denunciar comentário
             </span>
             <button
               type="button"
               onClick={() => setReportingCommentId(null)}
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              ✕ Cancelar
+              <CloseIcon size={12} /> Cancelar
             </button>
           </div>
           <form onSubmit={handleSubmitReport} className="space-y-2">
@@ -355,7 +356,7 @@ export function TrackComments({
           </div>
         ) : comments.length === 0 ? (
           <div className="text-center py-10 text-xs text-muted-foreground font-mono">
-            Nenhum comentário ainda nesta faixa. Seja o primeiro a comentar!
+            Nenhum comentário nesta faixa ainda
           </div>
         ) : (
           comments.map((item: MusicComment) => {
@@ -371,7 +372,7 @@ export function TrackComments({
                       {item.authorName}
                     </span>
                     {isMine && (
-                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0">
                         Você
                       </span>
                     )}
@@ -388,9 +389,9 @@ export function TrackComments({
                         onClick={() => handleDelete(item.id)}
                         disabled={deleteComment.isPending}
                         title="Apagar meu comentário"
-                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer inline-flex items-center gap-1"
                       >
-                        🗑 Apagar
+                        <TrashIcon size={12} /> Apagar
                       </button>
                     ) : isPlatformAdmin ? (
                       <button
@@ -408,9 +409,9 @@ export function TrackComments({
                         type="button"
                         onClick={() => handleOpenReport(item.id)}
                         title="Denunciar este comentário"
-                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer inline-flex items-center gap-1"
                       >
-                        ⚑ Denunciar
+                        <FlagIcon size={12} /> Denunciar
                       </button>
                     )}
                   </div>
@@ -426,10 +427,10 @@ export function TrackComments({
                     <button
                       type="button"
                       onClick={() => onSeek(item.timestamp!)}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 hover:scale-102 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors cursor-pointer"
                       title={`Pular para ${formatTime(item.timestamp)} na música`}
                     >
-                      <span>▶</span>
+                      <PlayIcon size={10} />
                       <span>{formatTime(item.timestamp)}</span>
                     </button>
                   </div>
@@ -490,7 +491,7 @@ export function TrackComments({
             <span
               className={cn(
                 "text-[10px] font-mono",
-                isOverLimit ? "text-destructive font-bold" : "text-muted-foreground",
+                isOverLimit ? "text-destructive font-medium" : "text-muted-foreground",
               )}
             >
               {charCount}/{MAX_COMMENT_LENGTH}

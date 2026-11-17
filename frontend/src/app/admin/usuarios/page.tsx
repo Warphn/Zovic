@@ -316,7 +316,7 @@ function RecentPlaysDialog({ user, onClose }: { user: AdminUser | null; onClose:
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="text-xs tabular-nums text-muted-foreground">{formatDateTime(play.at)}</div>
-                  {play.event === "music_skip" && <div className="text-[10px] uppercase tracking-wide text-muted-foreground">pulada</div>}
+                  {play.event === "music_skip" && <div className="text-xs text-muted-foreground">pulada</div>}
                 </div>
               </li>
             ))}

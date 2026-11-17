@@ -43,7 +43,7 @@ export function AlbumPicker({
 
   return (
     <fieldset className="space-y-1.5">
-      <legend className="text-xs font-medium tracking-wide text-foreground/80">Álbum</legend>
+      <legend className="text-xs font-medium text-foreground/80">Álbum</legend>
       {artistIds.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
           Escolha o artista para ver os álbuns dele.

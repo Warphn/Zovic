@@ -43,7 +43,7 @@ function Invitation({ token }: { token: string }) {
   if (invitation.isError) {
     return (
       <>
-        <h1 className="text-3xl font-black tracking-tight">Convite para o plano Família</h1>
+        <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em]">Convite para o plano Família</h1>
         <div className="mt-4">
           <Notice>
             {isInvalidInvitation(invitation.error)
@@ -57,7 +57,7 @@ function Invitation({ token }: { token: string }) {
 
   return (
     <>
-      <h1 className="text-3xl font-black tracking-tight">Convite para o plano Família</h1>
+      <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em]">Convite para o plano Família</h1>
       <section className="mt-6 rounded-2xl bg-surface/70 p-6">
         <p className="text-sm">
           <span className="font-semibold">{invitation.data.managerName}</span> convidou{" "}

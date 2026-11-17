@@ -323,3 +323,15 @@ Forma de trabalho: o Claude Opus implementou cada pedido, rodou as verificaçõe
 | 4 | Use text-muted-foreground nos ícones e padronize todos para serem animados, terem cursor e o círculo no fundo. Não quero animações locais: busque alternativas no lucide-animated. | O estilo único em [`track-action.ts`](../../frontend/src/components/track-action.ts) e os ícones `message-square`, `folder-plus`, `folder-minus`, `home`, `history`, `logout` e `shield-check` copiados do lucide-animated |
 
 O Carlos escolheu o vermelho do quadro, as falas do gato, a página do álbum como destino do nome da música e as pastas no lugar das listas. A IA escolheu cortar e reduzir as imagens, manter animação local só no polegar (o lucide-animated não tem) e a lista do cabeçalho, como o Carlos pediu.
+
+### 17/11/2026: títulos em imagem no login e polimento visual
+
+Forma de trabalho: o Claude Opus aplicou a skill `unslop` em modo polimento, auditou as telas no navegador com o seed LOCAL e implementou os grupos que o Carlos escolheu.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Adicionei uma imagem na raiz. Use ela no lugar do título da tela de login. *(e, na conversa: a do cadastro, 30% menor, sem arrastar, o balão mais baixo e "Mais um pra ouvir?")* | A prop `titleImage` do [`auth-form.tsx`](../../frontend/src/components/auth-form.tsx), com a mesma altura nos dois títulos e o texto alternativo do `<h1>`, e as imagens em `frontend/public/illustrations/` |
+| 2 | Quando tem auto fill no campo, ele fica estranho. | O rótulo flutuante sobe e o fundo azul some com `:autofill` no campo do login e do cadastro |
+| 3 | /unslop Verifique a interface inteira. Tenha em vista o estilo "cartoon" do logo. *(e, na conversa: o admin é que deve se adaptar ao resto)* | A auditoria e a direção "cartoon de vinil"; títulos em peso 500, sem rótulos em maiúsculas espaçadas e sem a saudação; o admin no padrão do app; a paleta curta das capas em [`album-cover.ts`](../../frontend/src/lib/album-cover.ts); gêneros neutros com o ponto de cor; ícones no lugar de emoji; e menos movimento sem propósito |
+
+O Carlos escolheu os grupos do polimento e que o admin se adaptasse ao resto. A IA escolheu as cores da paleta das capas (as do próprio app) e manter a animação da altura do painel de comentários, que exige reescrever o arrastar.
