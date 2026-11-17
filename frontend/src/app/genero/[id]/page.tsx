@@ -16,6 +16,7 @@ import { formatDuration, formatTotalDuration, sumDurationSec } from "@/lib/forma
 import { musicsOfGenre, parseRouteId } from "@/lib/home"
 import { currentTrackOf, playOrToggleQueueTrack, playQueue, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 
@@ -123,6 +124,7 @@ export default function GenrePage() {
                       <AddToQueueButton track={track} onResult={announce} />
                       <TrackCommentsButton track={track} />
                       <TrackLikeButton trackId={track.id} />
+                      <TrackDislikeButton trackId={track.id} />
                       <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={announce} />
                     </>
                   }

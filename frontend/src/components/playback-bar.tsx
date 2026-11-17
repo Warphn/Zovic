@@ -6,6 +6,7 @@ import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import { PauseIcon, PlayIcon, QueueIcon, SkipBackIcon, SkipForwardIcon, VolumeIcon } from "@/components/icons"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { apiUrl } from "@/lib/api/client"
 import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/playback-store"
@@ -188,6 +189,7 @@ export function PlaybackBar({
         {hasTrackActions && track && (
           <div className="hidden lg:flex items-center shrink-0">
             <TrackLikeButton trackId={track.id} />
+            <TrackDislikeButton trackId={track.id} />
             <TrackCommentsButton track={track} />
             <AddToPlaylistMenu
               musicId={Number(track.id)}

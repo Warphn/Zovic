@@ -9,6 +9,7 @@ import { AlbumCard } from "@/components/album-card"
 import { ArtistPhoto } from "@/components/artist-photo"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import Header from "@/components/header"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { TrackRow } from "@/components/track-row"
 import { TrackTitle } from "@/components/track-title"
@@ -151,6 +152,7 @@ export default function ArtistPage() {
                         <AddToQueueButton track={track} onResult={announce} />
                         <TrackCommentsButton track={track} />
                         <TrackLikeButton trackId={track.id} />
+                        <TrackDislikeButton trackId={track.id} />
                         <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={announce} />
                       </>
                     }
