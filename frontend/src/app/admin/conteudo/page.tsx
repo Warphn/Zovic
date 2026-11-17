@@ -7,17 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { albumsOfArtists, MAX_AUDIO_BYTES, musicChanges, useAdminMusics, useRemoveMusic, useSaveMusic } from "@/lib/api/admin"
+import { albumsOfArtists, musicChanges, useAdminMusics, useRemoveMusic, useUpdateMusic } from "@/lib/api/admin"
 import { type Album, type CatalogMusic, type Genre, type NamedItem, useAlbums, useArtists, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
-import { readAudioDuration } from "@/lib/audio-duration"
 import { formatDuration } from "@/lib/format-duration"
 import { cn } from "@/lib/utils"
 import { AlbumsSection } from "./albums-section"
 import { ArtistsSection } from "./artists-section"
+import { NewMusicForm } from "./new-music-form"
 import { AlbumPicker } from "./album-picker"
 import { ConfirmDialog } from "./confirm-dialog"
-import { FileInput } from "@/components/file-input"
 import { NewArtistField, NewGenreField } from "./new-catalog-item"
 import { Picker } from "./picker"
 
@@ -187,20 +186,32 @@ function MusicDialog({
   genres: Genre[]
   onClose: () => void
 }) {
+  const catalog = { artists, albums, genres, onClose }
   return (
     <Dialog open={draft !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{draft?.music ? "Editar música" : "Nova música"}</DialogTitle>
-          <DialogDescription>Os artistas e gêneros escolhidos substituem os anteriores.</DialogDescription>
-        </DialogHeader>
-        {/* DialogContent unmounts while closed, so the form starts from the music on every open */}
-        {draft && <MusicForm music={draft.music} artists={artists} albums={albums} genres={genres} onClose={onClose} />}
-      </DialogContent>
+      {/* DialogContent unmounts while closed, so the form starts from the music on every open */}
+      {draft?.music ? (
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar música</DialogTitle>
+            <DialogDescription>Os artistas e gêneros escolhidos substituem os anteriores.</DialogDescription>
+          </DialogHeader>
+          <MusicForm music={draft.music} {...catalog} />
+        </DialogContent>
+      ) : (
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nova música</DialogTitle>
+            <DialogDescription>Escolha um MP3, ou vários para cadastrar as faixas de um álbum.</DialogDescription>
+          </DialogHeader>
+          <NewMusicForm {...catalog} />
+        </DialogContent>
+      )}
     </Dialog>
   )
 }
 
+// Edição de uma música já cadastrada: o áudio, e com ele a duração, não muda
 function MusicForm({
   music,
   artists,
@@ -208,26 +219,20 @@ function MusicForm({
   genres,
   onClose,
 }: {
-  music: CatalogMusic | null
+  music: CatalogMusic
   artists: NamedItem[]
   albums: Album[]
   genres: Genre[]
   onClose: () => void
 }) {
-  const [name, setName] = React.useState(music?.name ?? "")
-  const [artistIds, setArtistIds] = React.useState<number[]>(music?.artists.map((a) => a.id) ?? [])
-  const [genreIds, setGenreIds] = React.useState<number[]>(music?.genres.map((g) => g.id) ?? [])
-  const [albumId, setAlbumId] = React.useState<number | null>(music?.album?.id ?? null)
-  const [isExplicit, setIsExplicit] = React.useState(music?.isExplicit ?? false)
-  // Only a new music takes a file: editing keeps the audio, and so the duration, it already has
-  const [audio, setAudio] = React.useState<File | null>(null)
-  const [audioDuration, setAudioDuration] = React.useState<number | null>(null)
-  const [isReadingAudio, setIsReadingAudio] = React.useState(false)
-  // The last file chosen: a slow read of an earlier one must not overwrite its duration
-  const latestAudio = React.useRef<File | null>(null)
+  const [name, setName] = React.useState(music.name)
+  const [artistIds, setArtistIds] = React.useState<number[]>(music.artists.map((a) => a.id))
+  const [genreIds, setGenreIds] = React.useState<number[]>(music.genres.map((g) => g.id))
+  const [albumId, setAlbumId] = React.useState<number | null>(music.album?.id ?? null)
+  const [isExplicit, setIsExplicit] = React.useState(music.isExplicit)
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
-  const saveMusic = useSaveMusic()
+  const updateMusic = useUpdateMusic()
 
   // The album must have one of the music's artists: unchecking its artist takes the album out too
   const changeArtists = (nextArtistIds: number[]) => {
@@ -235,38 +240,15 @@ function MusicForm({
     if (albumId !== null && !albumsOfArtists(albums, nextArtistIds).some((album) => album.id === albumId)) setAlbumId(null)
   }
 
-  const chooseAudio = async (file: File | null) => {
-    latestAudio.current = file
-    setAudio(file)
-    setAudioDuration(null)
-    setError(null)
-    if (!file) return
-    setIsReadingAudio(true)
-    const seconds = await readAudioDuration(file)
-    if (latestAudio.current !== file) return
-    setIsReadingAudio(false)
-    if (seconds === null) setError("Não deu para ler a duração. Confira se o arquivo é um MP3.")
-    setAudioDuration(seconds)
-  }
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return setError("Dê um nome para a música.")
     if (artistIds.length === 0) return setError("Escolha pelo menos um artista.")
-    // The API checks both again; this only spares uploading 20 MB to get the same answer
-    if (!music && !audio) return setError("Escolha o arquivo de áudio da música.")
-    if (audio && audio.size > MAX_AUDIO_BYTES) return setError("O áudio pode ter no máximo 20 MB.")
-    const duration = music ? music.duration : audioDuration
-    if (duration === null) return setError("Não deu para ler a duração. Confira se o arquivo é um MP3.")
     setSaving(true)
     try {
-      const input = { name: name.trim(), duration, artistIds, genreIds, albumId, isExplicit }
-      if (music) {
-        const changes = musicChanges(music, input, artists.map((artist) => artist.id))
-        if (Object.keys(changes).length > 0) await saveMusic.mutateAsync({ id: music.id, input: changes })
-      } else if (audio) {
-        await saveMusic.mutateAsync({ id: null, input: { ...input, audio } })
-      }
+      const input = { name: name.trim(), duration: music.duration, artistIds, genreIds, albumId, isExplicit }
+      const changes = musicChanges(music, input, artists.map((artist) => artist.id))
+      if (Object.keys(changes).length > 0) await updateMusic.mutateAsync({ id: music.id, input: changes })
       onClose()
     } catch (err) {
       setError(apiErrorMessage(err))
@@ -280,18 +262,6 @@ function MusicForm({
       <Field label="Nome" id="music-name">
         <Input id="music-name" required maxLength={255} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      {!music && (
-        <Field label="Arquivo de áudio (MP3, até 20 MB)" id="music-audio">
-          <FileInput id="music-audio" file={audio} accept="audio/mpeg,.mp3" onChange={chooseAudio} describedBy="music-audio-status" />
-          <p id="music-audio-status" className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-            {isReadingAudio
-              ? "Lendo a duração do arquivo…"
-              : audioDuration !== null
-                ? `Duração: ${formatDuration(audioDuration)}, lida do arquivo`
-                : "A duração é lida do arquivo."}
-          </p>
-        </Field>
-      )}
       <Picker label="Artistas" items={artists} selected={artistIds} onChange={changeArtists} />
       <NewArtistField onCreated={(artistId) => setArtistIds((selected) => [...selected, artistId])} />
       <Picker label="Gêneros" items={genres} selected={genreIds} onChange={setGenreIds} />
@@ -308,8 +278,8 @@ function MusicForm({
         <Button type="button" variant="ghost" size="lg" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="submit" size="lg" disabled={saving || isReadingAudio}>
-          {saving ? "Salvando…" : music ? "Salvar" : "Criar música"}
+        <Button type="submit" size="lg" disabled={saving}>
+          {saving ? "Salvando…" : "Salvar"}
         </Button>
       </DialogFooter>
     </form>

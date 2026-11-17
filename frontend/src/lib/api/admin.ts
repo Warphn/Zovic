@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type Album, type CatalogMusic, catalogApi, catalogKeys, type Genre, type NamedItem } from "./catalog"
+import { createMusicsInOrder } from "@/lib/music-batch"
 import { json, queryString, request } from "./client"
 import { commentKeys } from "./comments"
 import { searchKeys } from "./search"
@@ -254,12 +255,24 @@ export function useRemoveUser() {
   return useMutation({ mutationFn: adminApi.removeUser, onSuccess: invalidate })
 }
 
-/** Creates the music (with its MP3) or updates an existing one, which keeps its audio. */
-export function useSaveMusic() {
+/**
+ * Creates several musics in order, like an album's tracks (HU-41), and refreshes the catalog once at
+ * the end, even when one fails: the ones created before the failure are already in the catalog.
+ */
+export function useCreateMusics() {
+  const invalidate = useInvalidate("catalog")
+  return async (inputs: NewMusicInput[], onCreated?: (input: NewMusicInput) => void) => {
+    const result = await createMusicsInOrder(inputs, adminApi.createMusic, onCreated)
+    if (result.createdCount > 0) await invalidate()
+    return result
+  }
+}
+
+/** Updates a music, which keeps its audio; new musics go through useCreateMusics. */
+export function useUpdateMusic() {
   const invalidate = useInvalidate("catalog")
   return useMutation({
-    mutationFn: (save: { id: null; input: NewMusicInput } | { id: number; input: Partial<MusicInput> }) =>
-      save.id === null ? adminApi.createMusic(save.input) : adminApi.updateMusic(save.id, save.input),
+    mutationFn: ({ id, input }: { id: number; input: Partial<MusicInput> }) => adminApi.updateMusic(id, input),
     onSuccess: invalidate,
   })
 }

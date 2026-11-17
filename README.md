@@ -138,6 +138,7 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com quatro 
 - **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
 - **Conteúdo:** cria, edita e remove músicas, álbuns e artistas.
   - **Música:** o cadastro pede o arquivo MP3 (até 20 MB), e a duração é lida do arquivo. Ela também tem álbum (opcional), gêneros e a marca de conteúdo explícito. As músicas do seed não têm áudio e aparecem como "sem áudio".
+  - **Várias músicas:** **Nova música** aceita um MP3 ou vários de uma vez, como as faixas de um álbum. Artistas, gêneros e álbum valem para todas, e cada faixa tem o próprio nome e a marca de explícito. O nome vem do arquivo, sem o número da faixa (`01 - Coven.mp3` vira "Coven"), e pode ser editado. A ordem da lista, que o admin muda arrastando ou com as setas, é a ordem das faixas no álbum. As músicas vão uma por vez: se uma falhar, as anteriores ficam cadastradas, e as demais continuam na lista.
   - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
   - **Álbuns:** aparecem em cards, com a capa, o ano, os artistas e quantas faixas têm. Todo álbum novo pede nome, artistas, ano e a imagem de capa (JPEG, PNG ou WebP, até 2 MB), que pode ser trocada depois. Os álbuns do seed não têm capa e mostram as iniciais.
   - **Álbum da música:** o formulário de música mostra as capas dos álbuns dos artistas marcados, e dá para criar um álbum novo ali mesmo.
