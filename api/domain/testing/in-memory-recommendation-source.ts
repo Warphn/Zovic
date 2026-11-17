@@ -15,6 +15,7 @@ export class InMemoryRecommendationSource implements RecommendationSource {
   readonly catalog: CatalogMusic[] = [];
   readonly listenedByUser = new Map<number, number[]>();
   readonly likedByUser = new Map<number, number[]>();
+  readonly dislikedByUser = new Map<number, number[]>();
 
   listTasteSignals(userId: number): Promise<TasteSignals> {
     const toSignals = (musicIds: number[] = []) =>
@@ -31,19 +32,23 @@ export class InMemoryRecommendationSource implements RecommendationSource {
   listCandidates(userId: number, includeExplicit: boolean): Promise<RecommendationCandidate[]> {
     const listenedIds = this.listenedByUser.get(userId) ?? [];
     return Promise.resolve(
-      this.activeMusics(includeExplicit).filter((music) => !listenedIds.includes(music.id)),
+      this.activeMusics(userId, includeExplicit).filter((music) => !listenedIds.includes(music.id)),
     );
   }
 
-  listMostPlayed(limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]> {
-    const mostPlayed = this.activeMusics(includeExplicit)
+  listMostPlayed(userId: number, limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]> {
+    const mostPlayed = this.activeMusics(userId, includeExplicit)
       .toSorted((first, second) => second.streams - first.streams || first.id - second.id)
       .slice(0, limit)
       .map(({ id, name, duration, artists }) => ({ id, name, duration, artists }));
     return Promise.resolve(mostPlayed);
   }
 
-  private activeMusics(includeExplicit: boolean): CatalogMusic[] {
-    return this.catalog.filter((music) => !music.isRemoved && (includeExplicit || !music.isExplicit));
+  /** As músicas que a conta pode receber: ativas, sem dislike dela e, se for o caso, não explícitas. */
+  private activeMusics(userId: number, includeExplicit: boolean): CatalogMusic[] {
+    const dislikedIds = this.dislikedByUser.get(userId) ?? [];
+    return this.catalog.filter(
+      (music) => !music.isRemoved && !dislikedIds.includes(music.id) && (includeExplicit || !music.isExplicit),
+    );
   }
 }

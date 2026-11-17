@@ -90,7 +90,7 @@ Arquivo: `api/domain/entities/playlist.ts` · Tabelas: `playlists`, `playlist_us
 | `removeMember(userId)` | Remove o membro. Recusa quem não é membro e **não deixa sair o último admin**. |
 | `promote(userId)` | Torna o membro admin. |
 | `createLikedSongs({ id, userId, now? })` | Cria a Músicas Curtidas da conta (HU-34): privada, com o nome `LIKED_SONGS_NAME` e a cor `LIKED_SONGS_COLOR` fixos e a conta como admin. |
-| `isLikedSongs` | `true` na Músicas Curtidas. Nela, `rename`, `changeColor`, `changeCover`, `removeCover`, `setPrivate`, `delete` e `addMember` lançam `BusinessRuleError`: ela só muda pela curtida (`LikeMusic` e `UnlikeMusic`, em `liked-songs.ts`). |
+| `isLikedSongs` | `true` na Músicas Curtidas. Nela, `rename`, `changeColor`, `changeCover`, `removeCover`, `setPrivate`, `delete` e `addMember` lançam `BusinessRuleError`: ela só muda pela curtida (`LikeMusic` e `UnlikeMusic`, em `liked-songs.ts`) e pelo dislike (`DislikeMusic`, em `disliked-musics.ts`). |
 | `rename(name)` | Troca o nome. |
 | `changeColor(color)` | Troca a cor (`null` tira a cor). |
 | `changeCover(coverFile)` / `removeCover()` | Põe ou troca a capa, e tira a capa. Recusa nome de arquivo vazio. |
@@ -261,11 +261,12 @@ Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entida
 | `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
 | `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
 | `PlayHistory` | `play-history.ts` | O histórico de reprodução da conta, a marca de música ouvida (`music_listened`, HU-15) e a lista das já ouvidas. Quem decide se a música conta como ouvida (mais de 30 segundos) é o caso de uso `MarkMusicListened`. |
-| `RecommendationSource` | `recommendation-source.ts` | Os dados da recomendação por conteúdo (HU-25): as músicas que a conta ouviu e curtiu, as candidatas ainda não ouvidas e as mais tocadas. Quem monta o perfil, pontua e ordena é o caso de uso `RecommendMusics`. |
+| `RecommendationSource` | `recommendation-source.ts` | Os dados da recomendação por conteúdo (HU-25): as músicas que a conta ouviu e curtiu, as candidatas ainda não ouvidas e as mais tocadas. As duas listas deixam de fora as músicas com dislike da conta. Quem monta o perfil, pontua e ordena é o caso de uso `RecommendMusics`. |
+| `MusicDislikes` | `music-dislikes.ts` | Os dislikes de cada conta (HU-20): lista, grava e tira. Quem tira o like junto com o dislike, e o dislike junto com o like, são os casos de uso `DislikeMusic` e `LikeMusic`. |
 | `AdminQueries` | `admin-queries.ts` | Os números do painel e as reproduções recentes de um usuário |
 | `UserAccounts` | `admin-queries.ts` | Cria e remove contas e conta os admins ativos, para o painel de admin |
 
-As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts`, `postgres-recommendation-source.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
+As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts`, `postgres-recommendation-source.ts`, `postgres-music-dislikes.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
 
 ## Criando uma entidade nova
 

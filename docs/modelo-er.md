@@ -36,6 +36,8 @@ erDiagram
     musics ||--o{ music_user : "salva por"
 
     user ||--o{ rating : "avalia"
+    user ||--o{ music_dislikes : "dá dislike"
+    musics ||--o{ music_dislikes : "recebe dislike"
     musics ||--o{ rating : "recebe"
     user ||--o{ comments : "escreve"
     musics ||--o{ comments : "recebe"
@@ -166,6 +168,11 @@ erDiagram
         timestamptz deleted_at
         timestamptz created_at
     }
+    music_dislikes {
+        int user_id PK, FK
+        int music_id PK, FK
+        timestamptz created_at
+    }
     comments {
         serial id PK
         int music_id FK
@@ -278,6 +285,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | --- | --- | --- |
 | `music_user` | As músicas salvas por cada usuário | |
 | `rating` | As avaliações | Nota de 1 a 5. Cada usuário tem uma avaliação ativa por música. |
+| `music_dislikes` | Os dislikes de cada conta (HU-20) | Um dislike por conta e música (chave primária nas duas colunas). O like é a música estar na Músicas Curtidas. A API garante um voto por conta: dar dislike tira o like, e dar like tira o dislike. A recomendação (HU-25) não sugere música com dislike da conta. Apagar a conta ou a música apaga os dislikes. |
 | `comments` | Os comentários | `timestamp` é o segundo da música a que o comentário se refere, opcional e `>= 0`. A remoção é lógica: `deleted_at` guarda a data, e `deleted_by` guarda quem removeu, o autor ou o admin que moderou (HU-23). `deleted_by` só é preenchido em comentário removido, e apagar a conta de quem removeu o deixa nulo. |
 | `comment_reports` | As denúncias de comentários, com o motivo | Cada usuário denuncia um comentário uma vez só (`UNIQUE (comment_id, user_id)`). `reason` tem até 280 caracteres. |
 

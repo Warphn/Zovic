@@ -189,6 +189,12 @@ interacoes: "Interações" {
     created_at: "timestamptz"
     deleted_at: "timestamptz"
   }
+  music_dislikes: {
+    shape: sql_table
+    user_id: "integer" {constraint: [primary_key; foreign_key]}
+    music_id: "integer" {constraint: [primary_key; foreign_key]}
+    created_at: "timestamptz"
+  }
 }
 
 sistema: "Sistema" {
@@ -259,6 +265,14 @@ catalogo.genre_music.genre_id <-> catalogo.genre.id: {
   target-arrowhead.shape: cf-one-required
 }
 catalogo.genre_music.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.music_dislikes.music_id <-> catalogo.musics.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+interacoes.music_dislikes.user_id <-> contas.user.id: {
   source-arrowhead.shape: cf-many
   target-arrowhead.shape: cf-one-required
 }

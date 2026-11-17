@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Playlist } from "../entities/playlist.ts";
 import { BusinessRuleError, NotFoundError } from "../errors/domain-error.ts";
+import { InMemoryMusicDislikes } from "../testing/in-memory-music-dislikes.ts";
 import { InMemoryPlaylistMusics } from "../testing/in-memory-playlist-musics.ts";
 import { InMemoryPlaylistRepository } from "../testing/in-memory-playlist-repository.ts";
 import { AddMusicToPlaylist } from "./add-music-to-playlist.ts";
@@ -26,7 +27,7 @@ function setup() {
     playlists,
     musics,
     ensure,
-    like: new LikeMusic(ensure, musics),
+    like: new LikeMusic(ensure, musics, new InMemoryMusicDislikes()),
     unlike: new UnlikeMusic(playlists, musics),
   };
 }
