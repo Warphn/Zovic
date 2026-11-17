@@ -57,6 +57,7 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 | `BETTER_AUTH_URL` | URL pública da API, sem o `/api/auth` |
 | `CORS_ORIGIN` | Origens do front liberadas para chamar a API com cookie, separadas por vírgula. Vazia, nenhuma é liberada. |
 | `COOKIE_SECURE` | `false` em desenvolvimento (HTTP). Se faltar, a API liga o `Secure`, e o navegador não guarda o cookie em `http://`. |
+| `AUTH_RATE_LIMIT` | `false` em desenvolvimento, para não travar o login depois de muitas tentativas. Se faltar, a API liga o limite: 5 logins a cada 15 minutos e 10 cadastros por hora, por IP. |
 | `TRUST_PROXY` | Número de proxies na frente da API, para o limite de login ver o IP real. Vazia em desenvolvimento e `1` em produção. |
 | `NEXT_PUBLIC_API_URL` | Endereço da API para o front no Docker. Vazio vale `http://localhost:3333`. |
 | `AUDIO_DIR` | Diretório dos MP3 das músicas. Vazio vale `api/storage/audio`. No Docker, o compose passa `/data/audio`, o volume `audio`. |

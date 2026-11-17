@@ -3,6 +3,8 @@ import { join } from "node:path";
 export interface Config {
   port: number;
   cookieSecure: boolean;
+  /** Limite de tentativas no login e no cadastro. */
+  authRateLimit: boolean;
   trustProxy: number | null;
   betterAuthSecret: string;
   betterAuthUrl: string;
@@ -26,6 +28,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port,
     // Ligado por padrão; só "false" desliga (desenvolvimento em http).
     cookieSecure: env.COOKIE_SECURE !== "false",
+    // Ligado por padrão, como em produção; só "false" desliga (desenvolvimento local, que faz muitos logins).
+    authRateLimit: env.AUTH_RATE_LIMIT !== "false",
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
     betterAuthSecret: parseSecret(env.BETTER_AUTH_SECRET),
     betterAuthUrl: env.BETTER_AUTH_URL || `http://localhost:${port}`,

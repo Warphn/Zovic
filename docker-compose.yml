@@ -50,6 +50,8 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3333}
       # cookie de sessão sem Secure em http local (padrão do compose); veja .env.example
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # limite de tentativas no login: ligado se faltar; o .env local desliga com false
+      AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-true}
       # vazio desliga; no servidor, 1 (o cloudflared é o proxy à frente da API)
       TRUST_PROXY: ${TRUST_PROXY:-}
       # áudios das músicas e capas dos álbuns, nos volumes abaixo (fora do Docker: api/storage/)

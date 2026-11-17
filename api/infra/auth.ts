@@ -7,5 +7,5 @@ export const auth = createAuth(pool, {
   baseURL: config.betterAuthUrl,
   trustedOrigins: config.corsOrigins,
   cookieSecure: config.cookieSecure,
-  rateLimit: true,
+  rateLimit: config.authRateLimit,
 });

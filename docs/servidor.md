@@ -80,6 +80,7 @@ O `~/zovic/.env` só existe no servidor e nunca vai para o git. Não mostre o co
 | `BETTER_AUTH_URL` | `https://api.zovic.com.br` |
 | `CORS_ORIGIN` | `https://zovic.com.br` |
 | `COOKIE_SECURE` | `true` |
+| `AUTH_RATE_LIMIT` | `true` ou ausente, para manter o limite de tentativas no login e no cadastro |
 | `TRUST_PROXY` | `1`, porque o `cloudflared` é o proxy à frente da API e o rate limit do login precisa do IP real |
 | `CLOUDFLARE_TUNNEL_TOKEN` | O token do túnel `zovic-desktop` |
 | `COMPOSE_PROJECT_NAME` | Não defina. Sem ela, o projeto do Docker se chama `zovic`, o nome com que o volume do banco foi criado (`zovic_pgdata`). Outro nome criaria um banco novo e vazio. |
