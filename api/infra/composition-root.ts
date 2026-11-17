@@ -5,6 +5,7 @@ import { PostgresArtistRepository } from "../adapters/db/postgres-artist-reposit
 import { PostgresCommentRepository } from "../adapters/db/postgres-comment-repository.ts";
 import { PostgresGenreRepository } from "../adapters/db/postgres-genre-repository.ts";
 import { PostgresMusicRepository } from "../adapters/db/postgres-music-repository.ts";
+import { PostgresMusicDislikes } from "../adapters/db/postgres-music-dislikes.ts";
 import { PostgresPlayHistory } from "../adapters/db/postgres-play-history.ts";
 import { PostgresRecommendationSource } from "../adapters/db/postgres-recommendation-source.ts";
 import { PostgresPlaylistMusics } from "../adapters/db/postgres-playlist-musics.ts";
@@ -30,6 +31,7 @@ import { createApp } from "../adapters/http/create-app.ts";
 import { makeAuthenticate } from "../adapters/http/middlewares/authenticate.ts";
 import { makeRequireSubscription } from "../adapters/http/middlewares/require-subscription.ts";
 import { makeHistoryController } from "../adapters/http/history-controller.ts";
+import { makeDislikedMusicsController } from "../adapters/http/disliked-musics-controller.ts";
 import { makeRecommendationController } from "../adapters/http/recommendation-controller.ts";
 import { makeLikedMusicsController } from "../adapters/http/liked-musics-controller.ts";
 import { makePlaylistController } from "../adapters/http/playlist-controller.ts";
@@ -44,6 +46,7 @@ import { DeletePlaylist } from "../domain/use-cases/delete-playlist.ts";
 import { GetMusicAudio } from "../domain/use-cases/get-music-audio.ts";
 import { GetPlaylist } from "../domain/use-cases/get-playlist.ts";
 import { ListMusicComments } from "../domain/use-cases/list-music-comments.ts";
+import { DislikeMusic, ListMyDislikedMusics, RemoveDislike } from "../domain/use-cases/disliked-musics.ts";
 import { EnsureLikedSongs, LikeMusic, UnlikeMusic } from "../domain/use-cases/liked-songs.ts";
 import { ListMyHistory } from "../domain/use-cases/list-my-history.ts";
 import { RecommendMusics } from "../domain/use-cases/recommend-musics.ts";
@@ -160,6 +163,9 @@ export function composeApp(
     recommendMusics: new RecommendMusics(new PostgresRecommendationSource(db)),
   });
 
+  const musicDislikes = new PostgresMusicDislikes(db);
+  const unlikeMusic = new UnlikeMusic(playlistRepository, playlistMusics);
+
   const router = makeRouter(
     {
       playlists: playlistController,
@@ -171,8 +177,13 @@ export function composeApp(
       history: historyController,
       recommendations: recommendationController,
       likedMusics: makeLikedMusicsController({
-        likeMusic: new LikeMusic(new EnsureLikedSongs(playlistRepository), playlistMusics),
-        unlikeMusic: new UnlikeMusic(playlistRepository, playlistMusics),
+        likeMusic: new LikeMusic(new EnsureLikedSongs(playlistRepository), playlistMusics, musicDislikes),
+        unlikeMusic,
+      }),
+      dislikedMusics: makeDislikedMusicsController({
+        listMyDislikedMusics: new ListMyDislikedMusics(musicDislikes),
+        dislikeMusic: new DislikeMusic(musicDislikes, unlikeMusic),
+        removeDislike: new RemoveDislike(musicDislikes),
       }),
     },
     makeAuthenticate(auth),

@@ -11,8 +11,8 @@ export interface LikedMusicsController {
   unlike: RequestHandler;
 }
 
-// Músicas Curtidas (HU-34): o coração do front chama estas rotas até a curtida da HU-20 ir para a
-// API; depois, o voto chama os mesmos casos de uso. `:id` já passou pelo validateParams.
+// O like da HU-20, que põe a música na Músicas Curtidas (HU-34). O coração do front chama estas
+// rotas. `:id` já passou pelo validateParams.
 export function makeLikedMusicsController(useCases: LikedMusicsUseCases): LikedMusicsController {
   return {
     like: async (req, res) => {

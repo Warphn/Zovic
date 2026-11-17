@@ -62,12 +62,17 @@ const LIST_LIKED_SIGNALS = `
   JOIN music_playlist mp ON mp.music_id = m.id
   JOIN playlists p ON p.id = mp.playlist_id AND p.liked_by_user_id = $1 AND p.deleted_at IS NULL`;
 
+// A música com dislike da conta (HU-20) nunca é recomendada, nem na lista das mais tocadas.
+const NOT_DISLIKED = `
+  NOT EXISTS (SELECT 1 FROM music_dislikes d WHERE d.user_id = $1 AND d.music_id = m.id)`;
+
 const LIST_CANDIDATES = `
   SELECT m.id, m.name, m.duration, m.streams, credit.artists, ${ACTIVE_GENRE_IDS} AS genre_ids
   FROM musics m
   ${ACTIVE_ARTISTS}
   WHERE m.deleted_at IS NULL
     AND ($2 OR NOT m.is_explicit)
+    AND ${NOT_DISLIKED}
     AND NOT EXISTS (
       SELECT 1 FROM user_event e WHERE e.user_id = $1 AND e.event_type = 'music_listened' AND e.music_id = m.id
     )`;
@@ -76,9 +81,9 @@ const LIST_MOST_PLAYED = `
   SELECT m.id, m.name, m.duration, credit.artists
   FROM musics m
   ${ACTIVE_ARTISTS}
-  WHERE m.deleted_at IS NULL AND ($2 OR NOT m.is_explicit)
+  WHERE m.deleted_at IS NULL AND ($3 OR NOT m.is_explicit) AND ${NOT_DISLIKED}
   ORDER BY m.streams DESC, m.id
-  LIMIT $1`;
+  LIMIT $2`;
 
 function toTasteSignal(row: TasteRow): TasteSignal {
   return { genreIds: row.genre_ids, artistIds: row.artist_ids };
@@ -104,8 +109,8 @@ export class PostgresRecommendationSource implements RecommendationSource {
     return rows.map((row) => ({ ...toRecommendedMusic(row), genreIds: row.genre_ids, streams: row.streams }));
   }
 
-  async listMostPlayed(limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]> {
-    const { rows } = await this.pool.query<MusicRow>(LIST_MOST_PLAYED, [limit, includeExplicit]);
+  async listMostPlayed(userId: number, limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]> {
+    const { rows } = await this.pool.query<MusicRow>(LIST_MOST_PLAYED, [userId, limit, includeExplicit]);
     return rows.map(toRecommendedMusic);
   }
 }

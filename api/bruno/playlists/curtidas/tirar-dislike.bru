@@ -1,0 +1,17 @@
+meta {
+  name: Tirar o dislike da música A
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{baseUrl}}/api/me/disliked-musics/{{musicA}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

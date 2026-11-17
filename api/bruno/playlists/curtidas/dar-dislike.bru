@@ -1,0 +1,17 @@
+meta {
+  name: Dar dislike na música A
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/me/disliked-musics/{{musicA}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

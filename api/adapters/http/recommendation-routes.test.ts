@@ -215,6 +215,21 @@ describe("GET /recommendations", () => {
     expect(ids.length).toBeLessThanOrEqual(RECOMMENDATION_COUNT);
   });
 
+  it("não entrega música com dislike da conta, com ou sem histórico", async () => {
+    const subscriber = await createSubscriber("dislike");
+    const other = await createSubscriber("sem-dislike");
+    await resetTestMusicStreams();
+    const dislikedMusic = await insertMusic("com dislike", rockGenre, { streams: TOP_STREAMS });
+    const heardMusic = await insertMusic("dislike ouvida", rockGenre);
+    expect((await call("PUT", `/me/disliked-musics/${dislikedMusic}`, subscriber.cookie)).status).toBe(204);
+
+    expect((await recommendations(subscriber)).map((entry) => entry.id)).not.toContain(dislikedMusic);
+    expect((await recommendations(other)).map((entry) => entry.id)[0]).toBe(dislikedMusic);
+
+    await listen(subscriber, heardMusic);
+    expect((await recommendations(subscriber)).map((entry) => entry.id)).not.toContain(dislikedMusic);
+  });
+
   it("não entrega música removida", async () => {
     const subscriber = await createSubscriber("removida");
     const removedMusic = await insertMusic("removida", rockGenre, { streams: TOP_STREAMS });

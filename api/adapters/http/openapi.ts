@@ -219,7 +219,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Curte uma música: põe no topo da Músicas Curtidas",
         description:
-          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Para menor de idade, uma música explícita responde 404, como se não existisse. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
+          "HU-20 e HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Cada conta tem um voto por música, então curtir também tira o dislike (`PUT /api/me/disliked-musics/{id}`). Curtir de novo não muda nada. Para menor de idade, uma música explícita responde 404, como se não existisse.",
         operationId: "likeMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -245,6 +245,66 @@ export const openApiDocument = {
         security: [{ cookieAuth: [] }],
         responses: {
           "204": { description: "Música fora da Músicas Curtidas" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/me/disliked-musics": {
+      get: {
+        tags: ["Playlists"],
+        summary: "Lista as músicas com dislike",
+        description: "HU-20. Os ids das músicas em que o usuário autenticado deu dislike, do dislike mais recente para o mais antigo.",
+        operationId: "listMyDislikedMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Ids das músicas com dislike (lista vazia se não há nenhum)",
+            content: { "application/json": { schema: { type: "array", items: { type: "integer" }, example: [42, 7] } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/me/disliked-musics/{id}": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+      put: {
+        tags: ["Playlists"],
+        summary: "Dá dislike numa música",
+        description:
+          "HU-20. Cada conta tem um voto por música, então o dislike também tira a música da Músicas Curtidas. Dar dislike de novo não muda nada. A recomendação (`GET /api/recommendations`) não sugere música com dislike. Para menor de idade, uma música explícita responde 404, como se não existisse.",
+        operationId: "dislikeMusic",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Dislike gravado" },
+          "400": {
+            description: "Id que não é inteiro positivo",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Música inexistente, removida ou explícita para menor de idade",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Playlists"],
+        summary: "Tira o dislike de uma música",
+        description: "HU-20. Tirar um dislike que não existe também responde 204.",
+        operationId: "removeDislike",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "204": { description: "Música sem dislike" },
           "400": {
             description: "Id que não é inteiro positivo",
             content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } },
@@ -306,7 +366,7 @@ export const openApiDocument = {
         tags: ["Recomendações"],
         summary: "Lista as músicas recomendadas",
         description:
-          "Até 10 músicas que o usuário autenticado ainda não ouviu (HU-25), da mais parecida com o gosto dele para a menos. O gosto é o peso de cada gênero e artista nas músicas que ele ouviu (`POST /api/musics/{id}/listens`) e curtiu (`PUT /api/me/liked-musics/{id}`); a música ouvida e curtida pesa duas vezes. A pontuação de uma candidata é a soma dos pesos dos gêneros e artistas dela, e o empate vai para a mais tocada. Sem nenhuma música ouvida ou curtida, a resposta são as mais tocadas da plataforma. Músicas removidas ficam de fora. Para menor de idade (ou conta sem data de nascimento), as explícitas também; admins da plataforma veem tudo.",
+          "Até 10 músicas que o usuário autenticado ainda não ouviu (HU-25), da mais parecida com o gosto dele para a menos. O gosto é o peso de cada gênero e artista nas músicas que ele ouviu (`POST /api/musics/{id}/listens`) e curtiu (`PUT /api/me/liked-musics/{id}`); a música ouvida e curtida pesa duas vezes. A pontuação de uma candidata é a soma dos pesos dos gêneros e artistas dela, e o empate vai para a mais tocada. Sem nenhuma música ouvida ou curtida, a resposta são as mais tocadas da plataforma. Músicas removidas e as que têm dislike da conta (`PUT /api/me/disliked-musics/{id}`) ficam de fora, com ou sem histórico. Para menor de idade (ou conta sem data de nascimento), as explícitas também; admins da plataforma veem tudo.",
         operationId: "listRecommendedMusics",
         security: [{ cookieAuth: [] }],
         responses: {

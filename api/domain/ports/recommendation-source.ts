@@ -33,13 +33,13 @@ export interface RecommendationSource {
   /** As músicas que a conta ouviu e as que curtiu, cada uma com seus gêneros e artistas ativos. */
   listTasteSignals(userId: number): Promise<TasteSignals>;
   /**
-   * As músicas ativas que a conta ainda não ouviu. Com `includeExplicit` falso (menores de
-   * idade, HU-09), as explícitas ficam de fora.
+   * As músicas ativas que a conta ainda não ouviu e em que não deu dislike (HU-20). Com
+   * `includeExplicit` falso (menores de idade, HU-09), as explícitas ficam de fora.
    */
   listCandidates(userId: number, includeExplicit: boolean): Promise<RecommendationCandidate[]>;
   /**
    * As músicas ativas mais tocadas da plataforma, da mais para a menos tocada; empate pelo id.
-   * Com `includeExplicit` falso, as explícitas ficam de fora.
+   * As que têm dislike da conta ficam de fora e, com `includeExplicit` falso, as explícitas também.
    */
-  listMostPlayed(limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]>;
+  listMostPlayed(userId: number, limit: number, includeExplicit: boolean): Promise<RecommendedMusic[]>;
 }

@@ -300,10 +300,13 @@ Forma de trabalho: o Claude Opus levantou as telas parecidas, propôs os grupos 
 
 O Carlos escolheu quais recursos cada tela tem. A IA escolheu a largura e as linhas do álbum para a playlist, que perde as barrinhas animadas da faixa tocando e o link "← Playlists" do topo, e manter a lista de faixas da playlist com o botão de tirar a faixa.
 
-### 17/11/2026: documentação do modelo ER (#103)
+### 17/11/2026: dislike na API e fora das recomendações (#97 e #94, HU-25 e HU-20)
+
+Forma de trabalho: o Claude Opus levantou o estado do dislike, propôs o plano e o implementou depois da aprovação do Gabriel.
 
 | # | Prompt | Resultado |
 |---|---|---|
-| 1 | Atualize a documentação, e coloque em prompts.md que eu coloquei pra vc atualizar a documentação. | O [`modelo-er.md`](../modelo-er.md) passa a explicar o `modelo-er-pe-de-galinha.drawio`, a versão anterior do diagrama, mantida só como referência. A tabela "Documentação junto com o código" do `CLAUDE.md` passa a pedir as duas imagens exportadas do `modelo-er.drawio` (`der-conceitual.png` e `modelo-er.png`). |
+| 1 | Consegue terminar a parte das recomendações, dado que o Caio já implementou o botão de dislike agora? | O levantamento mostrou que o dislike do #144 só existia no `localStorage`, então a API não tinha como tirá-lo das recomendações. Resultado: o plano de levar o dislike para o banco e para a API, com um voto por conta e música |
+| 2 | Pode implementar o plano completo. | A migração [`V261117_200000`](../../db/migrations/V261117_200000__Adiciona_dislike_de_musica.sql) com a tabela `music_dislikes`; a porta [`music-dislikes.ts`](../../api/domain/ports/music-dislikes.ts) e os casos de uso de [`disliked-musics.ts`](../../api/domain/use-cases/disliked-musics.ts), com testes; o `LikeMusic` tirando o dislike; as rotas `/me/disliked-musics`, com testes de integração; a exclusão das músicas com dislike em [`postgres-recommendation-source.ts`](../../api/adapters/db/postgres-recommendation-source.ts), com testes de unidade e de integração; e o botão de dislike do front sobre a API, no lugar do `dislikes-store` |
 
-O Felipe pediu a atualização. A IA escolheu os arquivos afetados e o texto.
+O Gabriel decidiu levar o dislike para a API em vez de filtrar as recomendações no front. A IA escolheu tirar o dislike também da lista das mais tocadas, usar o mesmo 404 da curtida para a música explícita de menor e não levar para a API os dislikes que já estavam no `localStorage`.
