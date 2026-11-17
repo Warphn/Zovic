@@ -187,7 +187,7 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `PUT /api/admin/albums/:id/cover` | Troca a capa, em multipart com a parte `cover`. A antiga só é apagada depois de salvar a nova. |
 | `PATCH` e `DELETE` em `/api/admin/albums/:id` | Edita (nome, artistas e ano, em JSON) e remove álbuns |
 | `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
-| `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas |
+| `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas. O nome é único entre os artistas ativos, sem diferenciar maiúsculas: criar ou renomear para um nome que já existe dá 409. Remover libera o nome. |
 | `PUT` e `DELETE` em `/api/admin/artists/:id/image` | Põe ou troca a foto do artista (multipart com a parte `image`) e tira a foto (HU-36) |
 
 Remover é sempre soft delete. Remover um álbum não remove as músicas dele.

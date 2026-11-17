@@ -195,6 +195,7 @@ model AlbumMusic {
   @@map("album_music")
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Artist {
   id        Int           @id @default(autoincrement())
   name      String        @db.VarChar(255)

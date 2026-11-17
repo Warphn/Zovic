@@ -128,12 +128,12 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
         aria-hidden="true"
       />
 
-      {/* Modal Dialog Card */}
+      {/* Modal Dialog Card: never taller than the screen; a long form (a new music, an album) scrolls inside it */}
       <dialog
         open
         aria-modal="true"
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl transition-all duration-200",
+          "relative z-10 w-full max-w-lg max-h-full overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-6 shadow-2xl transition-all duration-200",
           "text-foreground animate-in zoom-in-95 m-0 block",
           className
         )}

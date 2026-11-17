@@ -25,6 +25,7 @@ const MESSAGES: Record<string, string> = {
   "Audio file must be at most 20 MB": "O áudio pode ter no máximo 20 MB.",
   "Album not found": "Esse álbum não está mais no catálogo.",
   "A genre with this name already exists": "Já existe um gênero com esse nome.",
+  "An artist with this name already exists": "Já existe um artista com esse nome.",
   // Album covers (api/domain/shared/cover-image.ts)
   "Album must have a cover image": "Escolha a imagem de capa do álbum.",
   "Cover image must be a JPEG, PNG or WebP": "A capa precisa ser uma imagem JPEG, PNG ou WebP.",
@@ -49,6 +50,16 @@ const MESSAGES: Record<string, string> = {
   "Playlist not found": "A playlist não existe mais ou é privada.",
   "The new order must have exactly the playlist's musics; reload it and try again":
     "A playlist mudou enquanto você ordenava. Recarregue e tente de novo.",
+  // Comments and reports (api/domain/entities/comment.ts, comment-report.ts and the comment use cases)
+  "Comment cannot be empty": "O comentário não pode ficar vazio.",
+  "Comment cannot exceed 280 characters": "O comentário pode ter no máximo 280 caracteres.",
+  "Underage users cannot comment": "Só maiores de 18 anos podem comentar.",
+  "Underage users cannot interact with comments": "Só maiores de 18 anos podem denunciar comentários.",
+  "Comment not found": "Esse comentário já foi apagado.",
+  "You can only delete your own comments": "Você só pode apagar os seus próprios comentários.",
+  "You cannot report your own comment": "Você não pode denunciar o seu próprio comentário.",
+  "You have already reported this comment": "Você já denunciou este comentário.",
+  "Report reason cannot be empty": "Informe o motivo da denúncia.",
   // Subscriptions (api/domain/use-cases and the requireSubscription middleware)
   "Only adults can subscribe": "Só maiores de 18 anos podem assinar.",
   "Account already has an active subscription": "Você já tem uma assinatura ativa.",
