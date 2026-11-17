@@ -2,16 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { HistoryIcon, HomeIcon, ListIcon, PlayIcon } from "@/components/icons"
+import { HistoryIcon, HomeIcon, ListIcon } from "@/components/icons"
 import { isNavLinkActive } from "@/lib/main-nav"
 import { cn } from "@/lib/utils"
 
-// The pages a subscriber goes back to all the time. Search has its own bar in the header.
+// The pages a subscriber goes back to all the time. Search has its own bar in the header, and the
+// player opens from the playback bar.
 const MAIN_NAV_LINKS = [
   { label: "Início", href: "/inicio", Icon: HomeIcon },
   { label: "Playlists", href: "/playlist", Icon: ListIcon },
   { label: "Histórico", href: "/historico", Icon: HistoryIcon },
-  { label: "Tocando", href: "/player", Icon: PlayIcon },
 ]
 
 /**

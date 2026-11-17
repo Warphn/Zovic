@@ -33,11 +33,6 @@ function isTextField(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && Boolean(target.closest("input, textarea, select, [contenteditable]"))
 }
 
-// Enter and Space already activate a focused button or link
-function isActivatable(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest("button, a"))
-}
-
 // The player shows what is playing now: a playlist, or a track played on its own followed by
 // suggestions. Every page shares that playback, so this page only reads and steers it.
 export default function PlayerPage() {
@@ -113,8 +108,8 @@ export default function PlayerPage() {
     drag.current = null
   }
 
-  // Arrow keys walk the queue (keeping play/pause); Enter or Space plays/pauses when nothing
-  // else has focus
+  // Arrow keys walk the queue (keeping play/pause); Space and Enter are the app's shortcuts
+  // (components/playback-shortcuts)
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTextField(e.target)) return
@@ -122,9 +117,6 @@ export default function PlayerPage() {
         e.preventDefault()
         const nextIndex = currentIndex + (e.key === "ArrowRight" ? 1 : -1)
         if (tracks[nextIndex]) selectTrackAt(nextIndex)
-      } else if ((e.key === "Enter" || e.key === " ") && !isActivatable(e.target)) {
-        e.preventDefault()
-        togglePlayback()
       }
     }
     window.addEventListener("keydown", onKeyDown)
@@ -239,7 +231,7 @@ export default function PlayerPage() {
         <div className="relative w-full max-w-6xl mx-auto px-6 md:px-8 pb-10">
           <p className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-2">
-              <kbd className="rounded-sm border border-border bg-surface px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
+              <kbd className="rounded-sm border border-border bg-surface px-1.5 py-0.5 font-mono text-xs">Espaço</kbd>
               {isPlaying ? "Pausar" : "Tocar"}
             </span>
             <span className="inline-flex items-center gap-2">
