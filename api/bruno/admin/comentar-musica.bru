@@ -1,0 +1,32 @@
+meta {
+  name: Comentar a música cadastrada
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/musics/{{musicId}}/comments
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+body:json {
+  {
+    "comment": "Comentário para a moderação remover",
+    "timestamp": null
+  }
+}
+
+script:post-response {
+  bru.setVar("commentId", res.getBody().id);
+}
+
+tests {
+  test("responde 201 com o id do comentário", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

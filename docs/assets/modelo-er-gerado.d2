@@ -163,6 +163,7 @@ interacoes: "Interações" {
     timestamp: "integer"
     deleted_at: "timestamptz"
     created_at: "timestamptz"
+    deleted_by: "integer" {constraint: [foreign_key]}
   }
   comment_reports: {
     shape: sql_table
@@ -240,6 +241,10 @@ interacoes.comment_reports.comment_id <-> interacoes.comments.id: {
 interacoes.comment_reports.user_id <-> contas.user.id: {
   source-arrowhead.shape: cf-many
   target-arrowhead.shape: cf-one-required
+}
+interacoes.comments.deleted_by <-> contas.user.id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one
 }
 interacoes.comments.music_id <-> catalogo.musics.id: {
   source-arrowhead.shape: cf-many

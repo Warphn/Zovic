@@ -1,0 +1,21 @@
+meta {
+  name: Remover comentário
+  type: http
+  seq: 18
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/comments/{{commentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+tests {
+  test("responde 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

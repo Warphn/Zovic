@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type Album, type CatalogMusic, catalogApi, catalogKeys, type Genre, type NamedItem } from "./catalog"
 import { json, queryString, request } from "./client"
+import { commentKeys } from "./comments"
 import { searchKeys } from "./search"
 
 // /api/admin: the platform admins' panel. The API checks the role; for anyone else every call
@@ -35,6 +36,21 @@ export interface UsageStats {
   plays: { total: number; last30Days: number }
   byContent: { musicId: number; name: string; artists: string[]; plays: number; streams: number; deleted: boolean }[]
   byGenre: { genreId: number; name: string; color: string; plays: number }[]
+}
+
+/** A comment with at least one report, for moderation (HU-39). */
+export interface ReportedComment {
+  id: number
+  comment: string
+  /** Seconds into the music the comment points at; null when it points at none. */
+  timestamp: number | null
+  /** ISO date. */
+  createdAt: string
+  author: { id: number; name: string }
+  music: { id: number; name: string }
+  reportCount: number
+  /** Newest first. */
+  reports: { reason: string; reporterName: string; createdAt: string }[]
 }
 
 export interface NewUser {
@@ -165,6 +181,11 @@ export const adminApi = {
     return request<unknown>(`/admin/artists/${id}/image`, { method: "PUT", body: form })
   },
   removeArtistImage: (id: number) => request<unknown>(`/admin/artists/${id}/image`, { method: "DELETE" }),
+
+  /** Active comments with at least one report, the most reported first (HU-39). */
+  commentReports: (signal?: AbortSignal) => request<ReportedComment[]>("/admin/comment-reports", { signal }),
+  /** Removes any comment (HU-23); the API records the admin who removed it. */
+  removeComment: (id: number) => request<void>(`/admin/comments/${id}`, { method: "DELETE" }),
 }
 
 export const adminKeys = {
@@ -174,6 +195,7 @@ export const adminKeys = {
   recentPlays: (userId: number) => [...adminKeys.all, "plays", userId] as const,
   // The panel's music list keeps its own key: unlike the catalog cache it refreshes after plays
   musics: (search = "") => [...adminKeys.all, "musics", search.trim()] as const,
+  commentReports: () => [...adminKeys.all, "comment-reports"] as const,
 }
 
 export function useAdminStats() {
@@ -306,5 +328,22 @@ export function useSetArtistImage() {
     mutationFn: ({ id, image }: { id: number; image: File | null }) =>
       image ? adminApi.changeArtistImage(id, image) : adminApi.removeArtistImage(id),
     onSuccess: invalidate,
+  })
+}
+
+export function useCommentReports() {
+  return useQuery({ queryKey: adminKeys.commentReports(), queryFn: ({ signal }) => adminApi.commentReports(signal) })
+}
+
+/** A removed comment leaves the reports list and the comments panel of its music. */
+export function useRemoveComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: adminApi.removeComment,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminKeys.commentReports() }),
+        queryClient.invalidateQueries({ queryKey: commentKeys.all }),
+      ]),
   })
 }

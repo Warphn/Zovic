@@ -1,0 +1,18 @@
+meta {
+  name: Listar comentários denunciados
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/admin/comment-reports
+  body: none
+  auth: none
+}
+
+tests {
+  test("responde 200 com uma lista", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
