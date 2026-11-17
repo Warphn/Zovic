@@ -169,7 +169,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 
 O player do front toca o áudio pela `GET /api/musics/:id/audio` e chama a `POST /api/musics/:id/plays` quando o som começa, uma vez por audição. A página `/historico` atualiza a lista depois de cada reprodução registrada.
 
-**Músicas ouvidas (HU-15).** O player soma o tempo de som de cada audição. Pausar não zera a soma, e pular pela barra não conta. Quando a soma passa de 30 segundos, ele chama a `POST /api/musics/:id/listens` uma vez naquela audição. A regra dos 30 segundos fica no domínio (`MarkMusicListened`), que grava um evento `music_listened` em `user_event`. A `GET /api/history/listened` alimenta a aba "Já ouvidas" do histórico e o ícone de fone nas listas de faixas.
+**Músicas ouvidas (HU-15).** O player soma o tempo de som de cada audição. Pausar não zera a soma, e pular pela barra não conta. Quando a soma passa de 30 segundos, ele chama a `POST /api/musics/:id/listens` uma vez naquela audição. A regra dos 30 segundos fica no domínio (`MarkMusicListened`), que grava um evento `music_listened` em `user_event`. A `GET /api/history/listened` alimenta o ícone de fone nas listas de faixas, inclusive no histórico.
 
 ### Admin
 

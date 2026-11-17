@@ -106,7 +106,7 @@ export function PlaybackAudio() {
     listenProgress.current = { ...progress, isReported: true }
     historyApi
       .markListened(musicId, progress.playedSeconds)
-      // The "Já ouvidas" tab and the listened icons now include this music
+      // The listened icons now include this music
       .then(() => queryClient.invalidateQueries({ queryKey: historyKeys.all }))
       // A mark that could not be saved must not get in the way of listening
       .catch(() => {})
