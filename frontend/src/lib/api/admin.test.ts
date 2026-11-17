@@ -1,5 +1,13 @@
-import { describe, expect, it } from "bun:test"
-import { albumChanges, albumFormData, albumsOfArtists, type MusicInput, musicChanges, musicFormData } from "./admin"
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
+import {
+  adminApi,
+  albumChanges,
+  albumFormData,
+  albumsOfArtists,
+  type MusicInput,
+  musicChanges,
+  musicFormData,
+} from "./admin"
 import type { Album, CatalogMusic } from "./catalog"
 
 describe("musicFormData", () => {
@@ -123,5 +131,38 @@ describe("albumsOfArtists", () => {
 
   it("lists nothing before an artist is chosen", () => {
     expect(albumsOfArtists(albums, [])).toEqual([])
+  })
+})
+
+describe("comment moderation (HU-23 and HU-39)", () => {
+  afterEach(() => {
+    mock.restore()
+  })
+
+  /** Spies on fetch, answering with `body`, and returns the method and URL of each call. */
+  function captureRequests(body: string | null): { method: string | undefined; url: string }[] {
+    const sent: { method: string | undefined; url: string }[] = []
+    spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      sent.push({ method: init?.method, url: String(url) })
+      return new Response(body, { status: body === null ? 204 : 200 })
+    })
+    return sent
+  }
+
+  it("lists the reported comments", async () => {
+    const sent = captureRequests("[]")
+
+    expect(await adminApi.commentReports()).toEqual([])
+    expect(sent[0]?.method ?? "GET").toBe("GET")
+    expect(sent[0]?.url).toEndWith("/api/admin/comment-reports")
+  })
+
+  it("removes a comment through the admin route", async () => {
+    const sent = captureRequests(null)
+
+    await adminApi.removeComment(42)
+
+    expect(sent[0]?.method).toBe("DELETE")
+    expect(sent[0]?.url).toEndWith("/api/admin/comments/42")
   })
 })

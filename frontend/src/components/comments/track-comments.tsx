@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useRemoveComment } from "@/lib/api/admin"
 import { apiErrorMessage } from "@/lib/api/client"
 import {
   useCreateComment,
@@ -11,6 +12,7 @@ import {
   useReportComment,
   type MusicComment,
 } from "@/lib/api/comments"
+import { useSession } from "@/lib/auth/client"
 import { formatTime, type UserProfile } from "@/lib/comments-store"
 import { cn } from "@/lib/utils"
 
@@ -180,6 +182,11 @@ export function TrackComments({
   const createComment = useCreateComment(musicId)
   const deleteComment = useDeleteComment(musicId)
   const reportComment = useReportComment()
+  const removeAsAdmin = useRemoveComment()
+  const { data: session } = useSession()
+  const isPlatformAdmin = session?.user.role === "admin"
+  // Remover pede um segundo clique, porque o comentário some para todos (HU-23)
+  const [confirmingRemovalId, setConfirmingRemovalId] = React.useState<number | null>(null)
   const comments = commentsQuery.data ?? NO_COMMENTS
 
   const [commentText, setCommentText] = React.useState("")
@@ -220,6 +227,18 @@ export function TrackComments({
   const handleDelete = (commentId: number) => {
     setErrorMsg(null)
     deleteComment.mutate(commentId, { onError: (error) => setErrorMsg(apiErrorMessage(error)) })
+  }
+
+  const handleRemoveAsAdmin = (commentId: number) => {
+    if (confirmingRemovalId !== commentId) {
+      setConfirmingRemovalId(commentId)
+      return
+    }
+    setErrorMsg(null)
+    removeAsAdmin.mutate(commentId, {
+      onSuccess: () => setConfirmingRemovalId(null),
+      onError: (error) => setErrorMsg(apiErrorMessage(error)),
+    })
   }
 
   const handleOpenReport = (commentId: number) => {
@@ -372,6 +391,17 @@ export function TrackComments({
                         className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer"
                       >
                         🗑 Apagar
+                      </button>
+                    ) : isPlatformAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAsAdmin(item.id)}
+                        onBlur={() => setConfirmingRemovalId(null)}
+                        disabled={removeAsAdmin.isPending}
+                        title="Remover este comentário para todos"
+                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                      >
+                        {confirmingRemovalId === item.id ? "Confirmar remoção" : "Remover"}
                       </button>
                     ) : (
                       <button
