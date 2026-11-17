@@ -1,0 +1,53 @@
+\section{Acesso aos Dados}
+\label{sec:acesso}
+
+\subsection{Pela API}
+
+A API abre um \emph{pool} de até dez conexões com o driver \campo{pg}, com
+tempo limite de 5 segundos para conectar e de 10 segundos por
+consulta. Cada repositório em \campo{api/adapters/db} escreve o próprio SQL,
+com parâmetros (\campo{\$1}, \campo{\$2}) em vez de concatenação de texto, o
+que impede injeção de SQL.
+
+Operações com mais de um passo rodam numa transação, pela função
+\campo{inTransaction}: ou tudo é gravado, ou nada. É o caso de salvar uma música,
+que grava a linha em \campo{musics} e regrava os artistas, os gêneros e a faixa
+no álbum, e de criar um convite do plano familiar.
+
+O convite mostra por que só a transação não basta. O limite de quatro pessoas
+conta os membros e os convites pendentes, e duas requisições simultâneas
+poderiam contar a mesma vaga livre e criar um convite cada uma. Para evitar
+isso, a transação começa com um \emph{lock} consultivo do Postgres
+(\campo{pg\_advisory\_xact\_lock}) com o \campo{id} do plano: o segundo
+convite espera o primeiro terminar e já enxerga a vaga ocupada.
+
+As colunas \campo{date}, como a data de nascimento, voltam como texto
+(\campo{AAAA-MM-DD}). O conversor padrão do driver as transformaria em
+meia-noite no fuso do servidor, e a data poderia mudar de dia. Isso afetaria
+a regra de idade do conteúdo explícito.
+
+\subsection{Seed}
+
+O seed, em \campo{api/prisma/seed/}, popula o banco com o client do Prisma.
+Cada seeder tem um ambiente:
+
+\begin{itemize}
+  \item \textbf{ALL}: dados reais do produto, como os tipos de plano e os
+    gêneros. Rodam no banco local e em produção, e nunca apagam nada.
+  \item \textbf{LOCAL}: dados fictícios para desenvolver e testar (usuários,
+    catálogo, playlists e interações). Só rodam num banco em
+    \campo{localhost}.
+\end{itemize}
+
+O seed roda numa transação e usa uma semente fixa, então gera os mesmos dados
+e os mesmos \campo{id}s em todas as máquinas. Isso torna os testes manuais
+reproduzíveis entre os integrantes.
+
+\subsection{Ambientes}
+
+Localmente, o Postgres roda num contêiner Docker, acessível só pela própria
+máquina. Em produção, o banco roda no servidor da equipe e não é exposto à
+internet: o acesso passa por um túnel da Cloudflare protegido pelo Cloudflare
+Access, liberado só para os emails da equipe. Os usuários do Postgres da
+equipe podem ler e alterar dados, mas não mudar o esquema, que é papel das
+migrations, nem ler as tabelas com tokens e hashes de senha.

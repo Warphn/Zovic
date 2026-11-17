@@ -1,0 +1,802 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{poliusp}[2026/08/16 Template Poli USP v1.2]
+
+% --- 0. OPÇÕES ---
+% O núcleo carrega apenas o que todo relatório usa: capa, cabeçalho/rodapé,
+% figuras e tabelas. O resto entra sob demanda, para que um relatório curto não
+% pague o custo de compilação de amsthm, siunitx, tikz, pgfplots e minted.
+%
+%   \usepackage[math,units]{poliusp}   % só o que for usar
+%   \usepackage[full]{poliusp}         % tudo (equivale à v1.1)
+\newif\ifpoli@math
+\newif\ifpoli@units
+\newif\ifpoli@localtoc
+\newif\ifpoli@subfigures
+\newif\ifpoli@smartrefs
+\newif\ifpoli@floatbarriers
+\newif\ifpoli@tikz
+\newif\ifpoli@plots
+\newif\ifpoli@code
+\newif\ifpoli@pseudo
+
+\DeclareOption{math}{\poli@mathtrue}
+\DeclareOption{units}{\poli@unitstrue}
+\DeclareOption{localtoc}{\poli@localtoctrue}
+\DeclareOption{subfigures}{\poli@subfigurestrue}
+\DeclareOption{smartrefs}{\poli@smartrefstrue}
+\DeclareOption{floatbarriers}{\poli@floatbarrierstrue}
+\DeclareOption{tikz}{\poli@tikztrue}
+\DeclareOption{plots}{\poli@plotstrue}
+\DeclareOption{code}{\poli@codetrue}
+\DeclareOption{pseudo}{\poli@pseudotrue}
+\DeclareOption{full}{%
+  \poli@mathtrue
+  \poli@unitstrue
+  \poli@localtoctrue
+  \poli@subfigurestrue
+  \poli@smartrefstrue
+  \poli@floatbarrierstrue
+  \poli@tikztrue
+  \poli@plotstrue
+  \poli@codetrue
+  \poli@pseudotrue
+}
+\DeclareOption*{\PackageWarning{poliusp}{Opcao desconhecida: \CurrentOption}}
+\ProcessOptions\relax
+
+% --- 1. PACOTES ---
+\RequirePackage{graphicx}
+\RequirePackage{eso-pic}
+\RequirePackage{varwidth}   % capa: coluna da assinatura
+\RequirePackage{xcolor}
+\RequirePackage{ifthen}
+\RequirePackage{fontspec}   % núcleo: a capa depende da Copperplate
+\RequirePackage{etoolbox}
+\ifpoli@math
+  \RequirePackage{amsmath}
+  \RequirePackage{amsthm}
+  \RequirePackage[math-style=TeX,bold-style=TeX]{unicode-math}
+\fi
+\RequirePackage{microtype}
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\ifpoli@units
+  \RequirePackage{siunitx}
+\fi
+\RequirePackage{float}  % compatibilidade com relatórios legados que ainda usam [H]
+\ifpoli@floatbarriers
+  \RequirePackage[section]{placeins}
+\fi
+\ifpoli@code
+  \RequirePackage{minted}
+  \RequirePackage{needspace}  % codigolongo
+\fi
+\ifpoli@pseudo
+  % Antes do hyperref/cleveref; o estilo de legenda é aplicado na seção 6c.
+  \RequirePackage{algorithm}
+  \RequirePackage{algpseudocode}
+\fi
+\ifpoli@localtoc
+  \RequirePackage{etoc}
+\fi
+\ifpoli@tikz
+  \RequirePackage{tikz}
+  \usetikzlibrary{tikzmark,calc,shapes,backgrounds,arrows.meta,positioning}
+\fi
+\ifpoli@plots
+  \RequirePackage{pgfplots}  % gráficos de funções (:Cal plot do cal.nvim)
+  \pgfplotsset{compat=1.18}
+\fi
+\RequirePackage[pagestyles]{titlesec}
+% Medida: 126 mm de XCharter 11 pt dá ~74 caracteres por linha (a de 160 mm
+% dava ~88); altura em linhas inteiras e rodapé explícito (antes a margem
+% inferior saía do default do geometry). top=34mm afasta o logo do
+% cabeçalho da borda (~14 mm, antes ~6 mm).
+\RequirePackage[
+  a4paper,
+  textwidth=126mm,
+  hmarginratio=1:1,          % centrada: em twoside o inner deslocava as páginas pares
+  top=34mm,
+  lines=45,
+  headheight=14mm,
+  headsep=10mm,
+  footskip=12mm
+]{geometry}
+
+% Em modo twoside o LaTeX usa \flushbottom: estica o espaço vertical para forçar
+% todas as páginas à mesma altura, o que em páginas com pouco conteúdo (ou com
+% muitos floats) espalha o texto. \raggedbottom deixa a página com altura
+% natural: texto encostado no TOPO e a sobra no rodapé.
+\raggedbottom
+
+% --- 2. CORES E FONTES ---
+\definecolor{azulpoli}{cmyk}{1.0, 0.72, 0.0, 0.18}
+\definecolor{azulornamento}{RGB}{102,120,146}
+\definecolor{cinzasecundario}{gray}{0.42}
+\definecolor{terracotacodigo}{HTML}{9B4B28}
+\definecolor{verdecodigo}{HTML}{2F6B45}
+\definecolor{roxocodigo}{HTML}{70468C}
+\definecolor{ocrecodigo}{HTML}{805C00}
+\setmainfont{XCharter}[
+  Extension      = .otf,
+  UprightFont    = *-Roman,
+  BoldFont       = *-Bold,
+  ItalicFont     = *-Italic,
+  BoldItalicFont = *-BoldItalic,
+  Numbers        = {Lining, Proportional},
+]
+\ifpoli@math
+  \setmathfont{XCharter-Math.otf}
+  \setmathrm{XCharter}[
+    Extension = .otf, UprightFont = *-Roman, BoldFont = *-Bold,
+    ItalicFont = *-Italic, BoldItalicFont = *-BoldItalic,
+  ]
+\fi
+
+\newfontfamily\fonteCapa[
+  Path = ./fontes/,
+  UprightFont = {copperplate_gothic_bt.ttf},
+  BoldFont    = {CopperplateGothicBT-Bold.otf}
+]{Copperplate Gothic BT}
+
+\setsansfont{FiraSans}[
+  Extension      = .otf,
+  UprightFont    = *-Regular,
+  ItalicFont     = *-Italic,
+  BoldFont       = *-SemiBold,
+  BoldItalicFont = *-SemiBoldItalic,
+  FontFace       = {l}{n}{Font = FiraSans-Light.otf},
+  FontFace       = {l}{it}{Font = FiraSans-LightItalic.otf},
+  Scale          = MatchLowercase,
+  Numbers        = Lining,
+]
+\setmonofont{RobotoMono}[
+  Extension      = .otf,
+  UprightFont    = *-Regular,
+  BoldFont       = *-Medium,
+  ItalicFont     = *-Italic,
+  BoldItalicFont = *-MediumItalic,
+  Scale          = MatchLowercase,
+]
+
+% No exemplo de 11 pt, entrelinha de aproximadamente 14,5 pt.
+\linespread{1.066}\selectfont
+\setlength{\parindent}{1.4em}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\ifpoli@units
+  \sisetup{
+    output-decimal-marker = {,},  % vírgula decimal (padrão brasileiro)
+    group-separator       = {.},  % ponto como separador de milhar
+    group-minimum-digits  = 4,
+  }
+\fi
+
+\RequirePackage[
+  colorlinks=true,
+  linkcolor=azulpoli,
+  citecolor=azulpoli,
+  urlcolor=azulpoli,
+  pdfdisplaydoctitle=true,
+  bookmarksnumbered=true
+]{hyperref}
+
+% Rótulo e texto da legenda ficam centralizados dentro da área útil.
+\RequirePackage{caption}
+\captionsetup{
+  format = plain,
+  labelsep = colon,
+  font = {small,sf},
+  labelfont = {bf,color=azulpoli},
+  textfont = {color=black},
+  justification = centering,
+  singlelinecheck = true,
+  skip = .6\baselineskip,
+}
+\captionsetup[table]{position=top}
+% Legenda acima, sem somar o espaço extra do estilo plaintop do pacote float.
+\newcommand{\fs@poli}{%
+  \def\@fs@cfont{\rmfamily}\let\@fs@capt\floatc@plain
+  \def\@fs@pre{}\def\@fs@post{}\def\@fs@mid{}%
+  \let\@fs@iftopcapt\iftrue
+}
+
+% subcaption e cleveref devem vir após hyperref
+\ifpoli@subfigures
+  \RequirePackage{subcaption}
+  \captionsetup[sub]{format=plain,labelformat=parens,labelsep=space,
+    justification=centering,font={small,sf},labelfont={bf,color=azulpoli},
+    singlelinecheck=true}
+\fi
+\ifpoli@smartrefs
+  % brazilian: conjunções em português ("Figuras 1a e 1b"). O babel do
+  % documento não chega ao cleveref, e sem a opção sai "1a and 1b".
+  \RequirePackage[brazilian]{cleveref}
+
+  \crefname{figure}{Figura}{Figuras}
+  \Crefname{figure}{Figura}{Figuras}
+  \ifpoli@subfigures
+    \crefname{subfigure}{Figura}{Figuras}
+    \Crefname{subfigure}{Figura}{Figuras}
+  \fi
+  \crefname{table}{Tabela}{Tabelas}
+  \Crefname{table}{Tabela}{Tabelas}
+  \crefname{section}{Seção}{Seções}
+  \Crefname{section}{Seção}{Seções}
+  \crefname{subsection}{Subseção}{Subseções}
+  \Crefname{subsection}{Subseção}{Subseções}
+  \ifpoli@math
+    \crefname{equation}{Equação}{Equações}
+    \Crefname{equation}{Equação}{Equações}
+  \fi
+\fi
+
+% --- 3. VARIÁVEIS DE METADADOS ---
+\newcommand{\poliTituloSalvo}{Titulo do Relatorio}
+\newcommand{\poliTituloCurtoSalvo}{Titulo Curto}
+\newcommand{\poliSubtituloSalvo}{}
+\newcommand{\poliDisciplinaSalva}{}
+\newcommand{\poliDepartamentoSalvo}{}
+\newcommand{\poliAutoresLista}{}
+\newcommand{\poliDataSalva}{\today}
+\newboolean{temSubtitulo}\setboolean{temSubtitulo}{false}
+
+\newcommand{\titulo}[2][]{%
+  \renewcommand{\poliTituloSalvo}{#2}%
+  \ifthenelse{\equal{#1}{}}{%
+    \renewcommand{\poliTituloCurtoSalvo}{#2}%
+  }{%
+    \renewcommand{\poliTituloCurtoSalvo}{#1}%
+  }%
+}
+\newcommand{\subtitulo}[1]{%
+  \renewcommand{\poliSubtituloSalvo}{#1}%
+  \setboolean{temSubtitulo}{true}%
+}
+\newcommand{\disciplina}[1]{\renewcommand{\poliDisciplinaSalva}{#1}}
+\newcommand{\departamento}[1]{\renewcommand{\poliDepartamentoSalvo}{#1}}
+\newcommand{\Autores}[1]{\renewcommand{\poliAutoresLista}{#1}}
+\newcommand{\data}[1]{\renewcommand{\poliDataSalva}{#1}}
+
+% --- 4. BLOCO DE AUTORES ---
+\newcommand{\poliBlocoAutores}{%
+  {\fontsize{10.5}{14}\selectfont\poliAutoresLista\par}%
+}
+
+% --- 5. SUMÁRIO LOCAL DE SEÇÃO ---  [opção: localtoc]
+\ifpoli@localtoc
+  \newcommand{\gerarSumarioLocal}{%
+    \begingroup
+    \etocsettocdepth{subsection}
+    \etocsetstyle{section}{}{}{}{}
+    \etocsetstyle{subsection}
+      {}
+      {\leavevmode\leftskip 1.5em \noindent}
+      {%
+        \textbf{\etocnumber}\hspace{0.5em}%
+        \etocname
+        \nobreak
+        \leaders\hbox to 0.5em{\hss.\hss}\hfill
+        \nobreak
+        \makebox[1.2em][r]{\textbf{\etocpage}}%
+        \hspace{1.5em}%
+        \par\vspace{5pt}%
+      }
+      {}
+    \etocsettocstyle
+      {%
+        \begin{center}\begin{minipage}{0.85\textwidth}
+        \noindent{\sffamily\small\bfseries Seções}
+        \par\vspace{1pt}\hrule height 0.6pt\vspace{10pt}%
+      }
+      {%
+        \vspace{5pt}\hrule height 0.6pt
+        \end{minipage}\end{center}%
+        \vspace{0.5cm}%
+      }
+    \localtableofcontents
+    \endgroup
+  }
+\fi
+
+% --- 6. CÓDIGO-FONTE (minted) ---  [opção: code]
+% minted precisa de LuaLaTeX/pdfLaTeX com -shell-escape e do Pygments; por isso
+% fica atrás de uma opção, e não no núcleo.
+\ifpoli@code
+  % Padrão visual aplicado globalmente a todos os blocos minted
+  \setminted{
+    fontsize   = \small,
+    linenos    = true,
+    breaklines = true,
+    frame      = lines,
+    framesep   = 6pt,
+    bgcolor    = gray!6,
+    numbersep  = 8pt,
+    style      = default,
+  }
+
+  % Paleta Poli sobre o estilo default, conservando seus pesos e itálicos.
+  % O gancho do minted 3 reaplica as cores após carregar cada estilo do cache;
+  % estilos escolhidos explicitamente (como trac nos diffs) ficam intactos.
+  \newcommand{\poli@corToken}[2]{%
+    \csappto{PYG@tok@#1}{%
+      \def\PYG@tc##1{\textcolor{#2}{##1}}}%
+  }
+  \newcommand{\poli@paletaCodigo}{%
+    \edef\poli@estiloCodigo{\mintedtexoptvalueof{style}}%
+    \ifdefstring{\poli@estiloCodigo}{default}{%
+      \@for\poli@token:={k,kd,kn,kp,kr,ow}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{verdecodigo}}%
+      \@for\poli@token:={nf,fm,nb,bp,nn}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{azulpoli}}%
+      \@for\poli@token:={kt,kc,nc,nd,no,nl}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{roxocodigo}}%
+      \@for\poli@token:={m,mb,mf,mh,mi,il,mo}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{ocrecodigo}}%
+      \@for\poli@token:={n,na,ni,ne,nx,nt,nv,vc,vg,vi,vm,o,p,go}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{black}}%
+      \@for\poli@token:={s,sa,sb,sc,dl,sd,s2,se,sh,si,sx,sr,s1,ss}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{terracotacodigo}}%
+      \@for\poli@token:={c,ch,cm,c1,cs,cp,cpf}\do{%
+        \expandafter\poli@corToken\expandafter{\poli@token}{cinzasecundario}}%
+      \poli@corToken{gp}{azulpoli}%
+    }{}%
+  }
+  \g@addto@macro\minted@patch@PygmentsStyledef{\poli@paletaCodigo}
+  \let\poli@numeroLinhaOriginal\theFancyVerbLine
+  \renewcommand{\theFancyVerbLine}{%
+    \textcolor{cinzasecundario}{\poli@numeroLinhaOriginal}%
+  }
+
+  % Atalhos de linguagem (geram ambientes vhdlcode, verilogcode, pythoncode,
+  % ccode, bashcode, makecode, gascode, objdumpcode)
+  \newminted{vhdl}{}
+  \newminted{verilog}{}
+  \newminted{python}{}
+  \newminted{c}{}
+  \newminted{bash}{}
+  \newminted{make}{}
+  % assembly AT&T do GNU as. A saida de gcc -S separa campos com tab, e o minted
+  % troca cada tab por espacos fixos (obeytabs e tabsize nao alinham, medido):
+  % passe o arquivo por `expand` antes.
+  \newminted{gas}{}
+  \newminted{objdump}{}   % saida de objdump -d
+
+  % Ambiente `terminal`: sessao de shell com a saida dos comandos (perf stat,
+  % time, make). O lexer console destaca so as linhas com prompt `$ `; o resto
+  % sai como texto puro. Sem numeracao, que numa saida de terminal nao aponta
+  % para nada.
+  \newminted[terminal]{console}{
+    linenos = false,
+  }
+
+  % Ambiente `diff`: mostra alteracoes de codigo com a estetica de um git diff.
+  % O estilo trac pinta o FUNDO das linhas alteradas (verde no +, vermelho no -),
+  % que e o destaque da mudanca; ele so afeta blocos diff, nao o resto do texto.
+  % Sem moldura (o realce ja delimita) e sem numeracao, que num diff numeraria o
+  % bloco e nao o arquivo.
+  \RequirePackage{etoolbox}
+  \newminted[diff]{diff}{
+    style   = trac,
+    frame   = none,
+    linenos = false,
+  }
+  % Sem moldura o bloco encosta no texto ou titulo seguinte; devolve o respiro.
+  \BeforeBeginEnvironment{diff}{\par\addvspace{\medskipamount}}
+  \AfterEndEnvironment{diff}{\par\addvspace{\medskipamount}}
+
+  \renewcommand{\listingscaption}{Código}
+  \renewcommand{\listoflistingscaption}{Lista de Códigos}
+
+  % Legenda de código ACIMA do bloco, dentro e fora de float. Fora de float
+  % (\legendacodigo) ela precisa vir antes: depois do bloco poderia cair
+  % sozinha no topo da página seguinte.
+  \floatstyle{poli}
+  \restylefloat{listing}
+  \captionsetup[listing]{position=top}
+  \AtBeginEnvironment{listing}{\setlength{\topsep}{0pt}}
+
+  % \begin{codigolongo}{<legenda>}\label{...} <bloco minted> \end{codigolongo}
+  % Codigo com legenda FORA de float, para arquivo longo. Um minted dentro de
+  % \begin{listing} nao quebra entre paginas (o float e uma caixa inteira);
+  % fora dele quebra. \Needspace impede a legenda de ficar sozinha no pe da
+  % pagina. Tem que ser ambiente, nao macro: o caption exige \caption dentro de
+  % um grupo (senao avisa "outside box or environment" e ignora o hypcap, e o
+  % link do \cref perde a ancora). Sem o pacote caption, basta o \@captype.
+  \newenvironment{codigolongo}[1]{%
+    \par\Needspace{6\baselineskip}%
+    \@ifundefined{captionsetup}%
+      {\def\@captype{listing}}%
+      {\captionsetup{type=listing}}%
+    \caption{#1}%
+  }{\par}
+
+  \ifpoli@smartrefs
+    \crefname{listing}{Código}{Códigos}
+    \Crefname{listing}{Código}{Códigos}
+  \fi
+\fi
+
+% --- 6b. TRECHO DE ARQUIVO ENTRE MARCAS ---  [opção: code]
+% \inputtrecho[<opções minted>]{<linguagem>}{<arquivo>}{<tag>}
+% Inclui as linhas entre dois comentários `--tag--` (a mesma marca nas duas
+% pontas), sem as linhas das marcas e com a numeração do arquivo original.
+% O próprio TeX lê o arquivo e acha as marcas por busca de texto; só então
+% chama \inputminted com firstline/lastline/firstnumber.
+% Não usar o rangeregex do minted: ele recorta por caractere (CRLF, espaço ou
+% texto depois da marca viram linha extra), não sabe a linha de origem, trata
+% a tag como regex e só existe no minted 3.
+\ExplSyntaxOn
+\ior_new:N \g__poli_trecho_ior
+\int_new:N \l__poli_trecho_linha_int
+\int_new:N \l__poli_trecho_ini_int
+\int_new:N \l__poli_trecho_fim_int
+\str_new:N \l__poli_trecho_marca_str
+\str_new:N \l__poli_trecho_texto_str
+
+\msg_new:nnn { poliusp } { trecho-sem-marca }
+  { Marcador~'--#1--'~nao~aparece~duas~vezes~em~'#2'. }
+\msg_new:nnn { poliusp } { trecho-vazio }
+  { Nao~ha~linhas~entre~as~marcas~'--#1--'~em~'#2'. }
+
+% Guarda em ini/fim as linhas da 1a e da 2a ocorrência de --tag-- (0 = não achou)
+\cs_new_protected:Npn \__poli_trecho_localizar:nn #1#2
+  {
+    \str_set:Nn \l__poli_trecho_marca_str { --#2-- }
+    \int_zero:N \l__poli_trecho_linha_int
+    \int_zero:N \l__poli_trecho_ini_int
+    \int_zero:N \l__poli_trecho_fim_int
+    \ior_open:Nn \g__poli_trecho_ior {#1}
+    \ior_str_map_inline:Nn \g__poli_trecho_ior
+      {
+        \int_incr:N \l__poli_trecho_linha_int
+        \str_set:Nn \l__poli_trecho_texto_str {##1}
+        \exp_args:NNV \str_if_in:NnT
+          \l__poli_trecho_texto_str \l__poli_trecho_marca_str
+          {
+            \int_compare:nNnTF \l__poli_trecho_ini_int = 0
+              { \int_set_eq:NN \l__poli_trecho_ini_int \l__poli_trecho_linha_int }
+              {
+                \int_set_eq:NN \l__poli_trecho_fim_int \l__poli_trecho_linha_int
+                \ior_map_break:
+              }
+          }
+      }
+    \ior_close:N \g__poli_trecho_ior
+  }
+
+% #1 opções, #2 linguagem, #3 arquivo, #4 tag
+\cs_new_protected:Npn \poli@trecho #1#2#3#4
+  {
+    \__poli_trecho_localizar:nn {#3} {#4}
+    \int_compare:nNnTF \l__poli_trecho_fim_int = 0
+      { \msg_error:nnnn { poliusp } { trecho-sem-marca } {#4} {#3} }
+      {
+        \int_compare:nNnTF
+          { \l__poli_trecho_fim_int - \l__poli_trecho_ini_int } < 2
+          { \msg_error:nnnn { poliusp } { trecho-vazio } {#4} {#3} }
+          {
+            \use:e
+              {
+                \exp_not:N \inputminted
+                  [
+                    firstline   = \int_eval:n { \l__poli_trecho_ini_int + 1 } ,
+                    lastline    = \int_eval:n { \l__poli_trecho_fim_int - 1 } ,
+                    firstnumber = \int_eval:n { \l__poli_trecho_ini_int + 1 } ,
+                    \exp_not:n {#1}
+                  ]
+                  \exp_not:n { {#2} {#3} }
+              }
+          }
+      }
+  }
+\ExplSyntaxOff
+
+\ifpoli@code
+  \NewDocumentCommand{\inputtrecho}{O{} m m m}{\poli@trecho{#1}{#2}{#3}{#4}}
+\fi
+
+% --- 6c. PSEUDOCÓDIGO (algorithm + algpseudocode) ---  [opção: pseudo]
+% Palavras-chave em inglês (padrão do pacote); legenda e \cref em português.
+\ifpoli@pseudo
+  \floatname{algorithm}{Algoritmo}
+  \renewcommand{\listalgorithmname}{Lista de Algoritmos}
+  \floatstyle{poli}
+  \restylefloat{algorithm}
+  \captionsetup[algorithm]{position=top}
+  \algrenewcommand\alglinenumber[1]{{\sffamily\scriptsize\color{cinzasecundario}#1}}
+  \BeforeBeginEnvironment{algorithmic}{%
+    \par\vspace{.3\baselineskip}\noindent\rule{\linewidth}{\lightrulewidth}\par
+    \vspace{.1\baselineskip}%
+  }
+  \AfterEndEnvironment{algorithmic}{%
+    \par\vspace{.2\baselineskip}\noindent\rule{\linewidth}{\lightrulewidth}\par
+  }
+
+  % \label numa linha do algorithmic. O algorithmicx conta as linhas com
+  % \addtocounter, e o \refstepcounter que o cleveref acrescenta roda dentro
+  % da caixa do \item, onde a mudança se perde; o \label tira o tipo de
+  % \@currentcounter, que continuava "algorithm", e \cref{linha} saía
+  % "Algoritmo 1" (medido). Fixar o contador no início de cada algorithmic
+  % vale só dentro do ambiente. \theHALG@line dá uma âncora por algoritmo:
+  % sem ele, a linha 3 de qualquer algoritmo apontava para a do primeiro.
+  % \def e não \providecommand: o hyperref já define \theHALG@line.
+  \g@addto@macro\ALG@beginalgorithmic{\def\@currentcounter{ALG@line}}
+  \def\theHALG@line{\thealgorithm.\arabic{ALG@line}}
+
+  \ifpoli@smartrefs
+    \crefname{algorithm}{Algoritmo}{Algoritmos}
+    \Crefname{algorithm}{Algoritmo}{Algoritmos}
+    \crefname{ALG@line}{linha}{linhas}
+    \Crefname{ALG@line}{Linha}{Linhas}
+  \fi
+\fi
+
+% --- 7. AMBIENTES MATEMÁTICOS (amsthm) ---  [opção: math]
+\ifpoli@math
+  % Rótulos em Fira Sans; conteúdo em XCharter, como o texto principal.
+  \newtheoremstyle{poliPlain}
+    {.75\baselineskip}{.75\baselineskip}
+    {\itshape}{}
+    {\normalfont\sffamily\color{azulpoli}\bfseries}{}
+    {.6em}{\thmname{#1}\thmnumber{\ #2}%
+      \thmnote{\mdseries\color{cinzasecundario}\ (#3)}}
+
+  \newtheoremstyle{poliDefinition}
+    {.75\baselineskip}{.75\baselineskip}
+    {}{}
+    {\normalfont\sffamily\color{azulpoli}\bfseries}{}
+    {.6em}{\thmname{#1}\thmnumber{\ #2}%
+      \thmnote{\mdseries\color{cinzasecundario}\ (#3)}}
+
+  % A observação se distingue pelo peso regular, contra o negrito dos dois
+  % estilos acima.
+  \newtheoremstyle{poliRemark}
+    {.5\baselineskip}{.5\baselineskip}
+    {}{}
+    {\normalfont\sffamily\color{azulpoli}\mdseries}{}
+    {.6em}{}
+
+  % Ambientes numerados por seção
+  \theoremstyle{poliPlain}
+  \newtheorem{teorema}{Teorema}[section]
+  \newtheorem{lema}{Lema}[section]
+  \newtheorem{corolario}{Corolário}[section]
+  \newtheorem{proposicao}{Proposição}[section]
+
+  \theoremstyle{poliDefinition}
+  \newtheorem{definicao}{Definição}[section]
+  \newtheorem{exemplo}{Exemplo}[section]
+
+  \theoremstyle{poliRemark}
+  \newtheorem*{observacao}{Observação}
+
+  % Renomeia "Proof" para português
+  \renewcommand{\proofname}{Demonstração}
+  \renewenvironment{proof}[1][\proofname]{\par
+    \pushQED{\qed}\normalfont\topsep.5\baselineskip\relax
+    \trivlist\item[\hskip\labelsep{%
+      \sffamily\bfseries\color{cinzasecundario}#1}\hspace{.6em}]%
+    \ignorespaces
+  }{\popQED\endtrivlist\@endpefalse}
+
+  \ifpoli@smartrefs
+    \crefname{teorema}{Teorema}{Teoremas}
+    \Crefname{teorema}{Teorema}{Teoremas}
+    \crefname{lema}{Lema}{Lemas}
+    \Crefname{lema}{Lema}{Lemas}
+    \crefname{corolario}{Corolário}{Corolários}
+    \Crefname{corolario}{Corolário}{Corolários}
+    \crefname{proposicao}{Proposição}{Proposições}
+    \Crefname{proposicao}{Proposição}{Proposições}
+    \crefname{definicao}{Definição}{Definições}
+    \Crefname{definicao}{Definição}{Definições}
+    \crefname{exemplo}{Exemplo}{Exemplos}
+    \Crefname{exemplo}{Exemplo}{Exemplos}
+  \fi
+\fi
+
+% --- 8. TABELAS AUXILIARES ---
+% Todas usam tabularx: colunas X dividem o espaço restante automaticamente.
+% Y acrescenta alinhamento à esquerda, evitando os vãos entre palavras que o
+% texto justificado abre em colunas estreitas com termos técnicos.
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\poliCabTabela}[1]{{\sffamily\small\bfseries #1}}
+\setlength{\heavyrulewidth}{.7pt}
+\setlength{\lightrulewidth}{.35pt}
+\setlength{\cmidrulewidth}{.35pt}
+\renewcommand{\arraystretch}{1.12}
+
+% \tabelaSimulacao{<caption>}{<label>}{<linhas>}
+\newcommand{\tabelaSimulacao}[3]{%
+  \begin{table}[htbp]
+    \centering
+    \caption{#1}\label{#2}
+    \begin{tabularx}{\textwidth}{@{}cYYYY@{}}
+      \toprule
+      \poliCabTabela{Caso} & \poliCabTabela{Operação} & \poliCabTabela{Sinais de entrada} &
+      \poliCabTabela{Resultado esperado} & \poliCabTabela{Resultado observado} \\
+      \midrule
+      #3
+      \bottomrule
+    \end{tabularx}
+  \end{table}%
+}
+
+% \tabeladuas{<caption>}{<label>}{<col1>}{<col2>}{<linhas>}
+\newcommand{\tabeladuas}[5]{%
+  \begin{table}[htbp]
+    \centering
+    \caption{#1}\label{#2}
+    \begin{tabularx}{\textwidth}{@{}YY@{}}
+      \toprule
+      \poliCabTabela{#3} & \poliCabTabela{#4} \\
+      \midrule
+      #5
+      \bottomrule
+    \end{tabularx}
+  \end{table}%
+}
+
+% \tabelatres{<caption>}{<label>}{<col1>}{<col2>}{<col3>}{<linhas>}
+\newcommand{\tabelatres}[6]{%
+  \begin{table}[htbp]
+    \centering
+    \caption{#1}\label{#2}
+    \begin{tabularx}{\textwidth}{@{}YYY@{}}
+      \toprule
+      \poliCabTabela{#3} & \poliCabTabela{#4} & \poliCabTabela{#5} \\
+      \midrule
+      #6
+      \bottomrule
+    \end{tabularx}
+  \end{table}%
+}
+
+% --- 9. IMAGENS ---
+% Busto da Minerva sem o anel de letras, recortado e tingido de azulpoli
+% (gerado a partir de minerva-sem-letras.pdf). Pode ser redefinido no documento.
+% Na capa ele é desenhado com a altura exata do bloco de texto da assinatura.
+\newcommand{\poliBrasao}{logospoli/minerva-sem-letras-azul}
+\newcommand{\poliBarraLogo}{logospoli/usp+polibarra}
+\newcommand{\poliImgCabecalho}{logospoli/nome-colorido}
+
+% --- 10. CAPA ---
+% Composição mínima em três peças, dentro de uma moldura dupla fina:
+%
+%   moldura     filete de 0,7 pt a 12 mm da borda e outro de 0,25 pt 1,8 mm
+%               para dentro, em azulpoli
+%   assinatura  Minerva | texto, centrada, com a base na metade da folha. A
+%               Minerva tem a altura exata do bloco de texto (Escola,
+%               departamento, título e subtítulo), e um fio vertical os separa,
+%               como no logo USP|poli do cabeçalho do miolo
+%   rodapé      disciplina, autores e data, centrados, com a última linha na
+%               base da mancha do miolo
+\newlength{\poliCapaBase}
+\newlength{\poliCapaAlturaAssinatura}
+\newlength{\poliCapaLarguraAssinatura}
+\setlength{\poliCapaLarguraAssinatura}{80mm}
+\newsavebox{\poliCaixaAssinatura}
+
+% Coloca #4 com o canto #3 (ex.: b, lb, lt) no ponto (#1, #2 a partir do topo).
+\newcommand{\poli@capaEm}[4]{%
+  \AddToShipoutPictureFG*{\AtPageUpperLeft{%
+    \put(\LenToUnit{\dimexpr#1\relax},\LenToUnit{-\dimexpr#2\relax}){%
+      \makebox(0,0)[#3]{#4}}}}%
+}
+
+% Retângulo vazado de largura #3 e altura #4 com canto superior esquerdo em
+% (#1, #2) e filete de espessura #5.
+\newcommand{\poli@capaQuadro}[5]{%
+  \poli@capaEm{#1}{#2}{lt}{{\color{azulpoli}%
+    \setlength{\fboxsep}{0pt}\setlength{\fboxrule}{#5}%
+    \fbox{\rule{0pt}{\dimexpr#4-2\fboxrule\relax}%
+          \rule{\dimexpr#3-2\fboxrule\relax}{0pt}}}}%
+}
+\newcommand{\poliMolduraCapa}{%
+  \poli@capaQuadro{12mm}{12mm}{\paperwidth-24mm}{\paperheight-24mm}{0.7pt}%
+  \poli@capaQuadro{13.8mm}{13.8mm}{\paperwidth-27.6mm}{\paperheight-27.6mm}{0.25pt}%
+}
+
+\newcommand{\poliAssinaturaCapa}{%
+  % varwidth: a coluna tem a largura natural do texto (até o limite), para a
+  % assinatura ficar centrada também com títulos curtos.
+  \sbox{\poliCaixaAssinatura}{\begin{varwidth}[b]{\poliCapaLarguraAssinatura}%
+    \raggedright
+    % \textcolor (e não \color) para o varwidth medir a largura natural.
+    {\fonteCapa\fontsize{8.5}{10.5}\selectfont
+      \textcolor{azulpoli}{Escola Politécnica da}\\
+      \textcolor{azulpoli}{Universidade de São Paulo}\par}%
+    \ifthenelse{\equal{\poliDepartamentoSalvo}{}}{}{%
+      \vspace{1.2mm}%
+      {\sffamily\fontsize{7.5}{9}\selectfont
+        \textcolor{cinzasecundario}{\poliDepartamentoSalvo}\par}}%
+    \vspace{9mm}%
+    {\sffamily\bfseries\fontsize{22}{26}\selectfont
+      \textcolor{azulpoli}{\poliTituloSalvo}\par}%
+    \ifthenelse{\boolean{temSubtitulo}}{%
+      \vspace{2.5mm}%
+      {\sffamily\fontseries{l}\selectfont\fontsize{12}{15}\selectfont
+        \poliSubtituloSalvo\par}}{}%
+  \end{varwidth}}%
+  \setlength{\poliCapaAlturaAssinatura}{%
+    \dimexpr\ht\poliCaixaAssinatura+\dp\poliCaixaAssinatura\relax}%
+  \raisebox{-\dp\poliCaixaAssinatura}{%
+    \includegraphics[height=\poliCapaAlturaAssinatura]{\poliBrasao}}%
+  \hspace{6mm}%
+  {\color{azulornamento}\raisebox{-\dp\poliCaixaAssinatura}{%
+    \rule{0.4pt}{\poliCapaAlturaAssinatura}}}%
+  \hspace{6mm}%
+  \usebox{\poliCaixaAssinatura}%
+}
+
+\newcommand{\poliRodapeCapa}{%
+  \parbox[b]{\textwidth}{\centering
+    \ifthenelse{\equal{\poliDisciplinaSalva}{}}{}{%
+      {\sffamily\fontsize{8.5}{10.5}\selectfont\color{azulpoli}%
+        \poliDisciplinaSalva\par}\vspace{3mm}}%
+    \poliBlocoAutores\vspace{5mm}%
+    {\sffamily\fontsize{8.5}{10}\selectfont\color{cinzasecundario}%
+      \poliDataSalva\par}}%
+}
+
+\renewcommand{\maketitle}{%
+  \setlength{\poliCapaBase}{%
+    \dimexpr 1in+\voffset+\topmargin+\headheight+\headsep+\textheight\relax}%
+  \begin{titlepage}
+    \microtypesetup{activate=false}%
+    \poliMolduraCapa
+    \poli@capaEm{0.5\paperwidth}{0.5\paperheight}{b}{\poliAssinaturaCapa}%
+    \poli@capaEm{0.5\paperwidth}{\poliCapaBase}{b}{\poliRodapeCapa}%
+    % As camadas acima precisam de uma página de conteúdo para serem enviadas.
+    \null
+  \end{titlepage}
+  \clearpage
+}
+
+% --- 11. CABEÇALHO E RODAPÉ ---
+\newlength{\alturaLogoHeader}
+\setlength{\alturaLogoHeader}{10mm}
+
+\newcommand{\poliHeaderTitulo}{%
+  \normalfont\sffamily\footnotesize\color{azulpoli}\poliTituloCurtoSalvo%
+}
+\newcommand{\poliHeaderLogo}{%
+  \includegraphics[height=\alturaLogoHeader]{\poliBarraLogo}%
+}
+
+% Título no lado interno, logo no lado externo
+\newpagestyle{poliusp}{%
+  \sethead[\poliHeaderLogo][][\poliHeaderTitulo]%  páginas pares
+          {\poliHeaderTitulo}{}{\poliHeaderLogo}%  páginas ímpares
+  \headrule
+  \setfoot[][\normalfont\sffamily\bfseries\footnotesize\color{azulpoli}\thepage][]%  páginas pares
+          {}{\normalfont\sffamily\bfseries\footnotesize\color{azulpoli}\thepage}{}%  páginas ímpares
+}
+
+% --- 12. FORMATAÇÃO DE SEÇÕES ---
+\renewcommand{\contentsname}{Sumário}
+
+\titleformat{\section}
+  {\raggedright\normalfont\sffamily\bfseries\fontsize{14}{18}\selectfont}
+  {\llap{\textcolor{azulpoli}{\thesection}\hspace{0.85em}}}{0pt}{}
+
+% Mesmo estilo para seções sem número (\section*)
+\titleformat{name=\section,numberless}
+  {\raggedright\normalfont\sffamily\bfseries\fontsize{14}{18}\selectfont}
+  {}{0em}{}
+
+\titleformat{\subsection}
+  {\raggedright\normalfont\sffamily\bfseries\fontsize{11.5}{15}\selectfont}
+  {\llap{\textcolor{azulpoli}{\thesubsection}\hspace{0.85em}}}{0pt}{}
+
+\titlespacing*{\section}   {0pt}{2\baselineskip plus .5\baselineskip minus .2\baselineskip}{.75\baselineskip}
+\titlespacing*{\subsection}{0pt}{1.5\baselineskip plus .4\baselineskip minus .2\baselineskip}{.5\baselineskip}
+
+% --- 13. ATIVAÇÃO ---
+\AtBeginDocument{%
+  \maketitle
+  \pagestyle{poliusp}%
+}

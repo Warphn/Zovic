@@ -1,0 +1,39 @@
+% !TeX program = lualatex
+% O template exige LuaLaTeX (fontspec com as fontes de fontes/). Editores que
+% respeitam este magic comment escolhem o motor sozinhos; nos que não respeitam,
+% selecione LuaLaTeX na configuração de compilador do projeto.
+
+\documentclass[a4paper,11pt,twoside]{article}
+
+\usepackage[brazilian]{babel}
+\usepackage[code,smartrefs,floatbarriers]{poliusp}
+
+% Dados da capa e do cabeçalho — edite capa.tex
+\input{capa}
+
+% Colunas de tabela com largura proporcional e alinhadas à esquerda,
+% no mesmo estilo das tabelas do template.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash\hsize=#1\hsize}X}
+% Nome de tabela, coluna ou arquivo; pode quebrar a linha depois de _, . e /.
+\DeclareRobustCommand{\campo}[1]{\begingroup\ttfamily\let\poliSublinhado\_%
+  \renewcommand{\_}{\poliSublinhado\allowbreak}\poliBarras#1/\poliFim\endgroup}
+\def\poliBarras#1/#2\poliFim{\poliPontos#1.\poliFimPonto\ifx\relax#2\relax\else/\allowbreak\poliBarras#2\poliFim\fi}
+\def\poliPontos#1.#2\poliFimPonto{#1\ifx\relax#2\relax\else.\allowbreak\poliPontos#2\poliFimPonto\fi}
+% Folga extra entre palavras antes de deixar uma linha passar da margem.
+\setlength{\emergencystretch}{3em}
+
+\begin{document}
+
+\tableofcontents
+\clearpage
+
+\input{secoes/introducao}
+\input{secoes/tecnologias}
+\input{secoes/modelo_conceitual}
+\input{secoes/modelo_relacional}
+\input{secoes/integridade}
+\input{secoes/evolucao}
+\input{secoes/acesso}
+\input{secoes/limitacoes}
+
+\end{document}

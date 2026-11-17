@@ -1,0 +1,34 @@
+\section{Tecnologias e Organização}
+\label{sec:tecnologias}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Ferramentas usadas no banco de dados}
+  \label{tab:ferramentas}
+  \begin{tabularx}{\textwidth}{@{}L{0.6}L{1.4}@{}}
+    \toprule
+    \poliCabTabela{Ferramenta} & \poliCabTabela{Papel} \\
+    \midrule
+    PostgreSQL 16 & Sistema gerenciador do banco, local (Docker) e em produção \\
+    Flyway & Cria e altera o esquema com migrations em SQL, numeradas pela data e hora \\
+    \campo{pg} (node-postgres) & Driver usado pela API para executar o SQL dos repositórios \\
+    Prisma & Client tipado, gerado a partir do banco, usado no seed e nos testes \\
+    Better Auth & Biblioteca de autenticação; usa as tabelas \campo{user}, \campo{session}, \campo{account} e \campo{verification} \\
+    D2 & Desenha o diagrama do banco a partir do próprio Postgres, a cada push \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+A divisão de responsabilidades é estrita: \textbf{só o Flyway altera o
+esquema}. O Prisma apenas espelha o banco (\campo{prisma db pull}), e o Better
+Auth nunca cria tabelas sozinho. Quando a biblioteca precisa de uma coluna
+nova, a equipe escreve uma migration com as convenções do projeto. Assim, há
+um único histórico de mudanças, e qualquer máquina chega ao mesmo esquema
+aplicando as migrations em ordem.
+
+A API segue a arquitetura de portas e adaptadores. As regras de negócio ficam
+em \campo{api/domain}, que declara \emph{portas} (interfaces como
+\campo{PlaylistRepository}) sem conhecer o banco. As implementações em SQL
+ficam em \campo{api/adapters/db}, uma por porta, como
+\campo{PostgresPlaylistRepository}. Isso permite testar os casos de uso com
+repositórios em memória e testar os adaptadores contra um Postgres real.

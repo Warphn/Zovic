@@ -11,6 +11,7 @@ Para subir o projeto e ver os comandos do dia a dia, comece pelo [README da raiz
 | [Modelo ER](modelo-er.md) | O diagrama do banco e o que cada tabela guarda |
 | [Models](models.md) | As entidades do domínio, as portas e os repositórios da API |
 | [Uso de IA](prompts/prompts.md) | Os prompts usados nas partes feitas com ajuda de IA |
+| [Relatório do banco de dados](relatorio-banco-de-dados/main.tex) | O relatório em LaTeX (template da Poli) com o DER, o modelo relacional, as restrições e as migrations. Compile com LuaLaTeX (`make` na pasta). |
 
 ## Tecnologias
 
