@@ -19,6 +19,19 @@ const RESULTS: SearchResults = {
     { id: 9, name: "O Trem Azul", duration: 245, artists: [{ id: 7, name: "Lô Borges" }] },
   ],
   artists: [{ id: 7, name: "Lô Borges", musicCount: 2, imageUrl: "/api/artists/7/image?v=abc" }],
+  albums: [
+    {
+      id: 21,
+      name: "Clube da Esquina",
+      year: 1972,
+      artists: [
+        { id: 7, name: "Lô Borges" },
+        { id: 8, name: "Milton Nascimento" },
+      ],
+      musicCount: 21,
+      coverUrl: "/api/albums/21/cover?v=ghi",
+    },
+  ],
   playlists: [
     { id: 12, name: "Clube do Vinil", isPrivate: false, color: "#4f46e5", musicCount: 4, coverUrl: null },
     { id: 13, name: "Clube", isPrivate: true, color: null, musicCount: 1, coverUrl: "/api/playlists/13/cover?v=def" },
@@ -34,14 +47,15 @@ describe("search suggestions from the API", () => {
     expect(toSuggestions(RESULTS, "   ")).toEqual([])
   })
 
-  it("keeps the API order: text completions, then tracks, artists and playlists", () => {
+  it("keeps the API order: text completions, then tracks, artists, albums and playlists", () => {
     const kinds = toSuggestions(RESULTS, "clube").map((s) => s.kind)
-    expect(kinds).toEqual(["query", "query", "track", "track", "artist", "playlist", "playlist"])
+    expect(kinds).toEqual(["query", "query", "query", "track", "track", "artist", "album", "playlist", "playlist"])
   })
 
   it("completes only names that start with the query and are not the query itself", () => {
     const queries = toSuggestions(RESULTS, "CLUBE").filter((s) => s.kind === "query")
     expect(queries).toEqual([
+      { kind: "query", text: "Clube da Esquina" },
       { kind: "query", text: "Clube da Esquina Nº 2" },
       { kind: "query", text: "Clube do Vinil" },
     ])
@@ -74,6 +88,19 @@ describe("search suggestions from the API", () => {
       color: DEFAULT_PLAYLIST_COLOR,
       trackCount: 1,
       coverUrl: "/api/playlists/13/cover?v=def",
+    })
+  })
+})
+
+describe("album suggestions (HU-12)", () => {
+  it("maps the album with its cover, its artists and the year", () => {
+    expect(toSuggestions(RESULTS, "esquina")).toContainEqual({
+      kind: "album",
+      id: 21,
+      name: "Clube da Esquina",
+      artist: "Lô Borges, Milton Nascimento",
+      year: 1972,
+      coverUrl: "/api/albums/21/cover?v=ghi",
     })
   })
 })
