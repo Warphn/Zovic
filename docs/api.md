@@ -60,7 +60,7 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 | `TRUST_PROXY` | Número de proxies na frente da API, para o limite de login ver o IP real. Vazia em desenvolvimento e `1` em produção. |
 | `NEXT_PUBLIC_API_URL` | Endereço da API para o front no Docker. Vazio vale `http://localhost:3333`. |
 | `AUDIO_DIR` | Diretório dos MP3 das músicas. Vazio vale `api/storage/audio`. No Docker, o compose passa `/data/audio`, o volume `audio`. |
-| `COVER_DIR` | Diretório das capas dos álbuns. Vazio vale `api/storage/covers`. No Docker, o compose passa `/data/covers`, o volume `covers`. |
+| `COVER_DIR` | Diretório das imagens: as capas dos álbuns e das playlists e as fotos dos artistas. Vazio vale `api/storage/covers`. No Docker, o compose passa `/data/covers`, o volume `covers`. |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Só no servidor de produção |
 
 ## Rotas
@@ -123,6 +123,9 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
 | `PATCH /api/playlists/:id` | Edita nome, privacidade ou cor. Só para o dono (admin) da playlist; os outros, colaboradores inclusive, recebem 403. |
 | `DELETE /api/playlists/:id` | Apaga com soft delete. Só para o dono da playlist. |
+| `GET /api/playlists/:id/cover` | Entrega a imagem de capa (HU-35). Quem vê a playlist vê a capa: a de uma privada responde 404 para quem não é membro. Responde 404 também para playlist sem capa. |
+| `PUT /api/playlists/:id/cover` | Põe ou troca a capa, em multipart com a parte `cover`. Só o dono; o colaborador recebe 403. A Músicas Curtidas não aceita capa (409). |
+| `DELETE /api/playlists/:id/cover` | Tira a capa, e a playlist volta às iniciais sobre a cor. Só o dono. Tirar a capa de quem não tem não é erro. |
 | `GET /api/playlists/:id/musics` | Músicas da playlist, na ordem dela. Quem vê a playlist vê as músicas, menos as explícitas para menor de idade, mesmo na playlist de outra pessoa. |
 | `POST /api/playlists/:id/musics` | Põe uma música (`{ musicId }`) no fim. Para o dono e os colaboradores. A mesma música não entra duas vezes (409). Menor de idade recebe 404 para música explícita. |
 | `PUT /api/playlists/:id/musics/order` | Reordena com `{ musicIds }`, a lista inteira na ordem nova. Para o dono e os colaboradores. Menor de idade envia só as músicas que vê. |
@@ -134,7 +137,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
 | `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
 | `GET /api/recommendations` | Até 10 músicas que a conta ainda não ouviu (HU-25), das mais parecidas com o gosto dela (gêneros e artistas das músicas ouvidas e curtidas) para as menos. Sem histórico, as mais tocadas da plataforma. Menor de idade não recebe as explícitas. Cada item traz `id`, `name`, `duration` e `artists`. |
-| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5). Menor de idade não recebe músicas explícitas, nem nas contagens. |
+| `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5), com a foto do artista (`imageUrl`) e a capa da playlist (`coverUrl`). Menor de idade não recebe músicas explícitas, nem nas contagens. |
 
 **Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Na tela, quem tira uma música dela é o coração: a página da Músicas Curtidas troca o botão de tirar pelo menu "Adicionar à playlist", que nunca lista a própria Músicas Curtidas. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
 
@@ -156,7 +159,8 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | Rota | O que faz |
 | --- | --- |
 | `GET /api/musics?q=` | Lista as músicas, com o álbum ativo (`album`, com o ano e o número da faixa, `trackNumber`), `isExplicit` e `hasAudio`. As removidas só aparecem para admins, marcadas. Menor de idade não recebe as explícitas. |
-| `GET /api/artists` | Lista os artistas |
+| `GET /api/artists` | Lista os artistas ativos, com o endereço da foto (`imageUrl`, ou `null`) |
+| `GET /api/artists/:id/image` | Entrega a foto do artista (HU-36). Responde 404 para artista removido ou sem foto. |
 | `GET /api/albums` | Lista os álbuns ativos, com o ano, os artistas, quantas faixas ativas cada um tem (`musicCount`, sem as explícitas para menor de idade) e o endereço da capa (`coverUrl`, ou `null`) |
 | `GET /api/albums/:id/cover` | Entrega a imagem de capa, com o `Content-Type` do formato. Responde 404 para álbum removido ou sem capa. |
 | `GET /api/genres` | Lista os gêneros |
@@ -184,6 +188,7 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `PATCH` e `DELETE` em `/api/admin/albums/:id` | Edita (nome, artistas e ano, em JSON) e remove álbuns |
 | `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas. O nome é único entre os artistas ativos, sem diferenciar maiúsculas: criar ou renomear para um nome que já existe dá 409. Remover libera o nome. |
+| `PUT` e `DELETE` em `/api/admin/artists/:id/image` | Põe ou troca a foto do artista (multipart com a parte `image`) e tira a foto (HU-36) |
 
 Remover é sempre soft delete. Remover um álbum não remove as músicas dele.
 
@@ -220,6 +225,11 @@ O arquivo só é gravado depois dessas conferências. Se a música não chegar a
 - **Formato:** JPEG, PNG ou WebP, de até 2 MB, conferido pelos primeiros bytes. Acima do limite, a resposta é 413 `COVER_TOO_LARGE`.
 - **Obrigatória:** sem capa, o álbum não é criado (400). Os álbuns antigos, sem capa, têm `coverUrl: null`.
 - **Cache:** o `coverUrl` termina com uma versão (`?v=`), que muda a cada troca. O navegador guarda a imagem, mas nunca mostra a capa antiga depois da troca.
+
+**Capa da playlist e foto do artista.** Seguem as regras da capa do álbum (formato, limite de 2 MB e cache), com duas diferenças:
+
+- **Opcionais:** a playlist e o artista nascem sem imagem, com `coverUrl` ou `imageUrl` igual a `null`. O `DELETE` tira a imagem e apaga o arquivo.
+- **Parte e erro:** a capa da playlist vem na parte `cover`, como a do álbum. A foto do artista vem na parte `image`, e acima de 2 MB a resposta é 413 `IMAGE_TOO_LARGE`.
 
 ## Assinaturas
 

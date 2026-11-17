@@ -1,21 +1,9 @@
 "use client"
 
-import * as React from "react"
 import { Field } from "@/components/admin/panel"
 import { AlbumCoverImage } from "@/components/album-cover-image"
-import { FileInput } from "./file-input"
-
-/** The image formats the API takes for a cover (api/domain/shared/cover-image.ts). */
-export const COVER_ACCEPT = "image/jpeg,image/png,image/webp"
-
-/** A preview address for a chosen file, released when the file changes or the form closes. */
-function useObjectUrl(file: File | null): string | null {
-  const url = React.useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
-  React.useEffect(() => () => {
-    if (url) URL.revokeObjectURL(url)
-  }, [url])
-  return url
-}
+import { FileInput, useObjectUrl } from "@/components/file-input"
+import { COVER_ACCEPT } from "@/lib/cover-image"
 
 /** The cover file field with a preview next to it; `album` gives the current cover when editing. */
 export function CoverField({

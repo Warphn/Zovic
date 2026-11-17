@@ -55,6 +55,7 @@ import { ManageCatalog } from "../domain/use-cases/manage-catalog.ts";
 import { ManageUsers } from "../domain/use-cases/manage-users.ts";
 import { RemoveMusicFromPlaylist } from "../domain/use-cases/remove-music-from-playlist.ts";
 import { AddCollaborator, ListCollaborators, RemoveCollaborator } from "../domain/use-cases/playlist-collaborators.ts";
+import { ChangePlaylistCover, GetPlaylistCover, RemovePlaylistCover } from "../domain/use-cases/playlist-cover.ts";
 import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musics.ts";
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
@@ -63,9 +64,10 @@ import type { Pool } from "pg";
 import { pool } from "./db/pool.ts";
 import { config } from "./config.ts";
 
-/** Onde ficam os arquivos enviados pelo painel; os testes passam diretórios temporários. */
+/** Onde ficam os arquivos enviados; os testes passam diretórios temporários. */
 export interface MediaStorages {
   audio: LocalFileStorage;
+  /** As imagens: capas dos álbuns e das playlists e fotos dos artistas. */
   covers: LocalFileStorage;
 }
 
@@ -93,7 +95,10 @@ export function composeApp(
     listCollaborators: new ListCollaborators(playlistRepository, userRepository),
     addCollaborator: new AddCollaborator(playlistRepository, userRepository, subscriptionRepository),
     removeCollaborator: new RemoveCollaborator(playlistRepository),
-  });
+    getPlaylistCover: new GetPlaylistCover(playlistRepository),
+    changePlaylistCover: new ChangePlaylistCover(playlistRepository, storages.covers),
+    removePlaylistCover: new RemovePlaylistCover(playlistRepository, storages.covers),
+  }, storages.covers);
   const searchController = makeSearchController(new SearchCatalog(new PostgresSearchQuery(db)));
 
   const musicRepository = new PostgresMusicRepository(db);

@@ -201,6 +201,7 @@ model Artist {
   name      String        @db.VarChar(255)
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   deletedAt DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  imageFile String?       @map("image_file") @db.VarChar(255)
   albums    AlbumArtist[]
   musics    ArtistMusic[]
 
@@ -282,6 +283,7 @@ model Playlist {
   deletedAt     DateTime?       @map("deleted_at") @db.Timestamptz(6)
   createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   likedByUserId Int?            @unique @map("liked_by_user_id")
+  coverFile     String?         @map("cover_file") @db.VarChar(255)
   musics        MusicPlaylist[]
   users         PlaylistUser[]
   likedByUser   User?           @relation(fields: [likedByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "playlists_liked_by_user_id_fkey")

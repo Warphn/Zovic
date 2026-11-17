@@ -86,6 +86,8 @@ export interface GenreOutput {
 export interface ArtistOutput {
   id: number;
   name: string;
+  /** O nome do arquivo não sai da API: a foto é entregue por GET /api/artists/:id/image. */
+  hasImage: boolean;
   createdAt: string;
   deletedAt: string | null;
 }
@@ -101,6 +103,7 @@ export class ManageCatalog {
     private readonly genres: GenreRepository,
     private readonly albums: AlbumRepository,
     private readonly audioStorage: FileStorage,
+    /** As imagens: capas dos álbuns e fotos dos artistas. */
     private readonly coverStorage: FileStorage,
   ) {}
 
@@ -235,6 +238,34 @@ export class ManageCatalog {
     return toArtistOutput(artist);
   }
 
+  /** Como na capa do álbum: a foto antiga só sai do disco depois que o artista foi salvo com a nova (HU-36). */
+  async changeArtistImage(id: number, image: Uint8Array | null): Promise<ArtistOutput> {
+    const artist = await this.findArtist(id);
+    const extension = validateCover(image, "Artist image is required");
+    const previousImage = artist.imageFile;
+
+    const imageFile = await this.coverStorage.save(image!, extension);
+    try {
+      artist.changeImage(imageFile);
+      await this.artists.save(artist);
+    } catch (error) {
+      await this.coverStorage.remove(imageFile);
+      throw error;
+    }
+    if (previousImage !== null) await this.coverStorage.remove(previousImage);
+    return toArtistOutput(artist);
+  }
+
+  /** Sem foto, o artista volta às iniciais. Tirar a foto de quem não tem não é erro. */
+  async removeArtistImage(id: number): Promise<ArtistOutput> {
+    const artist = await this.findArtist(id);
+    const previousImage = artist.imageFile;
+    artist.removeImage();
+    await this.artists.save(artist);
+    if (previousImage !== null) await this.coverStorage.remove(previousImage);
+    return toArtistOutput(artist);
+  }
+
   async deleteArtist(id: number): Promise<void> {
     const artist = await this.findArtist(id);
     artist.delete();
@@ -314,6 +345,7 @@ function toArtistOutput(artist: Artist): ArtistOutput {
   return {
     id: artist.id,
     name: artist.name,
+    hasImage: artist.imageFile !== null,
     createdAt: artist.createdAt.toISOString(),
     deletedAt: artist.deletedAt?.toISOString() ?? null,
   };

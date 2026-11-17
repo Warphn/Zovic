@@ -16,6 +16,8 @@ export interface ExistingPlaylistData {
     deletedAt: Date|null;
     /** Só na Músicas Curtidas (HU-34): a conta dona dela. Nula ou ausente nas playlists comuns. */
     likedByUserId?: number|null;
+    /** Nome da imagem de capa no armazenamento (FileStorage); nula ou ausente na playlist sem capa (HU-35). */
+    coverFile?: string|null;
 }
 
 export interface NewPlaylistData {
@@ -79,6 +81,10 @@ export class Playlist {
 
     get color(): string|null {
         return this.input.color;
+    }
+
+    get coverFile(): string|null {
+        return this.input.coverFile ?? null;
     }
 
     get members(): PlaylistMember[] {
@@ -172,6 +178,22 @@ export class Playlist {
         this.ensureNotDeleted();
         this.ensureNotLikedSongs();
         this.input.color = Playlist.normalizeHexColor(color);
+    }
+
+    /** A Músicas Curtidas não tem capa: ela é mudada só pela curtida (HU-35). */
+    changeCover(coverFile: string): void {
+        this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
+        if (coverFile.trim() === "") {
+            throw new ValidationError("Playlist cover file cannot be empty");
+        }
+        this.input.coverFile = coverFile;
+    }
+
+    removeCover(): void {
+        this.ensureNotDeleted();
+        this.ensureNotLikedSongs();
+        this.input.coverFile = null;
     }
 
     setPrivate(isPrivate: boolean): void {

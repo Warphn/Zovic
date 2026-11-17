@@ -17,7 +17,7 @@ import { AlbumsSection } from "./albums-section"
 import { ArtistsSection } from "./artists-section"
 import { AlbumPicker } from "./album-picker"
 import { ConfirmDialog } from "./confirm-dialog"
-import { FileInput } from "./file-input"
+import { FileInput } from "@/components/file-input"
 import { NewArtistField, NewGenreField } from "./new-catalog-item"
 import { Picker } from "./picker"
 

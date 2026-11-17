@@ -100,6 +100,20 @@ describe("PostgresArtistRepository", () => {
     expect((await artists.findById(artist.id))?.name).toBe("After");
   });
 
+  it("grava, troca e tira a foto (HU-36)", async () => {
+    const artist = await newArtist("Integration photo");
+    await artists.save(artist);
+    expect((await artists.findById(artist.id))?.imageFile).toBeNull();
+
+    artist.changeImage("foto.webp");
+    await artists.save(artist);
+    expect((await artists.findById(artist.id))?.imageFile).toBe("foto.webp");
+
+    artist.removeImage();
+    await artists.save(artist);
+    expect((await artists.findById(artist.id))?.imageFile).toBeNull();
+  });
+
   it("não encontra artista apagado", async () => {
     const artist = await newArtist("Integration deleted");
     artist.delete();

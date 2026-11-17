@@ -34,17 +34,26 @@ export interface AlbumListItem {
   coverUrl: string | null;
 }
 
+export interface ArtistListItem {
+  id: number;
+  name: string;
+  /** Endereço da foto (GET /api/artists/:id/image), com a versão no fim; null no artista sem foto (HU-36). */
+  imageUrl: string | null;
+}
+
 export interface CatalogQueries {
   /**
    * Ativas, por nome; com includeDeleted, também as removidas (só para admins). Sem includeExplicit,
    * as músicas explícitas ficam de fora (menores de idade, HU-09).
    */
   listMusics(options: { search?: string; includeDeleted: boolean; includeExplicit: boolean }): Promise<MusicListItem[]>;
-  listArtists(): Promise<{ id: number; name: string }[]>;
+  listArtists(): Promise<ArtistListItem[]>;
   /** Álbuns ativos, por nome; sem includeExplicit, a contagem de faixas ignora as explícitas. */
   listAlbums(options: { includeExplicit: boolean }): Promise<AlbumListItem[]>;
   /** O arquivo da capa de um álbum ativo; null se ele não existe, foi removido ou não tem capa. */
   findAlbumCoverFile(albumId: number): Promise<string | null>;
+  /** O arquivo da foto de um artista ativo; null se ele não existe, foi removido ou não tem foto. */
+  findArtistImageFile(artistId: number): Promise<string | null>;
   listGenres(): Promise<{ id: number; name: string; color: string }[]>;
 }
 

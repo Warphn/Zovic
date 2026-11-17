@@ -10,6 +10,11 @@ export interface NamedItem {
   name: string
 }
 
+export interface Artist extends NamedItem {
+  /** API path of the photo (load it through `apiUrl`); null when the artist has none (HU-36). */
+  imageUrl: string | null
+}
+
 export interface Genre extends NamedItem {
   color: string
 }
@@ -43,7 +48,7 @@ export const catalogApi = {
   /** Active musics; for an admin, the removed ones too. `q` filters by music or artist name. */
   musics: (q?: string, signal?: AbortSignal) =>
     request<CatalogMusic[]>(`/musics${queryString({ q: q?.trim() || undefined })}`, { signal }),
-  artists: (signal?: AbortSignal) => request<NamedItem[]>("/artists", { signal }),
+  artists: (signal?: AbortSignal) => request<Artist[]>("/artists", { signal }),
   genres: (signal?: AbortSignal) => request<Genre[]>("/genres", { signal }),
   albums: (signal?: AbortSignal) => request<Album[]>("/albums", { signal }),
   /** Counts one play of the music for the viewer (event + stream count). */

@@ -10,7 +10,7 @@ import type { SearchController } from "./search-controller.ts";
 import type { SubscriptionController } from "./subscription-controller.ts";
 import { validateInvitationToken } from "./middlewares/validate-invitation-token.ts";
 import { requirePlatformAdmin } from "./middlewares/require-platform-admin.ts";
-import { receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
+import { receiveArtistImage, receiveAudio, receiveCover } from "./middlewares/file-upload.ts";
 import { validateBody, validateMultipartData, validateParams, validateQuery } from "./middlewares/validate-request.ts";
 import { likedMusicParamsSchema } from "./schemas/liked-musics-schemas.ts";
 import { addCollaboratorSchema, playlistCollaboratorParamsSchema } from "./schemas/playlist-collaborators-schemas.ts";
@@ -91,6 +91,11 @@ export function makeRouter(
   router.patch("/playlists/:id", subscriberOnly, playlistId, validateBody(updatePlaylistSchema), playlists.update);
   router.delete("/playlists/:id", subscriberOnly, playlistId, playlists.remove);
 
+  // Capa (HU-35): quem vê a playlist vê a capa; só o dono troca (multipart, parte "cover") ou remove
+  router.get("/playlists/:id/cover", subscriberOnly, playlistId, playlists.cover);
+  router.put("/playlists/:id/cover", subscriberOnly, playlistId, receiveCover, playlists.changeCover);
+  router.delete("/playlists/:id/cover", subscriberOnly, playlistId, playlists.removeCover);
+
   router.get("/playlists/:id/musics", subscriberOnly, playlistId, playlists.listMusics);
   router.post("/playlists/:id/musics", subscriberOnly, playlistId, validateBody(addPlaylistMusicSchema), playlists.addMusic);
   router.put(
@@ -145,6 +150,7 @@ export function makeRouter(
   router.post("/musics/:id/plays", subscriberOnly, catalog.recordPlay);
   router.get("/musics/:id/audio", subscriberOnly, catalog.musicAudio);
   router.get("/artists", subscriberOnly, catalog.listArtists);
+  router.get("/artists/:id/image", subscriberOnly, catalog.artistImage);
   router.get("/albums", subscriberOnly, catalog.listAlbums);
   router.get("/albums/:id/cover", subscriberOnly, catalog.albumCover);
   router.get("/genres", subscriberOnly, catalog.listGenres);
@@ -175,6 +181,9 @@ export function makeRouter(
   adminRouter.post("/artists", validateBody(artistSchema), admin.createArtist);
   adminRouter.patch("/artists/:id", validateBody(artistSchema), admin.renameArtist);
   adminRouter.delete("/artists/:id", admin.removeArtist);
+  // Foto do artista (HU-36), multipart com a imagem na parte "image"
+  adminRouter.put("/artists/:id/image", receiveArtistImage, admin.changeArtistImage);
+  adminRouter.delete("/artists/:id/image", admin.removeArtistImage);
   router.use("/admin", authenticate, requirePlatformAdmin, adminRouter);
 
   return router;

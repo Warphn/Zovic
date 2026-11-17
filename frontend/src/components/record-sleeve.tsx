@@ -1,11 +1,27 @@
 import type * as React from "react"
 import { getContrastTextColor } from "@/components/color-picker"
+import { CoverPhoto } from "@/components/cover-photo"
 import { Record } from "@/components/playback-marks"
 import { cn } from "@/lib/utils"
 
 // A record sleeve in the playlist color, with the printed frame around its artwork and the
-// playlist initials. `className` sets its size and position.
-export function Sleeve({ color, initials, className }: { color: string; initials: React.ReactNode; className?: string }) {
+// playlist initials; with a cover image (HU-35), the image is the artwork. `className` sets its
+// size and position.
+export function Sleeve({
+  color,
+  initials,
+  coverUrl,
+  coverPreviewUrl,
+  className,
+}: {
+  color: string
+  initials: React.ReactNode
+  coverUrl?: string | null
+  /** A chosen file not uploaded yet, shown in place of the cover. */
+  coverPreviewUrl?: string | null
+  className?: string
+}) {
+  const hasCover = Boolean(coverPreviewUrl ?? coverUrl)
   return (
     <div
       className={cn(
@@ -16,16 +32,29 @@ export function Sleeve({ color, initials, className }: { color: string; initials
       )}
       style={{ backgroundColor: color }}
     >
+      <CoverPhoto url={coverUrl} previewUrl={coverPreviewUrl} className="rounded-md" />
       {/* Printed frame, like the rule around a sleeve's artwork */}
       <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
-      <span className="select-none text-6xl font-medium tracking-[-0.03em]">{initials}</span>
+      {!hasCover && <span className="select-none text-6xl font-medium tracking-[-0.03em]">{initials}</span>}
     </div>
   )
 }
 
 // The playlist cover as a record sleeve, with the record half out of it. While the playlist
 // plays, the record slides a little further out and turns
-export function RecordSleeve({ color, initials, playing }: { color: string; initials: React.ReactNode; playing: boolean }) {
+export function RecordSleeve({
+  color,
+  initials,
+  playing,
+  coverUrl,
+  coverPreviewUrl,
+}: {
+  color: string
+  initials: React.ReactNode
+  playing: boolean
+  coverUrl?: string | null
+  coverPreviewUrl?: string | null
+}) {
   return (
     <div className="relative h-48 w-64 shrink-0 md:h-52 md:w-72">
       {/* Record */}
@@ -42,7 +71,13 @@ export function RecordSleeve({ color, initials, playing }: { color: string; init
         />
       </div>
 
-      <Sleeve color={color} initials={initials} className="z-10 size-48 md:size-52" />
+      <Sleeve
+        color={color}
+        initials={initials}
+        coverUrl={coverUrl}
+        coverPreviewUrl={coverPreviewUrl}
+        className="z-10 size-48 md:size-52"
+      />
     </div>
   )
 }

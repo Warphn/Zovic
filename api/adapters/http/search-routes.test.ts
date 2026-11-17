@@ -94,8 +94,8 @@ describe("GET /api/search", () => {
     expect(body).toEqual({
       musics: [],
       artists: [
-        { id: artistIds[1]!, name: `Água${T} dois`, musicCount: 0 },
-        { id: artistIds[0]!, name: `Água${T} um`, musicCount: 0 },
+        { id: artistIds[1]!, name: `Água${T} dois`, musicCount: 0, imageUrl: null },
+        { id: artistIds[0]!, name: `Água${T} um`, musicCount: 0, imageUrl: null },
       ],
       playlists: [],
     });

@@ -1,0 +1,26 @@
+meta {
+  name: Pôr a capa da playlist
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/playlists/{{playlistId}}/cover
+  body: multipartForm
+  auth: none
+}
+
+body:multipart-form {
+  cover: @file(fixtures/capa.png)
+}
+
+script:post-response {
+  bru.setVar("playlistCoverUrl", res.getBody().coverUrl);
+}
+
+tests {
+  test("responde 200 com o endereço da capa", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().coverUrl).to.match(/^\/api\/playlists\/\d+\/cover\?v=/);
+  });
+}

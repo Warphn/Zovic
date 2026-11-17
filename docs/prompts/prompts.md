@@ -269,6 +269,15 @@ Forma de trabalho: o Claude Opus orquestrou a partir da história da issue. Ele 
 
 A IA seguiu a especificação sem mudar as regras. O dislike da história e o seu critério de aceite ficam para quem fizer a rejeição de músicas.
 
+### 17/11/2026: capa da playlist e foto do artista (#92 e #99, HU-35 e HU-36)
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | O backend suporta imagens nas playlists, contas, músicas e outras partes? Analise uma a uma. | O levantamento por parte: só o álbum tinha imagem (`album.cover_file`, com upload, rota de entrega e `coverUrl`); música, playlist, artista e gênero não tinham, e `user.image` existia só porque o Better Auth cria a coluna |
+| 2 | Atualmente, a música mostra a imagem do álbum? Além disso, abra uma branch nova e implemente imagens também para playlists e artistas. | As perguntas de regra (imagem opcional ou não, rotas de troca e remoção, escopo) e o texto das histórias HU-35 e HU-36, aprovado antes de editar as issues #92 e #99. Depois, a migração [`V261117_170000`](../../db/migrations/V261117_170000__Adiciona_imagem_da_playlist_e_do_artista.sql); a capa na entidade `Playlist` e os casos de uso de [`playlist-cover.ts`](../../api/domain/use-cases/playlist-cover.ts); a foto na entidade `Artist` e no `ManageCatalog`, com testes; as rotas `…/playlists/:id/cover` e `…/artists/:id/image`, com testes de integração para cada critério; e, no front, a capa no encarte, na lista de playlists, no início e na busca, a troca no editor da playlist, e a foto na página do artista, na busca e no painel de admin |
+
+O Carlos escolheu imagem opcional nas duas, rotas de troca e remoção e API com front no mesmo PR. A IA escolheu guardar as imagens no mesmo `COVER_DIR` das capas dos álbuns, reaproveitar a validação da capa (`validateCover`) e trocar a capa da playlist só ao salvar o editor.
+
 ### 17/11/2026: artista sem nome repetido, rolagem dos modais e comentários pela API (#99, #95)
 
 Forma de trabalho: o Claude Opus levantou o código, propôs e implementou as três mudanças numa worktree separada, rodou as verificações e testou as telas no navegador com o seed LOCAL.

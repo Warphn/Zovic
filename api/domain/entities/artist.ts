@@ -1,4 +1,4 @@
-import { BusinessRuleError } from "../errors/domain-error.ts";
+import { BusinessRuleError, ValidationError } from "../errors/domain-error.ts";
 import { validateName } from "../shared/name.ts";
 
 export interface ExistingArtistData {
@@ -6,6 +6,8 @@ export interface ExistingArtistData {
   name: string;
   createdAt: Date;
   deletedAt: Date | null;
+  /** Nome da foto no armazenamento (FileStorage); nula ou ausente no artista sem foto (HU-36). */
+  imageFile?: string | null;
 }
 
 export interface NewArtistData {
@@ -48,6 +50,10 @@ export class Artist {
     return this.input.deletedAt ? new Date(this.input.deletedAt) : null;
   }
 
+  get imageFile(): string | null {
+    return this.input.imageFile ?? null;
+  }
+
   toData(): ExistingArtistData {
     return { ...this.input };
   }
@@ -55,6 +61,19 @@ export class Artist {
   rename(name: string): void {
     this.ensureNotDeleted();
     this.input.name = validateName(name, Artist.MAX_NAME_LENGTH, "Artist");
+  }
+
+  changeImage(imageFile: string): void {
+    this.ensureNotDeleted();
+    if (imageFile.trim() === "") {
+      throw new ValidationError("Artist image file cannot be empty");
+    }
+    this.input.imageFile = imageFile;
+  }
+
+  removeImage(): void {
+    this.ensureNotDeleted();
+    this.input.imageFile = null;
   }
 
   delete(now: Date = new Date()): void {

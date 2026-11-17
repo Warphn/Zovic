@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { ResponsiveGridLayout, getBreakpointFromWidth, useContainerWidth } from "react-grid-layout"
 import "react-grid-layout/css/styles.css"
 import Header from "@/components/header"
+import { CoverPhoto } from "@/components/cover-photo"
 import {
   ColorPicker,
   PRESET_COLORS,
@@ -258,15 +259,18 @@ export default function PlaylistPage() {
                         <span className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary" />
                       )}
 
-                      {/* Mini sleeve */}
+                      {/* Mini sleeve: the cover image, or the color and the initials */}
                       <div
                         className={cn(
-                          "pointer-events-none flex size-10 shrink-0 items-center justify-center rounded-sm text-sm font-medium",
+                          "pointer-events-none relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-sm text-sm font-medium",
                           getContrastTextColor(playlist.color)
                         )}
                         style={{ backgroundColor: playlist.color }}
                       >
-                        <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={16} />
+                        <CoverPhoto url={playlist.coverUrl} />
+                        {!playlist.coverUrl && (
+                          <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={16} />
+                        )}
                       </div>
 
                       <div className="pointer-events-none min-w-0 flex-1">
@@ -339,7 +343,8 @@ export default function PlaylistPage() {
                 }}
               >
                 {playlists.map((playlist) => {
-                  const contrastClass = getContrastTextColor(playlist.color)
+                  // On a cover image the text goes white, over a shade that keeps it readable
+                  const contrastClass = playlist.coverUrl ? "text-white" : getContrastTextColor(playlist.color)
 
                   return (
                     <div
@@ -352,6 +357,13 @@ export default function PlaylistPage() {
                       )}
                       style={{ backgroundColor: playlist.color }}
                     >
+                      {playlist.coverUrl && (
+                        <>
+                          <CoverPhoto url={playlist.coverUrl} />
+                          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-black/35" />
+                        </>
+                      )}
+
                       {/* Printed frame, the same rule as on the playlist page's sleeve; 12px in, so the 28px padding leaves 16px between it and the text */}
                       <div className="pointer-events-none absolute inset-3 rounded-sm border border-current opacity-25" />
 
@@ -361,11 +373,13 @@ export default function PlaylistPage() {
                         <h2 className="min-w-0 truncate text-base leading-snug font-medium @xs:text-lg">{playlist.name}</h2>
                       </div>
 
-                      {/* Art: the initials */}
+                      {/* Art: the initials, when the cover image is not the art */}
                       <div className="pointer-events-none relative z-10 flex flex-1 items-center justify-center">
-                        <span className="text-6xl leading-none font-medium tracking-[-0.03em] @xs:text-7xl @lg:text-8xl">
-                          <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={64} />
-                        </span>
+                        {!playlist.coverUrl && (
+                          <span className="text-6xl leading-none font-medium tracking-[-0.03em] @xs:text-7xl @lg:text-8xl">
+                            <PlaylistMark name={playlist.name} isLikedSongs={playlist.isLikedSongs} iconSize={64} />
+                          </span>
+                        )}
                       </div>
 
                       {/* Bottom: visibility on the left, track count on the right */}
