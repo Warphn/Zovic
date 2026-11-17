@@ -25,6 +25,7 @@ const MESSAGES: Record<string, string> = {
   "Audio file must be at most 20 MB": "O áudio pode ter no máximo 20 MB.",
   "Album not found": "Esse álbum não está mais no catálogo.",
   "A genre with this name already exists": "Já existe um gênero com esse nome.",
+  "An artist with this name already exists": "Já existe um artista com esse nome.",
   // Album covers (api/domain/shared/cover-image.ts)
   "Album must have a cover image": "Escolha a imagem de capa do álbum.",
   "Cover image must be a JPEG, PNG or WebP": "A capa precisa ser uma imagem JPEG, PNG ou WebP.",

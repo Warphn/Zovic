@@ -51,7 +51,7 @@ Ficam em `api/domain/errors/domain-error.ts`. O `error-handler` da API converte 
 | `ValidationError` | 400 | Dado inválido: nome vazio, cor fora do formato, duração negativa, id que não é inteiro positivo. |
 | `ForbiddenError` | 403 | Ação não permitida para o usuário, por exemplo editar uma playlist de que ele não é admin. |
 | `NotFoundError` | 404 | Algo referenciado não existe, por exemplo um artista inexistente ao salvar uma música. |
-| `BusinessRuleError` | 409 | Regra de negócio violada: remover o último artista, membro repetido, alterar algo apagado, nome de gênero já usado. |
+| `BusinessRuleError` | 409 | Regra de negócio violada: remover o último artista, membro repetido, alterar algo apagado, nome de gênero ou de artista já usado. |
 
 ### Helpers compartilhados (`api/domain/shared/`)
 
@@ -122,7 +122,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 | Campo | Tipo | Observação |
 | --- | --- | --- |
 | `id` | `number` | |
-| `name` | `string` | Até 255 caracteres. |
+| `name` | `string` | Até 255 caracteres. Único entre os artistas ativos, sem diferenciar maiúsculas (garantido pelo banco: o repositório devolve `BusinessRuleError`). |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
