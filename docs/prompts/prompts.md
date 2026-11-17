@@ -259,6 +259,26 @@ O Victor aprovou o design antes da implementação. A IA escolheu exigir assinat
 
 O Victor escolheu a playlist de verdade e aprovou as regras e a issue. A IA escolheu criar a playlist sob demanda (sem gancho no cadastro), a coluna única `liked_by_user_id` e a cor fixa.
 
+### 16/11/2026: receber recomendações (#97, HU-25)
+
+Forma de trabalho: o Claude Opus orquestrou a partir da história da issue. Ele definiu como contar ouvidas e curtidas, o desempate e o caso sem histórico, e o Gabriel decidiu deixar o dislike para depois, porque ele ainda não existe. Um subagente Claude Sonnet implementou o módulo a partir dessa especificação, e o Opus revisou o diff e rodou as verificações.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Implemente a HU-25 a partir da especificação: perfil por gênero e artista das músicas ouvidas e curtidas, candidatas ainda não ouvidas por pontuação, mais tocadas para quem não tem histórico, explícitas escondidas de menores e a seção "Recomendadas para você" na home. A rejeição (dislike) fica de fora, porque ainda não existe. | A porta [`recommendation-source.ts`](../../api/domain/ports/recommendation-source.ts) e o caso de uso [`recommend-musics.ts`](../../api/domain/use-cases/recommend-musics.ts) (`RECOMMENDATION_COUNT = 10`), com o fake e os testes de unidade; o adaptador [`postgres-recommendation-source.ts`](../../api/adapters/db/postgres-recommendation-source.ts), a rota `GET /api/recommendations` e os testes de integração em [`recommendation-routes.test.ts`](../../api/adapters/http/recommendation-routes.test.ts); a seção na [home](../../frontend/src/app/inicio/page.tsx) e a documentação |
+
+A IA seguiu a especificação sem mudar as regras. O dislike da história e o seu critério de aceite ficam para quem fizer a rejeição de músicas.
+
+### 17/11/2026: artista sem nome repetido, rolagem dos modais e comentários pela API (#99, #95)
+
+Forma de trabalho: o Claude Opus levantou o código, propôs e implementou as três mudanças numa worktree separada, rodou as verificações e testou as telas no navegador com o seed LOCAL.
+
+| # | Prompt | Resultado |
+|---|---|---|
+| 1 | Crie uma worktree. Implemente deduplicação de artistas (não devem haver artistas com nomes iguais), permita scroll no modal de incluir músicas (verifique também outros modais) e integre a API de comentários ao front. | A migration [`V261117_160000__Nome_de_artista_unico.sql`](../../db/migrations/V261117_160000__Nome_de_artista_unico.sql), que funde os artistas repetidos e cria o índice único em `lower(name)`; o 409 no [`postgres-artist-repository.ts`](../../api/adapters/db/postgres-artist-repository.ts), com testes de integração em [`admin-flow.test.ts`](../../api/adapters/http/admin-flow.test.ts); a altura máxima com rolagem no [`dialog.tsx`](../../frontend/src/components/ui/dialog.tsx), que vale para todos os modais; o service e os hooks de [`comments.ts`](../../frontend/src/lib/api/comments.ts) no lugar do `localStorage` do painel de comentários; e a documentação |
+
+A IA escolheu não diferenciar maiúsculas no nome do artista ("Lô Borges" e "lô borges" são o mesmo) e, nos duplicados que já existiam, manter o de menor id.
+
 ### 17/11/2026: documentação do modelo ER (#103)
 
 | # | Prompt | Resultado |

@@ -306,7 +306,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. `audio_file` é o nome do MP3 no armazenamento (`AUDIO_DIR`) e fica nulo nas músicas antigas, sem áudio. `is_explicit` marca o conteúdo explícito (padrão `false`). |
 | `genre` | Os gêneros | Nome único entre os gêneros ativos. `color` obrigatória, no formato `#RRGGBB`. |
 | `album` | Os álbuns | `year >= 1900`. O limite "até o ano atual" fica no domínio. `cover_file` é o nome da imagem de capa no armazenamento (`COVER_DIR`). O ano e a capa são opcionais só nos álbuns antigos: todo álbum novo tem os dois. |
-| `artist` | Os artistas | |
+| `artist` | Os artistas | Nome único entre os artistas ativos, sem diferenciar maiúsculas de minúsculas (índice em `lower(name)`). |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |
 | `album_music` | As faixas de cada álbum | `track_number > 0`, único dentro do álbum. A música entra como a última faixa, e editá-la não muda o número. Pode ter buracos: tirar uma música do álbum não renumera as outras. |

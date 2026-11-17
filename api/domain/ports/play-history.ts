@@ -32,6 +32,7 @@ export interface PlayHistory {
   /**
    * As músicas marcadas como ouvidas pela conta, cada uma uma vez, da marca mais recente para a
    * mais antiga. Música removida pelo admin continua na lista, com `isAvailable` falso.
+   * Com `includeExplicit` falso (menores de idade, HU-09), as músicas explícitas ficam de fora.
    */
-  listListenedForUser(userId: number): Promise<ListenedEntry[]>;
+  listListenedForUser(userId: number, includeExplicit: boolean): Promise<ListenedEntry[]>;
 }

@@ -37,7 +37,12 @@ export function makeHistoryController(useCases: HistoryUseCases): HistoryControl
       res.sendStatus(204);
     },
     listListened: async (_req, res) => {
-      const entries = await useCases.listMyListenedMusics.execute({ userId: res.locals.userId });
+      const entries = await useCases.listMyListenedMusics.execute({
+        userId: res.locals.userId,
+        birthdate: res.locals.birthdate,
+        now: new Date(),
+        isAdmin: res.locals.role === "admin",
+      });
 
       res.json(entries);
     },

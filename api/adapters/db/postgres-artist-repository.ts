@@ -1,7 +1,8 @@
 import type { Pool } from "pg";
 import { Artist } from "../../domain/entities/artist.ts";
+import { BusinessRuleError } from "../../domain/errors/domain-error.ts";
 import type { ArtistRepository } from "../../domain/ports/artist-repository.ts";
-import { nextId } from "./sql.ts";
+import { nextId, translateConstraintError } from "./sql.ts";
 
 interface ArtistRow {
   id: number;
@@ -19,14 +20,21 @@ export class PostgresArtistRepository implements ArtistRepository {
 
   async save(artist: Artist): Promise<void> {
     const data = artist.toData();
-    await this.pool.query(
-      `INSERT INTO artist (id, name, created_at, deleted_at)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (id) DO UPDATE SET
-         name = EXCLUDED.name,
-         deleted_at = EXCLUDED.deleted_at`,
-      [data.id, data.name, data.createdAt, data.deletedAt],
-    );
+    try {
+      await this.pool.query(
+        `INSERT INTO artist (id, name, created_at, deleted_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name,
+           deleted_at = EXCLUDED.deleted_at`,
+        [data.id, data.name, data.createdAt, data.deletedAt],
+      );
+    } catch (error) {
+      // Índice único em lower(name) entre os ativos: "Lô Borges" e "lô borges" são o mesmo artista
+      throw translateConstraintError(error, {
+        artist_name_key: () => new BusinessRuleError("An artist with this name already exists"),
+      });
+    }
   }
 
   async findById(id: number): Promise<Artist | null> {

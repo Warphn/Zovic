@@ -496,6 +496,47 @@ async function listedCoverUrl(id: number): Promise<string | null | undefined> {
   return listed.find((album) => album.id === id)?.coverUrl;
 }
 
+/** Nome único por teste: o nome de artista ativo é único no banco, sem diferenciar maiúsculas. */
+const artistName = () => `${PREFIX} artista ${crypto.randomUUID().slice(0, 8)}`;
+
+/** Cria pelo painel e anota o id para o afterAll apagar. */
+async function createArtist(name: string): Promise<{ status: number; body: { id: number; message?: string } }> {
+  const res = await call("/admin/artists", adminCookie, { method: "POST", body: { name } });
+  const body = await json<{ id: number; message?: string }>(res);
+  if (res.status === 201) created.artist.push(body.id);
+  return { status: res.status, body };
+}
+
+describe("artistas sem nome repetido", () => {
+  it("recusa um nome que já existe, mesmo com outras maiúsculas", async () => {
+    const name = artistName();
+    expect((await createArtist(name)).status).toBe(201);
+
+    const repeated = await createArtist(name.toUpperCase());
+
+    expect(repeated.status).toBe(409);
+    expect(repeated.body.message).toBe("An artist with this name already exists");
+  });
+
+  it("recusa renomear para o nome de outro artista", async () => {
+    const taken = artistName();
+    await createArtist(taken);
+    const other = (await createArtist(artistName())).body;
+
+    const res = await call(`/admin/artists/${other.id}`, adminCookie, { method: "PATCH", body: { name: taken } });
+
+    expect(res.status).toBe(409);
+  });
+
+  it("libera o nome de um artista removido", async () => {
+    const name = artistName();
+    const removed = (await createArtist(name)).body;
+    expect((await call(`/admin/artists/${removed.id}`, adminCookie, { method: "DELETE" })).status).toBe(204);
+
+    expect((await createArtist(name)).status).toBe(201);
+  });
+});
+
 describe("capa do álbum", () => {
   let artistId: number;
   let albumId: number;

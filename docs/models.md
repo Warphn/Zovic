@@ -51,7 +51,7 @@ Ficam em `api/domain/errors/domain-error.ts`. O `error-handler` da API converte 
 | `ValidationError` | 400 | Dado inválido: nome vazio, cor fora do formato, duração negativa, id que não é inteiro positivo. |
 | `ForbiddenError` | 403 | Ação não permitida para o usuário, por exemplo editar uma playlist de que ele não é admin. |
 | `NotFoundError` | 404 | Algo referenciado não existe, por exemplo um artista inexistente ao salvar uma música. |
-| `BusinessRuleError` | 409 | Regra de negócio violada: remover o último artista, membro repetido, alterar algo apagado, nome de gênero já usado. |
+| `BusinessRuleError` | 409 | Regra de negócio violada: remover o último artista, membro repetido, alterar algo apagado, nome de gênero ou de artista já usado. |
 
 ### Helpers compartilhados (`api/domain/shared/`)
 
@@ -122,7 +122,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 | Campo | Tipo | Observação |
 | --- | --- | --- |
 | `id` | `number` | |
-| `name` | `string` | Até 255 caracteres. |
+| `name` | `string` | Até 255 caracteres. Único entre os artistas ativos, sem diferenciar maiúsculas (garantido pelo banco: o repositório devolve `BusinessRuleError`). |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
@@ -257,10 +257,11 @@ Leituras prontas para a tela, que cruzam várias tabelas sem passar pelas entida
 | `CatalogQueries` | `admin-queries.ts` | Lista músicas, artistas e gêneros |
 | `PlayLog` | `admin-queries.ts` | Registra uma reprodução |
 | `PlayHistory` | `play-history.ts` | O histórico de reprodução da conta, a marca de música ouvida (`music_listened`, HU-15) e a lista das já ouvidas. Quem decide se a música conta como ouvida (mais de 30 segundos) é o caso de uso `MarkMusicListened`. |
+| `RecommendationSource` | `recommendation-source.ts` | Os dados da recomendação por conteúdo (HU-25): as músicas que a conta ouviu e curtiu, as candidatas ainda não ouvidas e as mais tocadas. Quem monta o perfil, pontua e ordena é o caso de uso `RecommendMusics`. |
 | `AdminQueries` | `admin-queries.ts` | Os números do painel e as reproduções recentes de um usuário |
 | `UserAccounts` | `admin-queries.ts` | Cria e remove contas e conta os admins ativos, para o painel de admin |
 
-As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
+As implementações ficam em `api/adapters/db/` (`postgres-search-query.ts`, `postgres-playlist-musics.ts`, `postgres-play-history.ts`, `postgres-recommendation-source.ts` e `postgres-admin-queries.ts`). A `UserAccounts` é a exceção: ela fica em `api/adapters/auth/better-auth-user-accounts.ts`, porque cria as contas pelo Better Auth.
 
 ## Criando uma entidade nova
 

@@ -1,5 +1,6 @@
 import { Playlist } from "../entities/playlist.ts";
 import { NotFoundError } from "../errors/domain-error.ts";
+import { canSeeExplicit } from "../shared/age.ts";
 import type { PlaylistMusics } from "../ports/playlist-musics.ts";
 import type { PlaylistRepository } from "../ports/playlist-repository.ts";
 
@@ -32,23 +33,35 @@ export class EnsureLikedSongs implements EnsureLikedSongsUseCase {
 export interface LikedMusicInput {
   userId: number;
   musicId: number;
-  now?: Date;
+}
+
+export interface LikeMusicInput extends LikedMusicInput {
+  /** "AAAA-MM-DD" de quem pede; null conta como menor de idade. */
+  birthdate: string | null;
+  /** Também vira a data em que a música entrou na Músicas Curtidas. */
+  now: Date;
+  /** Admin da plataforma vê as músicas explícitas mesmo sem ser maior de idade. */
+  isAdmin?: boolean;
 }
 
 export interface LikeMusicUseCase {
-  execute(input: LikedMusicInput): Promise<void>;
+  execute(input: LikeMusicInput): Promise<void>;
 }
 
-/** Põe a música curtida no topo da Músicas Curtidas. Curtir de novo não muda nada. */
+/**
+ * Põe a música curtida no topo da Músicas Curtidas. Curtir de novo não muda nada. Para menor de
+ * idade, a explícita é NotFoundError, como se não existisse (HU-09).
+ */
 export class LikeMusic implements LikeMusicUseCase {
   constructor(
     private readonly ensureLikedSongs: EnsureLikedSongsUseCase,
     private readonly musics: PlaylistMusics,
   ) {}
 
-  async execute({ userId, musicId, now }: LikedMusicInput): Promise<void> {
+  async execute({ userId, musicId, birthdate, now, isAdmin }: LikeMusicInput): Promise<void> {
     const likedSongs = await this.ensureLikedSongs.execute({ userId });
-    const result = await this.musics.addToTop(likedSongs.id, musicId, now);
+    const includeExplicit = canSeeExplicit(birthdate, now, isAdmin);
+    const result = await this.musics.addToTop(likedSongs.id, musicId, includeExplicit, now);
     if (result === "music_not_found") throw new NotFoundError("Music not found");
   }
 }

@@ -42,6 +42,7 @@ export const openApiDocument = {
     { name: "Comentários", description: "Comentários e denúncias em músicas" },
     { name: "Planos", description: "Assinatura (individual ou família): assinar, consultar e cancelar; no família, convidar, remover e sair" },
     { name: "Histórico", description: "Músicas que o usuário ouviu" },
+    { name: "Recomendações", description: "Sugestões de músicas pelo que o usuário ouviu e curtiu" },
     { name: "Busca", description: "Busca de músicas, artistas e playlists" },
     { name: "Catálogo", description: "Listas de músicas e álbuns" },
     { name: "Admin", description: "Painel dos admins da plataforma: cadastro de músicas (com o áudio) e de álbuns" },
@@ -218,7 +219,7 @@ export const openApiDocument = {
         tags: ["Playlists"],
         summary: "Curte uma música: põe no topo da Músicas Curtidas",
         description:
-          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
+          "HU-34. Cria a Músicas Curtidas da conta se ela ainda não existe e põe a música na primeira posição. Curtir de novo não muda nada. Para menor de idade, uma música explícita responde 404, como se não existisse. Até a curtida da HU-20 ir para a API, o coração do front chama esta rota.",
         operationId: "likeMusic",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -230,7 +231,7 @@ export const openApiDocument = {
           "401": { $ref: "#/components/responses/Unauthenticated" },
           "403": { $ref: "#/components/responses/SubscriptionRequired" },
           "404": {
-            description: "Música inexistente ou removida",
+            description: "Música inexistente, removida ou explícita para menor de idade",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "Music not found") } },
           },
           "500": { $ref: "#/components/responses/InternalError" },
@@ -282,7 +283,7 @@ export const openApiDocument = {
         tags: ["Histórico"],
         summary: "Lista as músicas já ouvidas",
         description:
-          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. A marca é registrada por `POST /api/musics/{id}/listens`.",
+          "As músicas que o usuário autenticado ouviu por mais de 30 segundos numa reprodução (HU-15), cada uma uma vez, com a data da última marca, da mais recente para a mais antiga. Cada conta tem as próprias marcas, mesmo dentro do plano família. Música removida pelo admin continua na lista, com `isAvailable` falso. Menor de idade não vê as explícitas. A marca é registrada por `POST /api/musics/{id}/listens`.",
         operationId: "listMyListenedMusics",
         security: [{ cookieAuth: [] }],
         responses: {
@@ -291,6 +292,29 @@ export const openApiDocument = {
             content: {
               "application/json": {
                 schema: { type: "array", items: { $ref: "#/components/schemas/ListenedEntry" } },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/recommendations": {
+      get: {
+        tags: ["Recomendações"],
+        summary: "Lista as músicas recomendadas",
+        description:
+          "Até 10 músicas que o usuário autenticado ainda não ouviu (HU-25), da mais parecida com o gosto dele para a menos. O gosto é o peso de cada gênero e artista nas músicas que ele ouviu (`POST /api/musics/{id}/listens`) e curtiu (`PUT /api/me/liked-musics/{id}`); a música ouvida e curtida pesa duas vezes. A pontuação de uma candidata é a soma dos pesos dos gêneros e artistas dela, e o empate vai para a mais tocada. Sem nenhuma música ouvida ou curtida, a resposta são as mais tocadas da plataforma. Músicas removidas ficam de fora. Para menor de idade (ou conta sem data de nascimento), as explícitas também; admins da plataforma veem tudo.",
+        operationId: "listRecommendedMusics",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Músicas recomendadas",
+            content: {
+              "application/json": {
+                schema: { type: "array", maxItems: 10, items: { $ref: "#/components/schemas/RecommendedMusic" } },
               },
             },
           },
@@ -1652,6 +1676,65 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/admin/artists": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra um artista",
+        description: "O nome é único entre os artistas ativos, sem diferenciar maiúsculas de minúsculas.",
+        operationId: "createArtist",
+        security: [{ cookieAuth: [] }],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/ArtistInput" } } } },
+        responses: {
+          "201": { description: "O artista criado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "400": { description: "Nome vazio ou longo demais", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "409": { $ref: "#/components/responses/ArtistNameTaken" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/artists/{id}": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Renomeia um artista",
+        description: "O novo nome segue a mesma regra do cadastro: único entre os ativos, sem diferenciar maiúsculas.",
+        operationId: "renameArtist",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/ArtistInput" } } } },
+        responses: {
+          "200": { description: "O artista renomeado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "400": { description: "Nome vazio ou longo demais", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
+          },
+          "409": { $ref: "#/components/responses/ArtistNameTaken" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        summary: "Remove um artista",
+        description: "Soft delete: o artista some das listas, e o nome dele fica livre para um novo cadastro.",
+        operationId: "deleteArtist",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Removido" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou já removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -1720,6 +1803,12 @@ export const openApiDocument = {
           "application/json": { schema: errorResponse("FORBIDDEN", "Platform admin role required") },
         },
       },
+      ArtistNameTaken: {
+        description: "Já existe um artista ativo com esse nome (sem diferenciar maiúsculas)",
+        content: {
+          "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "An artist with this name already exists") },
+        },
+      },
       SubscriptionRequired: {
         description: "A conta não tem assinatura ativa. Admins da plataforma passam sem assinatura",
         content: {
@@ -1764,6 +1853,21 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      ArtistInput: {
+        type: "object",
+        required: ["name"],
+        properties: { name: { type: "string", minLength: 1, maxLength: 255, example: "Lô Borges" } },
+      },
+      AdminArtist: {
+        type: "object",
+        required: ["id", "name", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 13 },
+          name: { type: "string", example: "Lô Borges" },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+        },
+      },
       Subscription: {
         type: "object",
         required: ["planId", "kind", "isManager", "startedAt"],
@@ -2058,6 +2162,24 @@ export const openApiDocument = {
             type: "boolean",
             description: "Falso se o admin removeu a música do catálogo depois de ela ser ouvida.",
             example: true,
+          },
+        },
+      },
+      RecommendedMusic: {
+        type: "object",
+        required: ["id", "name", "duration", "artists"],
+        properties: {
+          id: { type: "integer", example: 7 },
+          name: { type: "string", example: "Águas de Março" },
+          duration: { type: "integer", description: "Duração em segundos.", example: 214 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos da música, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: { id: { type: "integer", example: 3 }, name: { type: "string", example: "Elis Regina" } },
+            },
           },
         },
       },

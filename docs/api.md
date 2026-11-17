@@ -67,7 +67,7 @@ O `.env.example` traz valores prontos para o desenvolvimento local.
 
 Fora `/api/auth/*`, toda rota exige sessão: sem um cookie válido, a resposta é 401.
 
-As rotas de playlists, histórico, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
+As rotas de playlists, histórico, recomendações, busca e catálogo também exigem assinatura ativa: sem ela, a resposta é 403 com `SUBSCRIPTION_REQUIRED`. Admins da plataforma não precisam de assinatura.
 
 ### Planos
 
@@ -117,7 +117,7 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | Rota | O que faz |
 | --- | --- |
 | `GET /api/playlists` | Lista as playlists de que o usuário é membro: a Músicas Curtidas primeiro (criada aqui se ainda não existe), depois as outras da mais nova para a mais antiga |
-| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404. |
+| `PUT /api/me/liked-musics/:id` | Curte a música: ela entra no topo da Músicas Curtidas. Curtir de novo não muda nada. Música inexistente ou removida dá 404, e a explícita também, para menor de idade. |
 | `DELETE /api/me/liked-musics/:id` | Descurte a música: ela sai da Músicas Curtidas. Responde 204 mesmo se ela não estava lá. |
 | `POST /api/playlists` | Cria uma playlist. Quem cria vira o primeiro membro, como admin. |
 | `GET /api/playlists/:id` | Mostra uma playlist pública para qualquer usuário e uma privada só para os membros. A privada de outra pessoa responde 404. |
@@ -131,8 +131,9 @@ curl -b cookies.txt -X POST http://localhost:3333/api/plans/me/invitations \
 | `POST /api/playlists/:id/collaborators` | Adiciona um colaborador pelo email (`{ email }`). Só o dono. A conta precisa existir (senão 404) e ter assinatura ativa (senão 409); quem já está na playlist recebe 409. |
 | `DELETE /api/playlists/:id/collaborators/:userId` | O dono remove um colaborador, ou o colaborador sai (o `userId` é o dele). O dono não sai da própria playlist (409). |
 | `GET /api/history` | Histórico de reprodução da conta: cada música uma vez, com a data da última reprodução, da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
-| `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. |
+| `GET /api/history/listened` | As músicas já ouvidas pela conta (HU-15): cada uma uma vez, com a data da última marca (`lastListenedAt`), da mais recente para a mais antiga. Música removida pelo admin continua, com `isAvailable: false`. Menor de idade não vê as explícitas. |
 | `POST /api/musics/:id/listens` | Marca a música como ouvida, com `{ playedSeconds }`. Só marca com mais de 30 segundos (30 ou menos responde 409). Responde 404 para música inexistente ou removida. |
+| `GET /api/recommendations` | Até 10 músicas que a conta ainda não ouviu (HU-25), das mais parecidas com o gosto dela (gêneros e artistas das músicas ouvidas e curtidas) para as menos. Sem histórico, as mais tocadas da plataforma. Menor de idade não recebe as explícitas. Cada item traz `id`, `name`, `duration` e `artists`. |
 | `GET /api/search?q=&limit=` | Busca músicas, artistas e playlists, até `limit` itens por grupo (de 1 a 50, padrão 5). Menor de idade não recebe músicas explícitas, nem nas contagens. |
 
 **Músicas Curtidas (HU-34).** Toda conta tem uma playlist "Músicas Curtidas", privada e marcada por `playlists.liked_by_user_id`. Ela é criada sob demanda (ao listar as playlists ou ao curtir) e vai da curtida mais recente para a mais antiga. Só muda pela curtida: renomear, apagar, reordenar, pôr música pelo `POST …/musics` e adicionar colaborador respondem 409. Na tela, quem tira uma música dela é o coração: a página da Músicas Curtidas troca o botão de tirar pelo menu "Adicionar à playlist", que nunca lista a própria Músicas Curtidas. As respostas de playlist trazem `isLikedSongs`. A curtida em si é da HU-20: enquanto ela não está na API, o coração do front chama `PUT` e `DELETE /api/me/liked-musics/:id`; depois, o voto da HU-20 chama os mesmos casos de uso (`LikeMusic` e `UnlikeMusic`).
@@ -182,7 +183,7 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `PUT /api/admin/albums/:id/cover` | Troca a capa, em multipart com a parte `cover`. A antiga só é apagada depois de salvar a nova. |
 | `PATCH` e `DELETE` em `/api/admin/albums/:id` | Edita (nome, artistas e ano, em JSON) e remove álbuns |
 | `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
-| `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas |
+| `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas. O nome é único entre os artistas ativos, sem diferenciar maiúsculas: criar ou renomear para um nome que já existe dá 409. Remover libera o nome. |
 
 Remover é sempre soft delete. Remover um álbum não remove as músicas dele.
 

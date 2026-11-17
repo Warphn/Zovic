@@ -40,8 +40,10 @@ export class InMemoryPlayHistory implements PlayHistory {
     return Promise.resolve(true);
   }
 
-  listListenedForUser(userId: number): Promise<ListenedEntry[]> {
-    const ownListens = this.listens.filter((listen) => listen.userId === userId);
+  listListenedForUser(userId: number, includeExplicit: boolean): Promise<ListenedEntry[]> {
+    const ownListens = this.listens.filter(
+      (listen) => listen.userId === userId && (includeExplicit || !this.catalog.get(listen.musicId)!.isExplicit),
+    );
     const entries = this.latestByMusic(ownListens.map((listen) => ({ musicId: listen.musicId, at: listen.listenedAt }))).map(
       ({ musicId, at }) => ({ ...this.entryBase(musicId), lastListenedAt: at.toISOString() }),
     );
