@@ -200,7 +200,7 @@ export default function PlaylistDetailPage() {
                   <AddToQueueButton track={track} onResult={announce} />
                   <TrackCommentsButton track={track} onPlay={play} />
                   <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
-                  <TrackDislikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
+                  <TrackDislikeButton trackId={track.id} />
                   {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
                       playlists instead; the menu never lists "Músicas Curtidas" itself */}
                   {currentPlaylist.isLikedSongs ? (

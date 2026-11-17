@@ -1,55 +1,39 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query"
 import { ThumbsDownIcon } from "@/components/icons"
-import { likedMusicsApi, playlistKeys } from "@/lib/api/playlists"
+import { useDislikedMusicIds, useSetDislike } from "@/lib/api/dislikes"
 import { useSession } from "@/lib/auth/client"
-import { useDislikedTracks } from "@/lib/dislikes-store"
 import { useLikedTracks } from "@/lib/likes-store"
 import { cn } from "@/lib/utils"
 
+// Catalog tracks have the music's numeric id; the landing's sample tracks have none
 const CATALOG_TRACK_ID = /^\d+$/
 
-export function TrackDislikeButton({
-  trackId,
-  isInLikedSongs = false,
-}: {
-  trackId: string
-  isInLikedSongs?: boolean
-}) {
+// The dislike lives in the API (HU-20), which also takes the like away: one vote per account and music
+export function TrackDislikeButton({ trackId }: { trackId: string }) {
   const { data: session } = useSession()
-  const queryClient = useQueryClient()
   const userId = Number(session?.user.id)
-  const effectiveUserId = Number.isFinite(userId) ? userId : 0
-  const { isDisliked, setDislike } = useDislikedTracks(effectiveUserId)
-  const { isLiked, setLike } = useLikedTracks(effectiveUserId)
+  const { setLike } = useLikedTracks(Number.isFinite(userId) ? userId : 0)
+  const dislikedMusicIds = useDislikedMusicIds()
+  const setDislike = useSetDislike()
 
-  if (!session?.user) return null
+  if (!session?.user || !CATALOG_TRACK_ID.test(trackId)) return null
 
-  const disliked = isDisliked(trackId)
-  const liked = isLiked(trackId) || isInLikedSongs
+  const musicId = Number(trackId)
+  const disliked = dislikedMusicIds.has(musicId)
 
   const toggle = () => {
     const nextDisliked = !disliked
-    setDislike(trackId, nextDisliked)
-
-    // Se o usuário deu deslike em uma música que estava curtida, descurte
-    if (nextDisliked && liked) {
-      setLike(trackId, false)
-      if (CATALOG_TRACK_ID.test(trackId)) {
-        const musicId = Number(trackId)
-        likedMusicsApi
-          .unlike(musicId)
-          .then(() => queryClient.invalidateQueries({ queryKey: playlistKeys.all }))
-          .catch(() => {})
-      }
-    }
+    // The heart still lives in this browser, so it follows the vote the API keeps
+    if (nextDisliked) setLike(trackId, false)
+    setDislike.mutate({ musicId, isDisliked: nextDisliked })
   }
 
   return (
     <button
       type="button"
       onClick={toggle}
+      disabled={setDislike.isPending}
       aria-label={disliked ? "Remover deslike da faixa" : "Não curtir faixa"}
       title={disliked ? "Remover deslike" : "Não curti"}
       aria-pressed={disliked}
@@ -62,4 +46,3 @@ export function TrackDislikeButton({
     </button>
   )
 }
-
