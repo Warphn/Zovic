@@ -14,6 +14,7 @@ import { formatDuration } from "@/lib/format-duration"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
 import { musicToTrack } from "@/lib/playlist-store"
 import { playButtonLabel } from "@/lib/track-label"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 
 /** One row of either tab: a music and when it was last heard (played, or listened past 30 s). */
@@ -148,6 +149,7 @@ function HistoryList({
                   {/* Beside the row, never inside it: the row is a button of its own */}
                   <AddToQueueButton track={track} onResult={setQueued} />
                   <TrackLikeButton trackId={track.id} />
+                  <TrackDislikeButton trackId={track.id} />
                   <AddToPlaylistMenu musicId={item.musicId} title={item.name} onResult={setQueued} />
                 </>
               ) : (

@@ -8,6 +8,7 @@ import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
 import { PlaylistMark } from "@/components/playlist-mark"
 import { RecordSleeve } from "@/components/record-sleeve"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
 import { Input } from "@/components/ui/input"
 import {
@@ -387,6 +388,10 @@ export default function PlaylistDetailPage() {
 
                         <span className="pointer-events-auto">
                           <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
+                        </span>
+
+                        <span className="pointer-events-auto">
+                          <TrackDislikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
                         </span>
 
                         {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
