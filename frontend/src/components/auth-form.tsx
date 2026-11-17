@@ -9,8 +9,17 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { AlertIcon } from "@/components/icons"
 
+/** A drawn title in place of the text one, with its file's size for next/image. */
+interface TitleImage {
+  src: string
+  width: number
+  height: number
+}
+
 interface AuthShellProps {
   title: string
+  /** Drawn in place of `title`, which stays as its alternative text. */
+  titleImage?: TitleImage
   description: string
   /** What the cat says in a balloon beside the form; without it, no balloon. */
   catSays?: string
@@ -40,8 +49,8 @@ function AuthIllustration({ catSays }: { catSays?: string }) {
       {catSays && (
         <p
           className={cn(
-            // In the panel's empty top right corner, above the turntable
-            "absolute top-5 right-5 z-10 max-w-[12rem] rounded-2xl bg-surface px-4 py-2.5 text-base leading-snug font-semibold tracking-[-0.01em]",
+            // Near the panel's top right corner, a little in toward the cat's head, above the turntable
+            "absolute top-9 right-12 z-10 max-w-[12rem] rounded-2xl bg-surface px-4 py-2.5 text-base leading-snug font-semibold tracking-[-0.01em]",
             // Wobbles with the cat, from its tail's corner
             "origin-bottom-left motion-safe:animate-wobble",
             COMIC_BORDER,
@@ -68,14 +77,31 @@ function AuthIllustration({ catSays }: { catSays?: string }) {
 
 // Page frame shared by /entrar and /cadastro: the form and the illustration in two equal halves, each
 // centered in its own, so the pair sits in the middle of the page; on a phone, just the form
-export function AuthShell({ title, description, catSays, footer, children }: AuthShellProps) {
+export function AuthShell({ title, titleImage, description, catSays, footer, children }: AuthShellProps) {
   return (
     <div className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
       <Header />
       <main className="flex-1 pt-16">
         <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center justify-items-center gap-16 px-6 py-16 md:grid-cols-2 md:px-8">
           <div className="w-full max-w-sm">
-            <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em]">{title}</h1>
+            <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em]">
+              {titleImage ? (
+                <Image
+                  src={titleImage.src}
+                  alt={title}
+                  width={titleImage.width}
+                  height={titleImage.height}
+                  priority
+                  sizes="24rem"
+                  // A title, not a picture to drag out of the page
+                  draggable={false}
+                  // The same height on every page, so the letters match whatever the title's width
+                  className="h-21 w-auto max-w-full object-contain object-left select-none"
+                />
+              ) : (
+                title
+              )}
+            </h1>
             <p className="mt-3 mb-8 text-sm text-muted-foreground">{description}</p>
             <div className="rounded-2xl border border-border bg-surface p-6 shadow-xs">{children}</div>
             <p className="mt-6 text-sm text-muted-foreground">{footer}</p>

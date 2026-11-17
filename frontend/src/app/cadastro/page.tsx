@@ -74,8 +74,9 @@ function SignUpForm() {
 
   return (
     <AuthShell
-      catSays="Mais um pra ouvir comigo?"
+      catSays="Mais um pra ouvir?"
       title="Criar conta"
+      titleImage={{ src: "/illustrations/title-criar-conta.png", width: 1789, height: 418 }}
       description="Sua data de nascimento define os conteúdos adequados à sua faixa etária"
       footer={
         <>
