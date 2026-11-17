@@ -55,6 +55,7 @@ erDiagram
     musics ||--o{ comments : "recebe"
     comments ||--o{ comment_reports : "recebe denúncias"
     user ||--o{ comment_reports : "denuncia"
+    user |o--o{ comments : "remove"
 
     playlists ||--o{ music_playlist : "contém"
     musics ||--o{ music_playlist : "salva em"
@@ -186,6 +187,7 @@ erDiagram
         text comment
         int timestamp "segundos"
         timestamptz deleted_at
+        int deleted_by FK "quem removeu"
         timestamptz created_at
     }
     comment_reports {
@@ -290,7 +292,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | --- | --- | --- |
 | `music_user` | As músicas salvas por cada usuário | |
 | `rating` | As avaliações | Nota de 1 a 5. Cada usuário tem uma avaliação ativa por música. |
-| `comments` | Os comentários | `timestamp` é o segundo da música a que o comentário se refere, opcional e `>= 0` |
+| `comments` | Os comentários | `timestamp` é o segundo da música a que o comentário se refere, opcional e `>= 0`. A remoção é lógica: `deleted_at` guarda a data, e `deleted_by` guarda quem removeu, o autor ou o admin que moderou (HU-23). `deleted_by` só é preenchido em comentário removido, e apagar a conta de quem removeu o deixa nulo. |
 | `comment_reports` | As denúncias de comentários, com o motivo | Cada usuário denuncia um comentário uma vez só (`UNIQUE (comment_id, user_id)`). `reason` tem até 280 caracteres. |
 
 ### Playlists

@@ -97,7 +97,7 @@ describe("PostgresCommentRepository", () => {
     });
     await repository.save(comment);
 
-    await repository.softDelete(id);
+    await repository.softDelete(id, testUserId);
 
     const list = await repository.listActiveByMusicId(testMusicId);
     expect(list.some((c) => c.id === id)).toBe(false);

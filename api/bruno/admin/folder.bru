@@ -13,6 +13,8 @@ docs {
   No fim, o artista de "Pegar um artista" ganha a foto `fixtures/capa.png`, que é entregue e depois tirada (HU-36).
   O cadastro de música é multipart: a parte `data` leva o JSON dos campos e a parte `audio` leva o MP3
   (`fixtures/teste.mp3`, um arquivo mínimo que só tem o cabeçalho de um MP3).
+  No fim, a moderação (HU-23 e HU-39): o admin comenta a música cadastrada, lista os comentários denunciados
+  e remove o comentário que criou (`commentId`).
 
   Pré-requisitos: `COOKIE_SECURE=false` no `.env` e o banco populado com o seed LOCAL (`admin@zovic.test`).
 }

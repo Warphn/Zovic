@@ -32,7 +32,7 @@ export class DeleteComment implements DeleteCommentUseCase {
       throw new ForbiddenError("You can only delete your own comments");
     }
 
-    await this.comments.softDelete(input.commentId);
+    await this.comments.softDelete(input.commentId, input.callerId);
 
     return { success: true };
   }

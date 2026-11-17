@@ -132,7 +132,7 @@ Depois do seed LOCAL, toda conta de teste entra com o email `nome.sobrenome@zovi
 | `gabriela.costa@zovic.test` | Membro da Família Costa |
 | `heitor.costa@zovic.test` e `isabela.costa@zovic.test` | Menores de idade, membros da Família Costa (plano cheio) |
 
-Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três abas:
+Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com quatro abas:
 
 - **Visão geral:** usuários, reproduções, as 10 músicas mais tocadas e as reproduções por gênero.
 - **Usuários:** cria e remove contas e mostra as últimas 50 reproduções de cada uma.
@@ -141,6 +141,9 @@ Um admin vê **Painel de admin** no menu da conta, que abre `/admin` com três a
   - **Artista e gênero novos:** podem ser criados sem sair do formulário de música (e o artista, também no de álbum). O gênero pede nome e cor.
   - **Álbuns:** aparecem em cards, com a capa, o ano, os artistas e quantas faixas têm. Todo álbum novo pede nome, artistas, ano e a imagem de capa (JPEG, PNG ou WebP, até 2 MB), que pode ser trocada depois. Os álbuns do seed não têm capa e mostram as iniciais.
   - **Álbum da música:** o formulário de música mostra as capas dos álbuns dos artistas marcados, e dá para criar um álbum novo ali mesmo.
+- **Denúncias:** os comentários denunciados, dos mais denunciados para os menos, com o autor, a música e os motivos. **Remover** tira o comentário da música para todos, e o banco guarda o admin que removeu.
+
+Na aba de comentários de uma música, o admin vê **Remover** no lugar de **Denunciar** nos comentários de outras pessoas. Remover pede um segundo clique, em **Confirmar remoção**.
 
 Para tornar outra conta admin, rode `bun admin:promote pessoa@exemplo.com` na raiz.
 

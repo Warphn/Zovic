@@ -184,6 +184,9 @@ export function makeRouter(
   // Foto do artista (HU-36), multipart com a imagem na parte "image"
   adminRouter.put("/artists/:id/image", receiveArtistImage, admin.changeArtistImage);
   adminRouter.delete("/artists/:id/image", admin.removeArtistImage);
+  // Moderação de comentários (HU-23 e HU-39)
+  adminRouter.get("/comment-reports", admin.listCommentReports);
+  adminRouter.delete("/comments/:id", admin.removeComment);
   router.use("/admin", authenticate, requirePlatformAdmin, adminRouter);
 
   return router;

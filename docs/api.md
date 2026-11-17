@@ -189,6 +189,8 @@ As rotas de `/api/admin/*` respondem 401 sem sessão e 403 para quem não é adm
 | `POST /api/admin/genres` | Cria um gênero, com nome e cor `#RRGGBB`. Um nome que já existe dá 409. |
 | `POST`, `PATCH` e `DELETE` em `/api/admin/artists` | Cria, renomeia e remove artistas. O nome é único entre os artistas ativos, sem diferenciar maiúsculas: criar ou renomear para um nome que já existe dá 409. Remover libera o nome. |
 | `PUT` e `DELETE` em `/api/admin/artists/:id/image` | Põe ou troca a foto do artista (multipart com a parte `image`) e tira a foto (HU-36) |
+| `GET /api/admin/comment-reports` | Os comentários ativos com pelo menos uma denúncia (HU-39), dos mais denunciados para os menos. Cada um traz o texto, o autor, a música e as denúncias, com o motivo e quem denunciou. |
+| `DELETE /api/admin/comments/:id` | Remove qualquer comentário (HU-23), com soft delete: ele some para todos, inclusive da lista de denúncias. O banco guarda a data e o admin que removeu (`comments.deleted_by`). |
 
 Remover é sempre soft delete. Remover um álbum não remove as músicas dele.
 

@@ -1883,6 +1883,48 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/admin/comment-reports": {
+      get: {
+        tags: ["Admin"],
+        summary: "Lista os comentários denunciados (HU-39)",
+        description:
+          "Os comentários ativos com pelo menos uma denúncia, dos mais denunciados para os menos; no empate, a denúncia mais recente primeiro. Cada um traz o autor, a música e as denúncias, com o motivo e quem denunciou. Um comentário removido sai da lista.",
+        operationId: "listCommentReports",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Os comentários denunciados (lista vazia se não houver nenhum)",
+            content: {
+              "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/ReportedComment" } } },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/comments/{id}": {
+      delete: {
+        tags: ["Admin"],
+        summary: "Remove um comentário (HU-23)",
+        description:
+          "Remoção lógica de qualquer comentário: ele some para todos, e o banco guarda a data e o admin que removeu (`comments.deleted_by`).",
+        operationId: "removeCommentAsAdmin",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Removido" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Comentário inexistente ou já removido, ou id inválido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Comment not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/admin/artists/{id}": {
       patch: {
         tags: ["Admin"],
@@ -2444,6 +2486,37 @@ export const openApiDocument = {
           comment: { type: "string", example: "Belo arranjo!" },
           timestamp: { type: ["integer", "null"], example: 45 },
           createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ReportedComment: {
+        type: "object",
+        required: ["id", "comment", "timestamp", "createdAt", "author", "music", "reportCount", "reports"],
+        properties: {
+          id: { type: "integer", example: 101 },
+          comment: { type: "string", example: "Comentário ofensivo" },
+          timestamp: { type: ["integer", "null"], example: 45 },
+          createdAt: { type: "string", format: "date-time" },
+          author: {
+            type: "object",
+            properties: { id: { type: "integer", example: 5 }, name: { type: "string", example: "Bruno Andrade" } },
+          },
+          music: {
+            type: "object",
+            properties: { id: { type: "integer", example: 12 }, name: { type: "string", example: "Coven" } },
+          },
+          reportCount: { type: "integer", example: 2 },
+          reports: {
+            type: "array",
+            description: "Da denúncia mais recente para a mais antiga",
+            items: {
+              type: "object",
+              properties: {
+                reason: { type: "string", example: "Discurso de ódio" },
+                reporterName: { type: "string", example: "Ana Andrade" },
+                createdAt: { type: "string", format: "date-time" },
+              },
+            },
+          },
         },
       },
       CommentItem: {

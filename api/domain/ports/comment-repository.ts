@@ -19,7 +19,8 @@ export interface CommentRepository {
   save(comment: Comment): Promise<void>;
   findById(id: number): Promise<Comment | null>;
   listActiveByMusicId(musicId: number): Promise<CommentWithAuthor[]>;
-  softDelete(id: number, deletedAt?: Date): Promise<void>;
+  /** Remoção lógica, com quem removeu: o autor ou o admin que moderou (HU-23). */
+  softDelete(id: number, deletedBy: number, deletedAt?: Date): Promise<void>;
   saveReport(report: CommentReport): Promise<void>;
   hasUserReported(commentId: number, userId: number): Promise<boolean>;
   getMusicDuration(musicId: number): Promise<number | null>;

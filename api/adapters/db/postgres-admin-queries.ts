@@ -10,6 +10,7 @@ import type {
   MusicListItem,
   PlayLog,
   RecentPlay,
+  ReportedCommentItem,
   UsageStats,
 } from "../../domain/ports/admin-queries.ts";
 
@@ -277,6 +278,46 @@ export class PostgresAdminQueries implements AdminQueries {
       event: row.event_type,
       at: row.created_at.toISOString(),
       musicDeleted: row.deleted_at !== null,
+    }));
+  }
+
+  async listReportedComments(): Promise<ReportedCommentItem[]> {
+    const { rows } = await this.pool.query<{
+      id: number;
+      comment: string;
+      timestamp: number | null;
+      created_at: Date;
+      author_id: number;
+      author_name: string;
+      music_id: number;
+      music_name: string;
+      report_count: number;
+      reports: { reason: string; reporterName: string; createdAt: string }[];
+    }>(
+      `SELECT c.id, c.comment, c."timestamp", c.created_at,
+              u.id AS author_id, u.name AS author_name, m.id AS music_id, m.name AS music_name,
+              count(r.id)::int AS report_count,
+              json_agg(json_build_object('reason', r.reason, 'reporterName', ru.name, 'createdAt', r.created_at)
+                       ORDER BY r.created_at DESC) AS reports
+       FROM comments c
+       JOIN comment_reports r ON r.comment_id = c.id
+       JOIN "user" ru ON ru.id = r.user_id
+       JOIN "user" u ON u.id = c.user_id
+       JOIN musics m ON m.id = c.music_id
+       WHERE c.deleted_at IS NULL
+       GROUP BY c.id, u.id, m.id
+       ORDER BY report_count DESC, max(r.created_at) DESC`,
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      comment: row.comment,
+      timestamp: row.timestamp,
+      createdAt: row.created_at.toISOString(),
+      author: { id: row.author_id, name: row.author_name },
+      music: { id: row.music_id, name: row.music_name },
+      reportCount: row.report_count,
+      // json_agg devolve as datas como texto, sem o fuso no formato ISO do resto da API
+      reports: row.reports.map((report) => ({ ...report, createdAt: new Date(report.createdAt).toISOString() })),
     }));
   }
 }
