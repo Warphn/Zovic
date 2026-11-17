@@ -28,6 +28,8 @@ export function TrackRow({
     <div className="group flex items-center gap-1 rounded-xl pr-2 transition-colors hover:bg-muted/25">
       <button
         type="button"
+        // Still drags the row in a SortableList (a playlist's tracks)
+        data-row-action
         onClick={onClick}
         aria-label={playButtonLabel(title, { isPlaying, isListened })}
         aria-pressed={isPlaying}

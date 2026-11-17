@@ -3,23 +3,23 @@
 import * as React from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import Header from "@/components/header"
+import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
+import { AddToQueueButton } from "@/components/add-to-queue-button"
+import { CatalogHeader, CatalogPage, CatalogTrackList } from "@/components/catalog-page"
 import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
-import { PlaylistMark } from "@/components/playlist-mark"
-import { RecordSleeve } from "@/components/record-sleeve"
+import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import { FileInput, useObjectUrl } from "@/components/file-input"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { ListMinusIcon, PencilIcon, UserIcon } from "@/components/icons"
+import { PlaylistCollaboratorsDialog } from "@/components/playlist-collaborators-dialog"
+import { PlaylistMark } from "@/components/playlist-mark"
+import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
+import { RecordSleeve } from "@/components/record-sleeve"
 import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { apiErrorMessage } from "@/lib/api/client"
 import {
   parsePlaylistId,
@@ -29,33 +29,9 @@ import {
   useUpdatePlaylist,
 } from "@/lib/api/playlists"
 import { COVER_ACCEPT, coverSizeError } from "@/lib/cover-image"
-import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
-import { Label } from "@/components/ui/label"
-import {
-  MAX_PLAYLIST_NAME_LENGTH,
-  type PlaylistDraft,
-  playlistChanges,
-  usePlaylistData,
-} from "@/lib/playlist-store"
-import { cn } from "@/lib/utils"
-import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
-import { AddToQueueButton } from "@/components/add-to-queue-button"
-import { SortableList } from "@/components/sortable-list"
-import { ListenedMark } from "@/components/track-title"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
-import { LevelBars } from "@/components/playback-marks"
-import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, usePlayback } from "@/lib/playback-store"
-import {
-  ArrowLeftIcon,
-  ListMinusIcon,
-  PauseIcon,
-  PencilIcon,
-  UserIcon,
-  PlayIcon,
-  SearchIcon,
-} from "@/components/icons"
-import { TrackCommentsButton } from "@/components/comments/track-comments-button"
-import { PlaylistCollaboratorsDialog } from "@/components/playlist-collaborators-dialog"
+import { currentTrackOf, isPlayingFrom, playOrTogglePlaylistTrack, playPlaylist, usePlayback } from "@/lib/playback-store"
+import { MAX_PLAYLIST_NAME_LENGTH, type PlaylistDraft, playlistChanges, usePlaylistData } from "@/lib/playlist-store"
 
 export default function PlaylistDetailPage() {
   const params = useParams<{ id: string }>()
@@ -77,9 +53,6 @@ export default function PlaylistDetailPage() {
   const coverPreviewUrl = useObjectUrl(coverChoice instanceof File ? coverChoice : null)
   const [isCollaboratorsOpen, setIsCollaboratorsOpen] = React.useState(false)
   const numericPlaylistId = parsePlaylistId(playlistId)
-  const [searchQuery, setSearchQuery] = React.useState("")
-  // What the last "Adicionar à fila" or "Adicionar à playlist" did, announced to screen readers too
-  const [queued, setQueued] = React.useState<string | null>(null)
 
   // Playback is shared by every page (see playback-store); this page shows it when it comes
   // from this playlist, and starts this playlist when one of its tracks is played
@@ -143,77 +116,34 @@ export default function PlaylistDetailPage() {
     if (id !== null) reorderTracks.mutate({ id, musicIds: ids.map(Number) })
   }
 
-  if (isPending) {
+  // Empty-state, header and track list come from the catalog page, like an album's
+  const renderPlaylist = () => {
+    if (!currentPlaylist) return null
+    const tracks = currentPlaylist.tracks
+    const color = draft?.color ?? currentPlaylist.color
+    const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
+    // "Músicas Curtidas" is fed by the heart, so it is never reordered (HU-34)
+    const canReorder = Boolean(currentPlaylist.canEditMusics) && !currentPlaylist.isLikedSongs
+
     return (
-      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
-        <Header />
-        <main className="flex-1 pt-24 px-6 flex items-center justify-center">
-          <p className="font-mono text-xs text-muted-foreground">Carregando playlist…</p>
-        </main>
-      </div>
-    )
-  }
-
-  if (!currentPlaylist) {
-    return (
-      <div className="flex-1 bg-background text-foreground flex flex-col font-sans">
-        <Header />
-        <main className="flex-1 pt-24 px-6 flex flex-col items-center justify-center text-center">
-          {/* An empty sleeve: just its printed frame */}
-          <div className="mb-6 size-20 rounded-md border border-dashed border-border" aria-hidden="true" />
-          <h1 className="text-2xl font-medium mb-2">Playlist não encontrada</h1>
-          <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            {error ?? "Ela pode ter sido removida, ser privada ou o link está incorreto"}
-          </p>
-          <Link href="/playlist" className={cn(buttonVariants({ size: "lg" }), "gap-2")}>
-            <ArrowLeftIcon size={16} /> Voltar às playlists
-          </Link>
-        </main>
-      </div>
-    )
-  }
-
-  const tracks = currentPlaylist.tracks
-  const color = draft?.color ?? currentPlaylist.color
-  // The current track of this playlist is marked even while paused, so the list shows where
-  // playback stands
-  const currentTrackId = isThisPlaylist ? currentTrackOf(playback)?.id : undefined
-  const currentTrackIndex = currentTrackId ? tracks.findIndex((track) => track.id === currentTrackId) : -1
-  const isPlaying = isThisPlaylist && Boolean(playback?.isPlaying)
-  const playlistAccent = getPlaylistAccentStyle(color)
-  const totalDuration = formatTotalDuration(sumDurationSec(tracks))
-  const isSearching = searchQuery.trim() !== ""
-
-  const filteredTracks = tracks.filter((track) => {
-    const query = searchQuery.toLowerCase().trim()
-    if (!query) return true
-    return (
-      track.title.toLowerCase().includes(query) ||
-      track.artist.toLowerCase().includes(query) ||
-      track.album.toLowerCase().includes(query)
-    )
-  })
-
-  return (
-    <div
-      className="flex-1 bg-background text-foreground flex flex-col font-sans"
-      style={playlistAccent}
-    >
-      <Header />
-
-      <main className="flex-1 pt-16 flex flex-col">
-        <div className="max-w-6xl mx-auto w-full px-6 md:px-8 pt-8 pb-16 flex-1 flex flex-col">
-          {/* Back and the one setting this page has */}
-          <div className="flex h-8 items-center justify-between">
-            <Link
-              href="/playlist"
-              className="inline-flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
-              <ArrowLeftIcon size={16} />
-              <span>Playlists</span>
-            </Link>
-
-            <div className="flex items-center gap-2">
+      <>
+        <CatalogHeader
+          kindLabel={`Playlist ${currentPlaylist.isPrivate ? "privada" : "pública"}`}
+          title={currentPlaylist.name}
+          cover={
+            <RecordSleeve
+              color={color}
+              initials={<PlaylistMark name={currentPlaylist.name} isLikedSongs={currentPlaylist.isLikedSongs} iconSize={56} />}
+              playing={isPlaying}
+              coverUrl={coverChoice === "remove" ? null : currentPlaylist.coverUrl}
+              coverPreviewUrl={coverPreviewUrl}
+            />
+          }
+          meta={`${tracks.length} ${tracks.length === 1 ? "faixa" : "faixas"} · ${formatTotalDuration(sumDurationSec(tracks))}`}
+          onPlay={() => playPlaylist(currentPlaylist, 0)}
+          isPlayDisabled={tracks.length === 0}
+          actions={
+            <>
               {/* The owner and the collaborators see who builds it (HU-19) */}
               {currentPlaylist.canEditMusics && !currentPlaylist.isLikedSongs && numericPlaylistId !== null && (
                 <Button variant="outline" size="lg" onClick={() => setIsCollaboratorsOpen(true)} className="gap-2">
@@ -228,228 +158,104 @@ export default function PlaylistDetailPage() {
                   Editar playlist
                 </Button>
               )}
-            </div>
-          </div>
-          {numericPlaylistId !== null && (
-            <PlaylistCollaboratorsDialog
-              playlistId={numericPlaylistId}
-              isOwner={Boolean(currentPlaylist.canManage)}
-              open={isCollaboratorsOpen}
-              onOpenChange={setIsCollaboratorsOpen}
-            />
+            </>
+          }
+        />
+        {numericPlaylistId !== null && (
+          <PlaylistCollaboratorsDialog
+            playlistId={numericPlaylistId}
+            isOwner={Boolean(currentPlaylist.canManage)}
+            open={isCollaboratorsOpen}
+            onOpenChange={setIsCollaboratorsOpen}
+          />
+        )}
+
+        <div className="mt-8">
+          {reorderTracks.isError && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
+            </p>
           )}
-
-          {/* Sleeve and title, aligned on their bottom edge like an album page */}
-          <section className="flex flex-col gap-8 pt-8 pb-12 md:flex-row md:items-end md:gap-10">
-            <RecordSleeve
-              color={color}
-              initials={<PlaylistMark name={currentPlaylist.name} isLikedSongs={currentPlaylist.isLikedSongs} iconSize={56} />}
-              playing={isPlaying}
-              coverUrl={coverChoice === "remove" ? null : currentPlaylist.coverUrl}
-              coverPreviewUrl={coverPreviewUrl}
-            />
-
-            <div className="min-w-0 flex-1 md:pb-2">
-              <p className="mb-3 font-mono text-xs text-muted-foreground">
-                Playlist {currentPlaylist.isPrivate ? "privada" : "pública"}
-              </p>
-              <h1 className="mb-4 break-words text-4xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-5xl md:text-6xl">
-                {currentPlaylist.name}
-              </h1>
-              {tracks.length > 0 && (
-                <p className="font-mono text-xs text-muted-foreground tabular-nums">
-                  {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"} · {totalDuration}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* Tracklist, set like the back of a record */}
-          <section>
-            <div className="mb-2 flex items-center justify-between gap-4 border-b border-ink/10 pb-3">
-              {/* Same 32px box as the search field, so the label sits on its middle */}
-              <h2 className="flex h-8 items-center text-sm font-medium">Faixas</h2>
-              <div className="relative w-full max-w-64">
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar na playlist"
-                  aria-label="Buscar na playlist"
-                  className="h-8 bg-surface pl-8 text-sm"
-                />
-                <SearchIcon
-                  size={16}
-                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-              </div>
-            </div>
-
-            {/* Always rendered, so the live region exists before the first message */}
-            <output className={queued ? "block py-2 text-xs text-muted-foreground" : "sr-only"}>{queued}</output>
-            {reorderTracks.isError && (
-              <p role="alert" className="py-2 text-xs text-destructive">
-                Não deu para salvar a nova ordem. {apiErrorMessage(reorderTracks.error)}
-              </p>
-            )}
-            {removeTrack.isError && (
-              <p role="alert" className="py-2 text-xs text-destructive">
-                Não deu para tirar a faixa. {apiErrorMessage(removeTrack.error)}
-              </p>
-            )}
-
-            {/* Drag to reorder (playlist admins only); off while searching, since only part of the list shows */}
-            {tracksError ? (
-              <p role="alert" className="py-12 text-center text-xs text-destructive">
-                Não deu para carregar as faixas. {tracksError}
-              </p>
-            ) : tracks.length === 0 ? (
-              // An empty playlist: the owner and collaborators get the way to fill it, everyone else just an empty list
-              currentPlaylist.isLikedSongs ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  Curta uma música no coração para ela aparecer aqui.
-                </p>
-              ) : currentPlaylist.canEditMusics && (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  Busque uma música e use{" "}
-                  <Link href="/busca" className="text-foreground underline underline-offset-4 decoration-foreground/30 hover:decoration-foreground">
-                    Adicionar à playlist
-                  </Link>
-                </p>
-              )
-            ) : filteredTracks.length === 0 ? (
-              <p className="py-12 text-center font-mono text-xs text-muted-foreground">
-                Nenhuma faixa com “{searchQuery.trim()}”
-              </p>
-            ) : (
-              <SortableList
-                ids={filteredTracks.map((t) => t.id)}
-                rowHeight={56}
-                gap={2}
-                disabled={isSearching || !currentPlaylist.canEditMusics || Boolean(currentPlaylist.isLikedSongs)}
-                onReorder={handleReorderTracks}
-              >
-                {filteredTracks.map((track) => {
-                  const actualIdx = tracks.findIndex((t) => t.id === track.id)
-                  const isCurrent = currentTrackIndex === actualIdx
-                  const isTrackPlaying = isCurrent && isPlaying
-
-                  // Clicking the current track pauses or resumes it; any other click plays the clicked track
-                  const playOrPauseRow = () => playOrTogglePlaylistTrack(currentPlaylist, actualIdx)
-
-                  return (
-                    <div
-                      key={track.id}
-                      className={cn(
-                        // Pointer: a click plays the track; grabbing only while a drag is held
-                        "group relative flex h-full cursor-pointer select-none items-center gap-4 rounded-lg px-3 transition-colors duration-150",
-                        !isSearching && currentPlaylist.canEditMusics && !currentPlaylist.isLikedSongs && "active:cursor-grabbing",
-                        isCurrent ? "bg-surface" : "hover:bg-ink/[0.04]"
-                      )}
-                    >
-                      {/* Row-wide play button */}
+          {removeTrack.isError && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              Não deu para tirar a faixa. {apiErrorMessage(removeTrack.error)}
+            </p>
+          )}
+          {tracksError ? (
+            <p role="alert" className="text-sm text-destructive">
+              Não deu para carregar as faixas. {tracksError}
+            </p>
+          ) : (
+            <CatalogTrackList
+              tracks={tracks}
+              onPlay={(index) => playOrTogglePlaylistTrack(currentPlaylist, index)}
+              // Only a track started from this playlist shows as playing here
+              playingTrackId={isPlaying ? (currentTrackOf(playback)?.id ?? null) : null}
+              isNumbered
+              isAlbumShown
+              searchLabel="Buscar na playlist"
+              onReorder={canReorder ? handleReorderTracks : undefined}
+              renderActions={(track, { announce, play }) => (
+                <>
+                  <AddToQueueButton track={track} onResult={announce} />
+                  <TrackCommentsButton track={track} onPlay={play} />
+                  <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
+                  <TrackDislikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
+                  {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
+                      playlists instead; the menu never lists "Músicas Curtidas" itself */}
+                  {currentPlaylist.isLikedSongs ? (
+                    <AddToPlaylistMenu musicId={Number(track.id)} title={track.title} onResult={announce} />
+                  ) : (
+                    currentPlaylist.canEditMusics && (
                       <button
                         type="button"
-                        data-row-action
-                        tabIndex={-1}
-                        aria-hidden="true"
-                        onClick={playOrPauseRow}
-                        className="absolute inset-0 rounded-lg cursor-[inherit]"
-                      />
-
-                      {/* The current track carries a thin rule in the accent on its left edge */}
-                      {isCurrent && (
-                        <span className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-full bg-primary" />
-                      )}
-
-                      {/* Number, or the play state: level bars while playing, pause on hover */}
-                      <div className="pointer-events-none relative flex w-6 shrink-0 justify-end font-mono text-xs tabular-nums text-muted-foreground">
-                        {isTrackPlaying ? (
-                          <>
-                            <span className="text-primary group-hover:hidden"><LevelBars playing /></span>
-                            <PauseIcon size={16} className="hidden text-foreground group-hover:block" />
-                          </>
-                        ) : (
-                          <>
-                            <span className={cn("group-hover:hidden", isCurrent && "text-primary")}>
-                              {String(actualIdx + 1).padStart(2, "0")}
-                            </span>
-                            <PlayIcon size={16} className="hidden text-foreground group-hover:block" />
-                          </>
-                        )}
-                      </div>
-
-                      {/* Content lets clicks fall through to the row button; its own buttons opt back in */}
-                      <div className="pointer-events-none relative min-w-0 flex-1">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={playOrPauseRow}
-                            aria-label={isTrackPlaying ? `Pausar ${track.title}` : `Tocar ${track.title}`}
-                            className={cn(
-                              "pointer-events-auto block max-w-full truncate rounded-sm text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2",
-                              isCurrent ? "text-primary" : "text-foreground"
-                            )}
-                          >
-                            {track.title}
-                          </button>
-                          <ListenedMark musicId={Number(track.id)} />
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {[track.artist, [track.album, track.year].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-                        </div>
-                      </div>
-
-                      <div className="pointer-events-none relative flex shrink-0 items-center gap-3">
-                        <span className="w-10 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                          {track.duration}
-                        </span>
-
-                        {/* Content is click-through to the row; this button opts back in */}
-                        <span className="pointer-events-auto">
-                          <AddToQueueButton track={track} onResult={setQueued} />
-                        </span>
-
-                        {/* Comentários: o botão só aparece para maiores de 18; o painel é o do layout */}
-                        <span className="pointer-events-auto">
-                          <TrackCommentsButton track={track} onPlay={playOrPauseRow} />
-                        </span>
-
-                        <span className="pointer-events-auto">
-                          <TrackLikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
-                        </span>
-
-                        <span className="pointer-events-auto">
-                          <TrackDislikeButton trackId={track.id} isInLikedSongs={Boolean(currentPlaylist.isLikedSongs)} />
-                        </span>
-
-                        {/* "Músicas Curtidas" (HU-34) loses a track by unliking it, so it offers the other
-                            playlists instead; the menu never lists "Músicas Curtidas" itself */}
-                        {currentPlaylist.isLikedSongs ? (
-                          <span className="pointer-events-auto">
-                            <AddToPlaylistMenu musicId={Number(track.id)} title={track.title} onResult={setQueued} />
-                          </span>
-                        ) : currentPlaylist.canEditMusics && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTrack(track.id)}
-                            disabled={removeTrack.isPending && removeTrack.variables?.musicId === Number(track.id)}
-                            aria-label={`Tirar ${track.title} da playlist`}
-                            title="Tirar da playlist"
-                            // Shown on the row's hover or focus, like delete on the shelf; always on touch screens
-                            className="pointer-events-auto flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[color,opacity] duration-150 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 disabled:opacity-40 [@media(hover:none)]:opacity-100"
-                          >
-                            <ListMinusIcon size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </SortableList>
-            )}
-          </section>
+                        onClick={() => handleRemoveTrack(track.id)}
+                        disabled={removeTrack.isPending && removeTrack.variables?.musicId === Number(track.id)}
+                        aria-label={`Tirar ${track.title} da playlist`}
+                        title="Tirar da playlist"
+                        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 disabled:opacity-40"
+                      >
+                        <ListMinusIcon size={16} />
+                      </button>
+                    )
+                  )}
+                </>
+              )}
+              emptyMessage={
+                // An empty playlist: the owner and collaborators get the way to fill it, everyone else just an empty list
+                currentPlaylist.isLikedSongs ? (
+                  "Curta uma música no coração para ela aparecer aqui."
+                ) : currentPlaylist.canEditMusics ? (
+                  <>
+                    Busque uma música e use{" "}
+                    <Link href="/busca" className="text-foreground underline underline-offset-4">
+                      Adicionar à playlist
+                    </Link>
+                  </>
+                ) : (
+                  "Esta playlist ainda não tem faixas."
+                )
+              }
+            />
+          )}
         </div>
-      </main>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <CatalogPage
+        notFoundTitle="Playlist não encontrada"
+        notFoundMessage={error ?? "Ela pode ter sido removida, ser privada ou o link está incorreto"}
+        back={{ href: "/playlist", label: "Voltar às playlists" }}
+        isNotFound={!isPending && !currentPlaylist}
+        error={null}
+        isLoading={isPending}
+        style={currentPlaylist ? getPlaylistAccentStyle(draft?.color ?? currentPlaylist.color) : undefined}
+      >
+        {renderPlaylist}
+      </CatalogPage>
 
       <Dialog open={draft !== null} onOpenChange={(open) => (open ? openEditor() : closeEditor())}>
         <DialogContent className="max-w-md">
@@ -488,8 +294,8 @@ export default function PlaylistDetailPage() {
                       onChange={chooseCover}
                     />
                   </div>
-                  {(coverChoice instanceof File || (currentPlaylist.coverUrl && coverChoice !== "remove")) && (
-                    <Button type="button" variant="outline" onClick={() => setCoverChoice(currentPlaylist.coverUrl ? "remove" : null)}>
+                  {(coverChoice instanceof File || (currentPlaylist?.coverUrl && coverChoice !== "remove")) && (
+                    <Button type="button" variant="outline" onClick={() => setCoverChoice(currentPlaylist?.coverUrl ? "remove" : null)}>
                       Tirar capa
                     </Button>
                   )}
@@ -531,6 +337,6 @@ export default function PlaylistDetailPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
