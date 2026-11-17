@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import type { AdminController, CatalogController } from "./admin-controller.ts";
 import type { CommentController } from "./comment-controller.ts";
 import type { HistoryController } from "./history-controller.ts";
+import type { RecommendationController } from "./recommendation-controller.ts";
 import type { LikedMusicsController } from "./liked-musics-controller.ts";
 import type { PlaylistController } from "./playlist-controller.ts";
 import type { SearchController } from "./search-controller.ts";
@@ -45,11 +46,12 @@ export interface Controllers {
   comments: CommentController;
   subscriptions: SubscriptionController;
   history: HistoryController;
+  recommendations: RecommendationController;
   likedMusics: LikedMusicsController;
 }
 
 export function makeRouter(
-  { playlists, search, catalog, admin, comments, subscriptions, history, likedMusics }: Controllers,
+  { playlists, search, catalog, admin, comments, subscriptions, history, recommendations, likedMusics }: Controllers,
   authenticate: RequestHandler,
   requireSubscription: RequestHandler,
 ): Router {
@@ -123,6 +125,7 @@ export function makeRouter(
 
   router.get("/history", subscriberOnly, history.list);
   router.get("/history/listened", subscriberOnly, history.listListened);
+  router.get("/recommendations", subscriberOnly, recommendations.list);
   router.post(
     "/musics/:id/listens",
     subscriberOnly,
