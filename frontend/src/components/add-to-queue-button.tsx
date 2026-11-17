@@ -1,6 +1,7 @@
 "use client"
 
 import { QueueIcon } from "@/components/icons"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { addToQueue } from "@/lib/playback-store"
 import type { Track } from "@/lib/playlist-store"
 
@@ -22,7 +23,7 @@ export function AddToQueueButton({
       }}
       aria-label={`Adicionar ${track.title} à fila`}
       title="Adicionar à fila"
-      className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+      className={TRACK_ACTION_CLASSES}
     >
       {/* Mirrored like the bar's queue button, so the stack trails to the right */}
       <QueueIcon size={16} className="-scale-x-100" />

@@ -1,9 +1,9 @@
+import Image from "next/image"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
 import { LevelBars } from "@/components/playback-marks"
 import { formatTotalDuration, sumDurationSec } from "@/lib/format-duration"
 import { INITIAL_PLAYLISTS, getPlaylistInitials } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
-import { ZovicCat } from "@/components/zovic-cat"
 
 // The landing hero's visual: the playlist page as the app draws it, with the app's own first
 // playlist and its second track playing. Same sleeve, same tracklist, same level bars.
@@ -25,8 +25,16 @@ export default function HeroPreview({ className }: { className?: string }) {
         className
       )}
     >
-      {/* The cat lies on top of the preview, its paws over the top edge */}
-      <ZovicCat priority className="absolute right-8 bottom-full h-24 translate-y-3 sm:h-28" />
+      {/* The cat peeks over the preview, its paws on the top edge */}
+      <Image
+        src="/illustrations/cat-peeking.png"
+        alt=""
+        aria-hidden="true"
+        width={1008}
+        height={509}
+        priority
+        className="pointer-events-none absolute right-8 bottom-full h-20 w-auto translate-y-[30%] select-none sm:h-24"
+      />
 
       {/* Sleeve and title */}
       <div className="flex items-end gap-6">

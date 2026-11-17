@@ -1,6 +1,7 @@
 "use client"
 
 import { ThumbsDownIcon } from "@/components/icons"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { useDislikedMusicIds, useSetDislike } from "@/lib/api/dislikes"
 import { useSession } from "@/lib/auth/client"
 import { useLikedTracks } from "@/lib/likes-store"
@@ -38,8 +39,8 @@ export function TrackDislikeButton({ trackId }: { trackId: string }) {
       title={disliked ? "Remover deslike" : "Não curti"}
       aria-pressed={disliked}
       className={cn(
-        "flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-2",
-        disliked ? "text-destructive" : "text-muted-foreground/50 hover:text-foreground"
+        TRACK_ACTION_CLASSES,
+        disliked && "text-destructive hover:text-destructive"
       )}
     >
       <ThumbsDownIcon size={16} />

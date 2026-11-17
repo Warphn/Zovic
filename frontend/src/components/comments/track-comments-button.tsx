@@ -1,6 +1,7 @@
 "use client"
 
-import { CommentIcon } from "@/components/comments/comment-icon"
+import { CommentIcon } from "@/components/icons"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { useCommentsPanel } from "@/components/comments/comments-panel"
 import { useSession } from "@/lib/auth/client"
 import type { Track } from "@/lib/playlist-store"
@@ -27,8 +28,8 @@ export function TrackCommentsButton({ track, onPlay }: { track: Track; onPlay?: 
       aria-pressed={isOpen}
       title="Comentários desta faixa"
       className={cn(
-        "flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-2",
-        isOpen ? "text-primary" : "text-muted-foreground/50 hover:text-foreground"
+        TRACK_ACTION_CLASSES,
+        isOpen && "bg-muted/40 text-primary hover:text-primary"
       )}
     >
       <CommentIcon size={16} />

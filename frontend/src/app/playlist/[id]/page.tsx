@@ -9,13 +9,14 @@ import { CatalogHeader, CatalogPage, CatalogTrackList } from "@/components/catal
 import { ColorPicker, getPlaylistAccentStyle } from "@/components/color-picker"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import { FileInput, useObjectUrl } from "@/components/file-input"
-import { ListMinusIcon, PencilIcon, UserIcon } from "@/components/icons"
+import { FolderMinusIcon, PencilIcon, UserIcon } from "@/components/icons"
 import { PlaylistCollaboratorsDialog } from "@/components/playlist-collaborators-dialog"
 import { PlaylistMark } from "@/components/playlist-mark"
 import { PlaylistPrivacyField } from "@/components/playlist-privacy-field"
 import { RecordSleeve } from "@/components/record-sleeve"
 import { TrackDislikeButton } from "@/components/track-dislike-button"
 import { TrackLikeButton } from "@/components/track-like-button"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -213,9 +214,9 @@ export default function PlaylistDetailPage() {
                         disabled={removeTrack.isPending && removeTrack.variables?.musicId === Number(track.id)}
                         aria-label={`Tirar ${track.title} da playlist`}
                         title="Tirar da playlist"
-                        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 disabled:opacity-40"
+                        className={TRACK_ACTION_CLASSES}
                       >
-                        <ListMinusIcon size={16} />
+                        <FolderMinusIcon size={16} />
                       </button>
                     )
                   )}

@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query"
 import { HeartIcon } from "@/components/icons"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { dislikeKeys } from "@/lib/api/dislikes"
 import { likedMusicsApi, playlistKeys } from "@/lib/api/playlists"
 import { recommendationKeys } from "@/lib/api/recommendations"
@@ -52,8 +53,8 @@ export function TrackLikeButton({ trackId, isInLikedSongs = false }: { trackId: 
       aria-label={liked ? "Descurtir faixa" : "Curtir faixa"}
       aria-pressed={liked}
       className={cn(
-        "flex size-8 items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-2",
-        liked ? "text-primary" : "text-muted-foreground/50 hover:text-foreground"
+        TRACK_ACTION_CLASSES,
+        liked && "text-primary hover:text-primary"
       )}
     >
       <HeartIcon size={16} />

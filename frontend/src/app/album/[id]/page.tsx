@@ -67,6 +67,7 @@ export default function AlbumPage() {
               tracks={tracks}
               onPlay={(index) => playOrToggleQueueTrack(tracks, index)}
               isNumbered
+              isCoverShown={false}
               searchLabel="Buscar no álbum"
               className="mt-8"
             />

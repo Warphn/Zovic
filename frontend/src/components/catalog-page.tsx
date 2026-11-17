@@ -184,6 +184,7 @@ export function CatalogTrackList({
   playingTrackId,
   isNumbered = false,
   isAlbumShown = false,
+  isCoverShown = true,
   searchLabel,
   onReorder,
   renderActions = (track, context) => <DefaultTrackActions track={track} {...context} />,
@@ -197,6 +198,8 @@ export function CatalogTrackList({
   isNumbered?: boolean
   /** Adds the album to each row's meta, for lists that mix albums. */
   isAlbumShown?: boolean
+  /** The album cover beside each track; off where every track is of the same album. */
+  isCoverShown?: boolean
   /** "Buscar no álbum": the label and placeholder of the search field. */
   searchLabel?: string
   onReorder?: (trackIds: string[]) => void
@@ -238,15 +241,10 @@ export function CatalogTrackList({
         onClick={play}
         title={track.title}
         actions={renderActions(track, { announce, play })}
+        position={isNumbered ? index + 1 : undefined}
+        isCoverShown={isCoverShown}
       >
-        {isNumbered ? (
-          <span className="flex items-center gap-3">
-            <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
-            {text}
-          </span>
-        ) : (
-          text
-        )}
+        {text}
       </TrackRow>
     )
   }
