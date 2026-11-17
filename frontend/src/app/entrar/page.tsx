@@ -59,6 +59,7 @@ function SignInForm() {
 
   return (
     <AuthShell
+      catSays="Demorou, hein?"
       title="Entrar"
       description="Acesse suas playlists e continue ouvindo de onde parou"
       footer={

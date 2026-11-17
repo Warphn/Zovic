@@ -6,6 +6,7 @@ import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import Header from "@/components/header"
 import { PauseIcon, PlayIcon } from "@/components/icons"
+import { TrackAlbumCover } from "@/components/track-album-cover"
 import { TrackTitle } from "@/components/track-title"
 import { apiErrorMessage } from "@/lib/api/client"
 import { type HistoryEntry, useHistory, useListenedMusicIds } from "@/lib/api/history"
@@ -56,8 +57,9 @@ function PlayableRow({
       onClick={onClick}
       aria-label={playButtonLabel(item.name, { isPlaying, isListened })}
       aria-pressed={isPlaying}
-      className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+      className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl py-2 pl-3 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
     >
+      <TrackAlbumCover trackId={String(item.musicId)} className="size-10" />
       <span className="min-w-0 flex-1">
         <TrackTitle title={item.name} musicId={item.musicId} />
         <span className="block truncate text-xs text-muted-foreground">{itemMeta(item)}</span>
@@ -67,7 +69,7 @@ function PlayableRow({
           isPlaying ? "bg-primary text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
         }`}
       >
-        {isPlaying ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+        {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
       </span>
     </button>
   )

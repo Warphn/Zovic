@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { PlaybackAudio } from "@/components/playback-audio";
+import { PlaybackShortcuts } from "@/components/playback-shortcuts";
 import { LikedSongsSync } from "@/components/liked-songs-sync";
 import { AppPlaybackBar } from "@/components/playback-bar";
 import { QueryProvider } from "@/lib/api/query-provider";
@@ -28,6 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </CommentsPanelProvider>
           {/* The sound plays on every page, the landing and sign-in included, so it never stops on a page change */}
           <PlaybackAudio />
+          {/* Space plays or pauses on every page, Enter on the player */}
+          <PlaybackShortcuts />
           {/* The hearts this browser already had go into "Músicas Curtidas" (HU-34), once per session */}
           <LikedSongsSync />
         </QueryProvider>

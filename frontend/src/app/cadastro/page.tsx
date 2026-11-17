@@ -74,6 +74,7 @@ function SignUpForm() {
 
   return (
     <AuthShell
+      catSays="Mais um pra ouvir comigo?"
       title="Criar conta"
       description="Sua data de nascimento define os conteúdos adequados à sua faixa etária"
       footer={

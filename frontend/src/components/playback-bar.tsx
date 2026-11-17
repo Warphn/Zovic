@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { getContrastTextColor, getPlaylistAccentStyle } from "@/components/color-picker"
@@ -13,7 +14,7 @@ import { playPlaylist, selectTrackAt, togglePlayback, usePlayback } from "@/lib/
 import { seekTo, setVolume, toggleMute, useAudioPlayer } from "@/lib/audio-player"
 import { formatDuration } from "@/lib/format-duration"
 import { getPlaylistInitials, type Track, usePlaylistData } from "@/lib/playlist-store"
-import { useTrackCover } from "@/lib/track-cover"
+import { useTrackAlbum } from "@/lib/track-cover"
 import { cn } from "@/lib/utils"
 
 // Tracks played on their own use the default accent (--color-red in globals.css)
@@ -39,8 +40,8 @@ interface PlaybackBarProps {
   track: Track | undefined
   /** Text on the mini cover (initials), shown when the track's album has no cover */
   coverLabel: string
-  /** API path of the cover of the track's album, if it has one */
-  coverUrl: string | null
+  /** The track's album: its cover, its name under the title and the page the title opens */
+  album: { id: number; name: string; coverUrl: string | null } | null
   /** Color of the mini cover, the scrubber and the volume slider */
   color: string
   isPlaying: boolean
@@ -72,7 +73,7 @@ export function AppPlaybackBar() {
   const currentIndex = playback?.currentIndex ?? 0
   const track = tracks[currentIndex]
   // Where the bar is hidden (landing, sign-in) the visitor may not read the catalog
-  const coverUrl = useTrackCover(HIDDEN_ON.has(pathname) ? null : track?.id)
+  const album = useTrackAlbum(HIDDEN_ON.has(pathname) ? null : track?.id)
   if (HIDDEN_ON.has(pathname)) return null
 
   // Moves within the queue (wrapping); with nothing playing yet, starts the page's playlist there
@@ -87,7 +88,7 @@ export function AppPlaybackBar() {
     <PlaybackBar
       track={track}
       coverLabel={getPlaylistInitials(playlist?.name ?? (track?.album || track?.title || ""))}
-      coverUrl={coverUrl}
+      album={album}
       color={playlist?.color ?? DEFAULT_COLOR}
       isPlaying={Boolean(playback?.isPlaying)}
       onTogglePlay={() => (playback ? togglePlayback() : goTo(currentIndex))}
@@ -108,7 +109,7 @@ export function AppPlaybackBar() {
 export function PlaybackBar({
   track,
   coverLabel,
-  coverUrl,
+  album,
   color,
   isPlaying,
   onTogglePlay,
@@ -135,16 +136,20 @@ export function PlaybackBar({
     return () => clearTimeout(timer)
   }, [actionResult])
 
-  const toggleQueue = () => {
-    if (queueOpen) {
-      router.push(playerReturnPath ?? closeQueueHref)
-      return
-    }
+  const openPlayer = () => {
     onOpenQueue?.()
     // With the query string, so closing returns to the same search or filter
     playerReturnPath = pathname + window.location.search
     router.push("/player")
   }
+
+  const toggleQueue = () => {
+    if (queueOpen) router.push(playerReturnPath ?? closeQueueHref)
+    else openPlayer()
+  }
+
+  const coverUrl = album?.coverUrl ?? null
+  const albumHref = album ? `/album/${album.id}` : null
 
   return (
     <div
@@ -155,31 +160,63 @@ export function PlaybackBar({
       {/* Left: Track Name & Mini Cover */}
       {/* Phones show only the cover, so the column reserves its width from sm up */}
       <div className="flex items-center gap-3 shrink-0 sm:w-1/4 sm:min-w-[140px]">
-        {coverUrl ? (
-          // Decorative: the track's title is printed right beside it
-          // oxlint-disable-next-line nextjs/no-img-element
-          <img
-            src={apiUrl(coverUrl)}
-            alt=""
-            decoding="async"
-            className="size-10 rounded-lg object-cover shrink-0 border border-black/10 shadow-2xs"
-          />
-        ) : (
-          <div
-            className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
-            style={{ backgroundColor: color }}
-          >
-            <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
-          </div>
-        )}
+        {/* The cover opens the player; on the player itself it is just the picture */}
+        <button
+          type="button"
+          onClick={openPlayer}
+          disabled={queueOpen || !track}
+          aria-label="Abrir a tela de reprodução"
+          className="shrink-0 cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default"
+        >
+          {coverUrl ? (
+            // Decorative: the track's title is printed right beside it
+            // oxlint-disable-next-line nextjs/no-img-element
+            <img
+              src={apiUrl(coverUrl)}
+              alt=""
+              decoding="async"
+              className="size-10 rounded-lg object-cover shrink-0 border border-black/10 shadow-2xs"
+            />
+          ) : (
+            <div
+              className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
+              style={{ backgroundColor: color }}
+            >
+              <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
+            </div>
+          )}
+        </button>
         <div className="min-w-0 hidden sm:block">
-          <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
+          {/* The title and the album name open the album page */}
+          {albumHref && track ? (
+            <Link href={albumHref} className="block truncate rounded-sm text-xs font-bold text-foreground hover:underline focus-visible:outline-2">
+              {track.title}
+            </Link>
+          ) : (
+            <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
+          )}
           {actionResult ? (
             <div className={cn("text-[11px] truncate", actionResult.ok ? "text-muted-foreground" : "text-destructive")}>
               {actionResult.message}
             </div>
           ) : (
-            <div className="text-[11px] text-muted-foreground truncate">{isUnavailable ? "Indisponível" : track?.artist}</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              {isUnavailable ? (
+                "Indisponível"
+              ) : (
+                <>
+                  {track?.artist}
+                  {album && albumHref && (
+                    <>
+                      {track?.artist && " · "}
+                      <Link href={albumHref} className="rounded-sm hover:text-foreground hover:underline focus-visible:outline-2">
+                        {album.name}
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
         {/* Always rendered, so screen readers hear the outcome even on phones, where the title is hidden */}

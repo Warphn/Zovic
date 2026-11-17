@@ -1,66 +1,86 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import Link from "next/link"
 import Header from "@/components/header"
-import { RecordSleeve, Sleeve } from "@/components/record-sleeve"
 import { Input, type InputProps } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getPlaylistInitials, INITIAL_PLAYLISTS } from "@/lib/playlist-store"
 import { cn } from "@/lib/utils"
 import { AlertIcon } from "@/components/icons"
-import { ZovicCat } from "@/components/zovic-cat"
 
 interface AuthShellProps {
   title: string
   description: string
+  /** What the cat says in a balloon beside the form; without it, no balloon. */
+  catSays?: string
   footer: React.ReactNode
   children: React.ReactNode
 }
 
-// The front sleeve is the landing preview's sample playlist, in its color; the two behind it are
-// in the page's own ink and sand, like sleeves in the shade of the crate, so one color leads
-const FRONT = INITIAL_PLAYLISTS[0]
-const BEHIND = [
-  { color: "#171512", initials: "TP" },
-  { color: "#b9ad91", initials: "CB" },
-]
+// Comic-strip look, like the illustration: an ink outline and a hard shadow with no blur. The
+// balloon's shadow is a drop-shadow filter, so it follows its tail too
+const COMIC_BORDER = "border-2 border-ink"
+const COMIC_PANEL_SHADOW = "shadow-[4px_4px_0_var(--color-ink)]"
+const COMIC_BALLOON_SHADOW = "drop-shadow-[3px_3px_0_var(--color-ink)]"
 
-// Sleeves leaning one behind the other, like at the back of a record crate, the front one with
-// its record half out. Static: nothing plays before the visitor is in. The sleeves behind sit up
-// and to the left, so the stack is shifted down and right to center what is seen
-function Shelf() {
-  const [back, middle] = BEHIND
-  if (!FRONT || !back || !middle) return null
+// The cat at the turntable in a comic panel beside the form, saying `catSays` (if any) in a
+// speech balloon; both wobble between a few held poses, unless the visitor asked for less motion.
+// Decorative: the form says what the page is for
+function AuthIllustration({ catSays }: { catSays?: string }) {
   return (
-    <div aria-hidden="true" className="hidden items-center justify-center md:flex">
-      <div className="relative translate-x-10 translate-y-10 scale-125 lg:translate-x-12 lg:translate-y-12 lg:scale-150">
-        <Sleeve color={back.color} initials={back.initials} className="absolute top-0 left-0 size-48 -translate-x-16 -translate-y-16 md:size-52" />
-        <Sleeve color={middle.color} initials={middle.initials} className="absolute top-0 left-0 size-48 -translate-x-8 -translate-y-8 md:size-52" />
-        <div className="relative">
-          {/* The cat lies on top of the front sleeve, its paws over the edge */}
-          <ZovicCat priority className="absolute bottom-full left-6 z-20 h-28 translate-y-3 md:h-32" />
-          <RecordSleeve color={FRONT.color} initials={getPlaylistInitials(FRONT.name)} playing={false} />
-        </div>
-      </div>
+    <div
+      aria-hidden="true"
+      className={cn(
+        "relative hidden w-full max-w-md rounded-3xl bg-primary p-10 md:block lg:p-12",
+        COMIC_BORDER,
+        COMIC_PANEL_SHADOW
+      )}
+    >
+      {catSays && (
+        <p
+          className={cn(
+            // In the panel's empty top right corner, above the turntable
+            "absolute top-5 right-5 z-10 max-w-[12rem] rounded-2xl bg-surface px-4 py-2.5 text-base leading-snug font-semibold tracking-[-0.01em]",
+            // Wobbles with the cat, from its tail's corner
+            "origin-bottom-left motion-safe:animate-wobble",
+            COMIC_BORDER,
+            COMIC_BALLOON_SHADOW
+          )}
+        >
+          {catSays}
+          {/* The balloon's tail, pointing down at the cat */}
+          <span className="absolute -bottom-[9px] left-6 size-4 rotate-45 border-r-2 border-b-2 border-ink bg-surface" />
+        </p>
+      )}
+      <Image
+        src="/illustrations/cat-turntable.png"
+        alt=""
+        width={986}
+        height={901}
+        priority
+        sizes="(min-width: 768px) 24rem, 0px"
+        className="pointer-events-none h-auto w-full origin-bottom select-none motion-safe:animate-wobble"
+      />
     </div>
   )
 }
 
-// Page frame shared by /entrar and /cadastro: the form on the left, the shelf on the right
-export function AuthShell({ title, description, footer, children }: AuthShellProps) {
+// Page frame shared by /entrar and /cadastro: the form and the illustration in two equal halves, each
+// centered in its own, so the pair sits in the middle of the page; on a phone, just the form
+export function AuthShell({ title, description, catSays, footer, children }: AuthShellProps) {
   return (
     <div className="flex-1 bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground">
       <Header />
       <main className="flex-1 pt-16">
-        <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-16 px-6 py-16 md:grid-cols-[minmax(0,24rem)_1fr] md:px-8">
+        <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center justify-items-center gap-16 px-6 py-16 md:grid-cols-2 md:px-8">
           <div className="w-full max-w-sm">
             <h1 className="text-4xl leading-[1.05] font-medium tracking-[-0.03em]">{title}</h1>
             <p className="mt-3 mb-8 text-sm text-muted-foreground">{description}</p>
             <div className="rounded-2xl border border-border bg-surface p-6 shadow-xs">{children}</div>
             <p className="mt-6 text-sm text-muted-foreground">{footer}</p>
           </div>
-          <Shelf />
+          <AuthIllustration catSays={catSays} />
         </div>
       </main>
     </div>

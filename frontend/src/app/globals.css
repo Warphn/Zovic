@@ -111,6 +111,8 @@
   --animate-record: record 6s linear infinite;
   /* Level bars of the playing track: a slow rise and fall, never a bounce */
   --animate-level: level 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+  /* The login cat: a few held poses, like a hand-drawn cartoon */
+  --animate-wobble: wobble 1.2s steps(1, end) infinite;
 
   @keyframes record {
     to {
@@ -124,6 +126,19 @@
     }
     to {
       transform: scaleY(1);
+    }
+  }
+
+  @keyframes wobble {
+    0%,
+    100% {
+      transform: rotate(-1.5deg);
+    }
+    33% {
+      transform: rotate(1deg) translateY(-2px);
+    }
+    66% {
+      transform: rotate(-0.5deg) translateY(1px);
     }
   }
 

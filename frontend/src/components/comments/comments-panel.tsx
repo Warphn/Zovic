@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CommentIcon } from "@/components/comments/comment-icon"
+import { CommentIcon } from "@/components/icons"
 import { TrackComments } from "@/components/comments/track-comments"
 import { PauseIcon, PlayIcon } from "@/components/icons"
 import { useSession } from "@/lib/auth/client"
