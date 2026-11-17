@@ -1422,9 +1422,9 @@ export const openApiDocument = {
     "/api/search": {
       get: {
         tags: ["Busca"],
-        summary: "Busca músicas, artistas e playlists",
+        summary: "Busca músicas, artistas, álbuns e playlists",
         description:
-          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas. Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora dos resultados e das contagens de músicas de artistas e playlists; admins da plataforma veem tudo.",
+          "Procura o termo no catálogo inteiro, sem diferenciar maiúsculas nem acentos (`agua` acha `Águas`), e devolve até `limit` itens de cada grupo. Em cada grupo vêm primeiro os nomes que começam com o termo, depois os que têm uma palavra começando com ele, depois os que só o contêm; empates em ordem alfabética. Músicas também são encontradas pelo nome dos artistas, e álbuns pelo nome do álbum (HU-12). Playlists: as públicas de qualquer pessoa e as privadas de que o usuário é membro. `%` e `_` são texto, não curinga. Nada apagado aparece. Para menor de idade (ou conta sem data de nascimento), as músicas explícitas ficam de fora dos resultados e das contagens de músicas de artistas, álbuns e playlists; admins da plataforma veem tudo.",
         operationId: "search",
         security: [{ cookieAuth: [] }],
         parameters: [
@@ -2659,10 +2659,11 @@ export const openApiDocument = {
       },
       SearchResults: {
         type: "object",
-        required: ["musics", "artists", "playlists"],
+        required: ["musics", "artists", "albums", "playlists"],
         properties: {
           musics: { type: "array", items: { $ref: "#/components/schemas/MusicHit" } },
           artists: { type: "array", items: { $ref: "#/components/schemas/ArtistHit" } },
+          albums: { type: "array", items: { $ref: "#/components/schemas/AlbumHit" } },
           playlists: { type: "array", items: { $ref: "#/components/schemas/PlaylistHit" } },
         },
       },
@@ -2698,6 +2699,33 @@ export const openApiDocument = {
             type: ["string", "null"],
             description: "Endereço da foto (HU-36), relativo à API, com a versão no fim. null no artista sem foto.",
             example: "/api/artists/3/image?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
+        },
+      },
+      AlbumHit: {
+        type: "object",
+        required: ["id", "name", "year", "artists", "musicCount", "coverUrl"],
+        properties: {
+          id: { type: "integer", example: 5 },
+          name: { type: "string", example: "Elis & Tom" },
+          year: { type: ["integer", "null"], example: 1974 },
+          artists: {
+            type: "array",
+            description: "Artistas ativos do álbum, em ordem alfabética.",
+            items: {
+              type: "object",
+              required: ["id", "name"],
+              properties: {
+                id: { type: "integer", example: 3 },
+                name: { type: "string", example: "Elis Regina" },
+              },
+            },
+          },
+          musicCount: { type: "integer", description: "Faixas ativas do álbum.", example: 14 },
+          coverUrl: {
+            type: ["string", "null"],
+            description: "Endereço da capa, relativo à API, com a versão no fim. null no álbum sem capa.",
+            example: "/api/albums/5/cover?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
           },
         },
       },

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { AlbumCoverImage } from "@/components/album-cover-image"
 import { SearchIcon } from "@/components/icons"
 import { getContrastTextColor } from "@/components/color-picker"
 import { CoverPhoto } from "@/components/cover-photo"
@@ -101,6 +102,18 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
       media={<Cover label={getPlaylistInitials(suggestion.name)} color="#565043" round imageUrl={suggestion.imageUrl} />}
       title={<Highlight text={suggestion.name} query={query} />}
       subtitle={subtitleOf("Artista", `${suggestion.trackCount} ${suggestion.trackCount === 1 ? "música" : "músicas"}`, showKind)}
+    />
+  ),
+  album: ({ suggestion, query, showKind }) => (
+    <Row
+      media={
+        <AlbumCoverImage
+          album={{ id: suggestion.id, name: suggestion.name, coverUrl: suggestion.coverUrl }}
+          className="size-9 shrink-0 rounded-md text-[11px]"
+        />
+      }
+      title={<Highlight text={suggestion.name} query={query} />}
+      subtitle={subtitleOf("Álbum", [suggestion.artist, suggestion.year].filter(Boolean).join(" · "), showKind)}
     />
   ),
   playlist: ({ suggestion, query, showKind }) => (

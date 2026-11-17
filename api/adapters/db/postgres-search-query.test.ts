@@ -16,7 +16,13 @@ const query = new PostgresSearchQuery(pool);
 
 // Só letras: um token por execução, para nada do seed nem de outra execução casar com as buscas.
 const T = `qz${Date.now().toString(36).replace(/\d/g, (d) => "abcdefghij"[Number(d)]!)}`;
-const created = { artist: [] as number[], musics: [] as number[], playlists: [] as number[], user: [] as number[] };
+const created = {
+  album: [] as number[],
+  artist: [] as number[],
+  musics: [] as number[],
+  playlists: [] as number[],
+  user: [] as number[],
+};
 let viewer: number;
 let stranger: number;
 
@@ -51,6 +57,26 @@ async function playlist(creatorId: number, name: string, options: { isPrivate?: 
   if (options.deleted) entity.delete();
   await playlists.save(entity);
   return entity;
+}
+
+async function album(
+  name: string,
+  artistIds: number[],
+  options: { year?: number; musicIds?: number[]; deleted?: boolean } = {},
+): Promise<number> {
+  const { rows } = await pool.query<{ id: number }>(
+    "INSERT INTO album (name, year, deleted_at) VALUES ($1, $2, $3) RETURNING id",
+    [name, options.year ?? null, options.deleted ? new Date() : null],
+  );
+  const albumId = rows[0]!.id;
+  created.album.push(albumId);
+  await pool.query("INSERT INTO album_artist (album_id, artist_id) SELECT $1, unnest($2::integer[])", [albumId, artistIds]);
+  await pool.query(
+    `INSERT INTO album_music (album_id, music_id, track_number)
+     SELECT $1, music_id, ord FROM unnest($2::integer[]) WITH ORDINALITY AS t(music_id, ord)`,
+    [albumId, options.musicIds ?? []],
+  );
+  return albumId;
 }
 
 async function addToPlaylist(playlistId: number, musicIds: number[]): Promise<void> {
@@ -202,5 +228,53 @@ describe("PostgresSearchQuery", () => {
     expect(forMinor.artists.map((found) => found.musicCount)).toEqual([1]);
     expect(forAdult.playlists.map((found) => found.musicCount)).toEqual([2]);
     expect(forMinor.playlists.map((found) => found.musicCount)).toEqual([1]);
+  });
+
+  it("critério da HU-12: acha o álbum pelo nome, sem diferenciar acentos, com o ano, os artistas ativos e a contagem", async () => {
+    const dono = await artist(`Dono do álbum${T}`);
+    const apagado = await artist(`Ex-integrante${T}`, true);
+    const faixa = await music("Faixa do álbum", [dono.id]);
+    const faixaApagada = await music("Faixa apagada do álbum", [dono.id], true);
+    const albumId = await album(`Álbum${T} de estreia`, [dono.id, apagado.id], {
+      year: 2020,
+      musicIds: [faixa.id, faixaApagada.id],
+    });
+
+    const { albums: found } = await search(`album${T}`);
+
+    expect(found).toEqual([
+      {
+        id: albumId,
+        name: `Álbum${T} de estreia`,
+        year: 2020,
+        artists: [{ id: dono.id, name: `Dono do álbum${T}` }],
+        musicCount: 1,
+        coverUrl: null,
+      },
+    ]);
+  });
+
+  it("deixa de fora o álbum removido e ordena os álbuns como os outros grupos", async () => {
+    const dono = await artist(`Discografia${T}`);
+    await album(`Ao vivo disco${T}`, [dono.id]);
+    await album(`Disco${T} removido`, [dono.id], { deleted: true });
+    await album(`Disco${T} novo`, [dono.id]);
+
+    const { albums: found } = await search(`disco${T}`);
+
+    expect(names(found)).toEqual([`Disco${T} novo`, `Ao vivo disco${T}`]);
+  });
+
+  it("tira a música explícita da contagem do álbum quando includeExplicit é falso", async () => {
+    const dono = await artist(`Album explicito${T}`);
+    const comum = await music("Comum", [dono.id]);
+    const explicita = await music("Proibida", [dono.id], false, true);
+    await album(`Disco explicito${T}`, [dono.id], { musicIds: [comum.id, explicita.id] });
+
+    const forAdult = await search(`disco explicito${T}`);
+    const forMinor = await search(`disco explicito${T}`, 10, false);
+
+    expect(forAdult.albums.map((found) => found.musicCount)).toEqual([2]);
+    expect(forMinor.albums.map((found) => found.musicCount)).toEqual([1]);
   });
 });

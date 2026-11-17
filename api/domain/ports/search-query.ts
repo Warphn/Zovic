@@ -1,4 +1,4 @@
-// Port de consulta: a busca cruza músicas, artistas e playlists e devolve DTOs prontos,
+// Port de consulta: a busca cruza músicas, artistas, álbuns e playlists e devolve DTOs prontos,
 // sem montar entidades (a mesma regra das leituras que atravessam muitas tabelas).
 
 export interface MusicHitArtist {
@@ -24,6 +24,18 @@ export interface ArtistHit {
   imageUrl: string | null;
 }
 
+export interface AlbumHit {
+  id: number;
+  name: string;
+  year: number | null;
+  /** Artistas ativos do álbum, em ordem alfabética. */
+  artists: MusicHitArtist[];
+  /** Faixas ativas do álbum. */
+  musicCount: number;
+  /** Caminho da capa na API; nulo no álbum sem capa. */
+  coverUrl: string | null;
+}
+
 export interface PlaylistHit {
   id: number;
   name: string;
@@ -38,6 +50,7 @@ export interface PlaylistHit {
 export interface SearchResults {
   musics: MusicHit[];
   artists: ArtistHit[];
+  albums: AlbumHit[];
   playlists: PlaylistHit[];
 }
 

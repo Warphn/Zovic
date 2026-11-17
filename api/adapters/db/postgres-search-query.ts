@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type {
+  AlbumHit,
   ArtistHit,
   MusicHit,
   MusicHitArtist,
@@ -9,7 +10,7 @@ import type {
   SearchResults,
 } from "../../domain/ports/search-query.ts";
 import { playlistCoverUrlOf } from "../../domain/use-cases/playlist-output.ts";
-import { artistImageUrlOf } from "./postgres-admin-queries.ts";
+import { albumCoverUrlOf, artistImageUrlOf } from "./postgres-admin-queries.ts";
 
 interface MusicRow {
   id: number;
@@ -25,6 +26,15 @@ interface ArtistRow {
   image_file: string | null;
 }
 
+interface AlbumRow {
+  id: number;
+  name: string;
+  year: number | null;
+  artists: MusicHitArtist[];
+  music_count: number;
+  cover_file: string | null;
+}
+
 interface PlaylistRow {
   id: number;
   name: string;
@@ -34,7 +44,7 @@ interface PlaylistRow {
   cover_file: string | null;
 }
 
-// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados, $2 é o limite. Em músicas e artistas, $3
+// Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados, $2 é o limite. Em músicas, artistas e álbuns, $3
 // diz se as músicas explícitas entram (falso para menores de idade); em playlists, $3 é quem busca e $4 é esse mesmo aviso.
 // `q.t` é o termo normalizado e `s.h` é o texto onde se procura, normalizado do mesmo jeito.
 const TERM = String.raw`CROSS JOIN (SELECT lower(unaccent($1::text)) AS t) q`;
@@ -76,6 +86,23 @@ const SEARCH_ARTISTS = `
   ORDER BY ${RANK}, s.h, a.id
   LIMIT $2`;
 
+const SEARCH_ALBUMS = `
+  SELECT al.id, al.name, al.year, al.cover_file,
+         (SELECT count(*)::int
+          FROM album_music amu
+          JOIN musics m ON m.id = amu.music_id AND m.deleted_at IS NULL
+          WHERE amu.album_id = al.id AND ($3 OR NOT m.is_explicit)) AS music_count,
+         (SELECT coalesce(json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name, a.id), '[]')
+          FROM album_artist aa
+          JOIN artist a ON a.id = aa.artist_id AND a.deleted_at IS NULL
+          WHERE aa.album_id = al.id) AS artists
+  FROM album al
+  CROSS JOIN LATERAL (SELECT lower(unaccent(al.name)) AS h) s
+  ${TERM}
+  WHERE al.deleted_at IS NULL AND ${MATCHES}
+  ORDER BY ${RANK}, s.h, al.id
+  LIMIT $2`;
+
 // Mesma regra de visibilidade do GET /playlists/:id: públicas, ou privadas de que $3 é membro.
 const SEARCH_PLAYLISTS = `
   SELECT p.id, p.name, p.is_private, p.color, p.cover_file,
@@ -103,15 +130,17 @@ export class PostgresSearchQuery implements SearchQuery {
 
   async search({ term, viewerId, limit, includeExplicit }: SearchParams): Promise<SearchResults> {
     const pattern = escapeLike(term);
-    const [musics, artists, playlists] = await Promise.all([
+    const [musics, artists, albums, playlists] = await Promise.all([
       this.pool.query<MusicRow>(SEARCH_MUSICS, [pattern, limit, includeExplicit]),
       this.pool.query<ArtistRow>(SEARCH_ARTISTS, [pattern, limit, includeExplicit]),
+      this.pool.query<AlbumRow>(SEARCH_ALBUMS, [pattern, limit, includeExplicit]),
       this.pool.query<PlaylistRow>(SEARCH_PLAYLISTS, [pattern, limit, viewerId, includeExplicit]),
     ]);
 
     return {
       musics: musics.rows.map(toMusicHit),
       artists: artists.rows.map(toArtistHit),
+      albums: albums.rows.map(toAlbumHit),
       playlists: playlists.rows.map(toPlaylistHit),
     };
   }
@@ -123,6 +152,17 @@ function toMusicHit(row: MusicRow): MusicHit {
 
 function toArtistHit(row: ArtistRow): ArtistHit {
   return { id: row.id, name: row.name, musicCount: row.music_count, imageUrl: artistImageUrlOf(row.id, row.image_file) };
+}
+
+function toAlbumHit(row: AlbumRow): AlbumHit {
+  return {
+    id: row.id,
+    name: row.name,
+    year: row.year,
+    artists: row.artists,
+    musicCount: row.music_count,
+    coverUrl: albumCoverUrlOf(row.id, row.cover_file),
+  };
 }
 
 function toPlaylistHit(row: PlaylistRow): PlaylistHit {

@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useDebouncedValue } from "@/lib/use-debounced-value"
 import { apiErrorMessage, queryString, request } from "./client"
 
-// GET /api/search: músicas, artistas e playlists que casam com o termo (api/domain/ports/search-query.ts).
+// GET /api/search: músicas, artistas, álbuns e playlists que casam com o termo (api/domain/ports/search-query.ts).
 
 export interface SearchMusic {
   id: number
@@ -16,6 +16,15 @@ export interface SearchResults {
   musics: SearchMusic[]
   /** `imageUrl`: API path of the artist's photo, or null (HU-36). */
   artists: { id: number; name: string; musicCount: number; imageUrl: string | null }[]
+  /** `coverUrl`: API path of the album's cover, or null. `artists` are the active ones, by name. */
+  albums: {
+    id: number
+    name: string
+    year: number | null
+    artists: { id: number; name: string }[]
+    musicCount: number
+    coverUrl: string | null
+  }[]
   /** `coverUrl`: API path of the playlist's cover, or null (HU-35). */
   playlists: { id: number; name: string; isPrivate: boolean; color: string | null; musicCount: number; coverUrl: string | null }[]
 }
