@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261112_120000__Adiciona_numero_da_faixa.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261116_090100__Aceita_musica_no_evento_de_ouvida.sql`).
 
 ### Diagrama gerado do banco
 
@@ -12,7 +12,7 @@ Esta imagem sai do banco com `bun run db:erd` (veja [Banco de dados](banco-de-da
 
 ![Diagrama ER do Zovic](assets/modelo-er.png)
 
-Esta é a versão feita à mão, com os verbos das relações, para explicar o modelo.
+Esta é a versão feita à mão, com os verbos das relações, para explicar o modelo. O arquivo editável é o [`modelo-er.drawio`](assets/modelo-er.drawio): abra no draw.io, edite e exporte de novo o `modelo-er.png`.
 
 ## Diagrama
 
@@ -22,7 +22,7 @@ Os tipos são os do Postgres. `PK` marca a chave primária, `FK` a chave estrang
 erDiagram
     plan_type ||--|{ plan : "classifica"
     plan ||--|{ plan_user : "possui"
-    user ||--|{ plan_user : "assina"
+    user ||--o{ plan_user : "assina"
     plan ||--o{ plan_invitation : "convida"
 
     user ||--o{ session : "abre"
