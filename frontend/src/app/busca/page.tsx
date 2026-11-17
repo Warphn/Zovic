@@ -89,6 +89,8 @@ function SearchResults() {
                           isPlaying={Boolean(playback?.isPlaying) && currentTrackOf(playback)?.id === result.id}
                           onClick={() => playOrToggleTrack(result.id, [result.track, ...catalogTracks])}
                           title={result.title}
+                          // The result already shows the album cover, from the track renderer
+                          isCoverShown={false}
                           actions={
                             <>
                               <AddToQueueButton track={result.track} onResult={(message, ok) => setAdded({ message, ok })} />

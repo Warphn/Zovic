@@ -171,13 +171,9 @@ function TopPlayed({ onAnnounce }: { onAnnounce: Announce }) {
                     <AddToPlaylistMenu musicId={music.id} title={music.name} onResult={onAnnounce} />
                   </>
                 }
+                position={index + 1}
               >
-                <span className="flex items-center gap-3">
-                  <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <TrackText title={music.name} musicId={music.id} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
-                </span>
+                <TrackText title={music.name} musicId={music.id} meta={[artistNames(music.artists), formatDuration(music.duration)].filter(Boolean).join(" · ")} />
               </TrackRow>
             </li>
           )

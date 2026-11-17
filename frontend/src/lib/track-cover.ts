@@ -5,20 +5,33 @@ import { type Album, type CatalogMusic, useAlbums, useCatalogMusics } from "./ap
 
 const CATALOG_TRACK_ID = /^\d+$/
 
-/** API path of the cover of the track's album; null for sample tracks, tracks without album, albums without cover. */
-export function coverUrlOfTrack(trackId: string, musics: CatalogMusic[], albums: Album[]): string | null {
+/** The track's album; null for sample tracks, tracks without album or not in the catalog. */
+export function albumOfTrack(trackId: string, musics: CatalogMusic[], albums: Album[]): Album | null {
   if (!CATALOG_TRACK_ID.test(trackId)) return null
   const albumId = musics.find((music) => music.id === Number(trackId))?.album?.id
   if (albumId === undefined) return null
-  return albums.find((album) => album.id === albumId)?.coverUrl ?? null
+  return albums.find((album) => album.id === albumId) ?? null
 }
 
-/** Same, from the cached catalog; queries only while a catalog track (numeric id) is given. */
-export function useTrackCover(trackId: string | null | undefined): string | null {
-  // The bar shows on pages without a subscription too, where the API refuses the catalog
+/** API path of the cover of the track's album; null for sample tracks, tracks without album, albums without cover. */
+export function coverUrlOfTrack(trackId: string, musics: CatalogMusic[], albums: Album[]): string | null {
+  return albumOfTrack(trackId, musics, albums)?.coverUrl ?? null
+}
+
+/**
+ * The track's album, from the cached catalog; queries only while a catalog track (numeric id) is
+ * given, so the playback bar asks nothing on pages without a subscription, where the API refuses
+ * the catalog.
+ */
+export function useTrackAlbum(trackId: string | null | undefined): Album | null {
   const isCatalogTrack = CATALOG_TRACK_ID.test(trackId ?? "")
   const musics = useCatalogMusics({ enabled: isCatalogTrack })
   const albums = useAlbums({ enabled: isCatalogTrack })
   if (!trackId || !isCatalogTrack) return null
-  return coverUrlOfTrack(trackId, musics.data ?? [], albums.data ?? [])
+  return albumOfTrack(trackId, musics.data ?? [], albums.data ?? [])
+}
+
+/** Same, from the cached catalog; queries only while a catalog track (numeric id) is given. */
+export function useTrackCover(trackId: string | null | undefined): string | null {
+  return useTrackAlbum(trackId)?.coverUrl ?? null
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { Album, CatalogMusic } from "./api/catalog"
-import { coverUrlOfTrack } from "./track-cover"
+import { albumOfTrack, coverUrlOfTrack } from "./track-cover"
 
 const COVER_PATH = "/api/albums/3/cover?v=1"
 
@@ -46,5 +46,17 @@ describe("coverUrlOfTrack", () => {
 
   it("an unknown music has no cover", () => {
     expect(coverUrlOfTrack("8", [music(7, IN_ALBUM_3)], [album(3, COVER_PATH)])).toBeNull()
+  })
+})
+
+describe("albumOfTrack", () => {
+  it("finds the album through the music, with or without a cover", () => {
+    expect(albumOfTrack("7", [music(7, IN_ALBUM_3)], [album(3, null)])?.id).toBe(3)
+  })
+
+  it("a music without album, a sample track or an unknown music has none", () => {
+    expect(albumOfTrack("7", [music(7, null)], [album(3, COVER_PATH)])).toBeNull()
+    expect(albumOfTrack("t1", [music(7, IN_ALBUM_3)], [album(3, COVER_PATH)])).toBeNull()
+    expect(albumOfTrack("8", [music(7, IN_ALBUM_3)], [album(3, COVER_PATH)])).toBeNull()
   })
 })

@@ -3,10 +3,12 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Menu } from "@base-ui/react/menu"
-import { ListPlusIcon } from "@/components/icons"
+import { FolderPlusIcon } from "@/components/icons"
+import { TRACK_ACTION_CLASSES } from "@/components/track-action"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useAddPlaylistMusic } from "@/lib/api/playlists"
 import { useMyPlaylistsData } from "@/lib/playlist-store"
+import { cn } from "@/lib/utils"
 
 // "Adicionar à playlist" for one music: a menu with the playlists the viewer administers (only
 // they can add musics). The music goes to the end of the chosen playlist; the outcome, added or
@@ -39,9 +41,9 @@ export function AddToPlaylistMenu({
       <Menu.Trigger
         aria-label={`Adicionar ${title} a uma playlist`}
         title="Adicionar à playlist"
-        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 data-[popup-open]:bg-muted/40 data-[popup-open]:text-foreground"
+        className={cn(TRACK_ACTION_CLASSES, "data-[popup-open]:bg-muted/40 data-[popup-open]:text-foreground")}
       >
-        <ListPlusIcon size={16} />
+        <FolderPlusIcon size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner sideOffset={4} align="end" className="z-[60]">

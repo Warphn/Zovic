@@ -4,13 +4,7 @@ import * as React from "react"
 import {
   CircleAlert,
   Headphones,
-  History,
-  House,
-  ListMinus,
-  ListPlus,
-  LogOut,
   Pencil,
-  ShieldCheck,
   SkipBack,
   SkipForward,
   ThumbsDown,
@@ -18,6 +12,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react"
+import { motion, type TargetAndTransition, useAnimation } from "motion/react"
 import { cn } from "@/lib/utils"
 import type { IconProps, VolumeIconProps } from "./types"
 import { ArrowLeftIcon as AnimatedArrowLeft } from "./lucide-animated/arrow-left"
@@ -32,6 +27,13 @@ import { SearchIcon as AnimatedSearch } from "./lucide-animated/search"
 import { XIcon as AnimatedX } from "./lucide-animated/x"
 import { UserIcon as AnimatedUser } from "./lucide-animated/user"
 import { GalleryHorizontalEndIcon as AnimatedGalleryHorizontalEnd } from "./lucide-animated/gallery-horizontal-end"
+import { FolderMinusIcon as AnimatedFolderMinus } from "./lucide-animated/folder-minus"
+import { HistoryIcon as AnimatedHistory } from "./lucide-animated/history"
+import { HomeIcon as AnimatedHome } from "./lucide-animated/home"
+import { LogoutIcon as AnimatedLogout } from "./lucide-animated/logout"
+import { ShieldCheckIcon as AnimatedShieldCheck } from "./lucide-animated/shield-check"
+import { FolderPlusIcon as AnimatedFolderPlus } from "./lucide-animated/folder-plus"
+import { MessageSquareIcon as AnimatedMessageSquare } from "./lucide-animated/message-square"
 import { ListIcon as AnimatedList } from "./custom/list"
 
 // Animated icon set: lucide-animated (https://lucide-animated.com, MIT, copied into
@@ -89,6 +91,32 @@ function withParentHover(icon: AnimatedLucideIcon, displayName: string) {
   return Wrapped
 }
 
+// A lucide-react icon with a short motion of our own, for an icon lucide-animated does not have
+// (the thumbs down).
+// Same handle as the lucide-animated icons, so withParentHover plays it on the button's hover.
+function motionLucide(
+  Icon: React.ComponentType<{ size?: number; className?: string }>,
+  animate: TargetAndTransition,
+  displayName: string
+): AnimatedLucideIcon {
+  const MotionIcon = React.forwardRef<AnimationHandle, React.HTMLAttributes<HTMLDivElement> & { size?: number }>(
+    ({ size = 16, className }, ref) => {
+      const controls = useAnimation()
+      React.useImperativeHandle(ref, () => ({
+        startAnimation: () => void controls.start("animate"),
+        stopAnimation: () => void controls.start("normal"),
+      }))
+      return (
+        <motion.div animate={controls} variants={{ normal: { x: 0, y: 0, rotate: 0, scale: 1 }, animate }} className={className}>
+          <Icon size={size} className="shrink-0" />
+        </motion.div>
+      )
+    }
+  )
+  MotionIcon.displayName = displayName
+  return MotionIcon
+}
+
 function staticLucide(Icon: React.ComponentType<{ size?: number; className?: string }>) {
   return function StaticLucideIcon({ size = 16, className }: IconProps) {
     return <Icon size={size} className={cn("shrink-0", className)} aria-hidden="true" />
@@ -111,18 +139,25 @@ export const UserIcon = withParentHover(AnimatedUser, "UserIcon")
 export const QueueIcon = withParentHover(AnimatedGalleryHorizontalEnd, "QueueIcon")
 
 export const AlertIcon = staticLucide(CircleAlert)
-export const HomeIcon = staticLucide(House)
-export const HistoryIcon = staticLucide(History)
-export const LogOutIcon = staticLucide(LogOut)
-export const ShieldIcon = staticLucide(ShieldCheck)
+export const HomeIcon = withParentHover(AnimatedHome, "HomeIcon")
+export const HistoryIcon = withParentHover(AnimatedHistory, "HistoryIcon")
+export const LogOutIcon = withParentHover(AnimatedLogout, "LogOutIcon")
+export const ShieldIcon = withParentHover(AnimatedShieldCheck, "ShieldIcon")
 export const SkipBackIcon = staticLucide(SkipBack)
 export const SkipForwardIcon = staticLucide(SkipForward)
 export const PencilIcon = staticLucide(Pencil)
-export const ListPlusIcon = staticLucide(ListPlus)
-export const ListMinusIcon = staticLucide(ListMinus)
+// A playlist as a folder of tracks: adding to one, taking out of one
+export const FolderPlusIcon = withParentHover(AnimatedFolderPlus, "FolderPlusIcon")
+export const FolderMinusIcon = withParentHover(AnimatedFolderMinus, "FolderMinusIcon")
+// The comments of a track
+export const CommentIcon = withParentHover(AnimatedMessageSquare, "CommentIcon")
 // A music already listened to (HU-15)
 export const HeadphonesIcon = staticLucide(Headphones)
-export const ThumbsDownIcon = staticLucide(ThumbsDown)
+// Dislike: the thumb nods down
+export const ThumbsDownIcon = withParentHover(
+  motionLucide(ThumbsDown, { y: [0, 2, 0], rotate: [0, -12, 0], transition: { duration: 0.4 } }, "AnimatedThumbsDown"),
+  "ThumbsDownIcon"
+)
 export const DislikeIcon = ThumbsDownIcon
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {

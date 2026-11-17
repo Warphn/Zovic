@@ -96,7 +96,7 @@ export const PencilIcon = svg(
     <path d="m15 5 4 4" />
   </>
 )
-export const ListPlusIcon = svg(<path d="M11 12H3M16 6H3M16 18H3M18 9v6M21 12h-6" />)
+export const FolderPlusIcon = svg(<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2ZM12 10v6M9 13h6" />)
 export const HomeIcon = svg(
   <>
     <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
@@ -110,7 +110,7 @@ export const HistoryIcon = svg(
     <path d="M12 7v5l4 2" />
   </>
 )
-export const ListMinusIcon = svg(<path d="M11 12H3M16 6H3M16 18H3M21 12h-6" />)
+export const FolderMinusIcon = svg(<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2ZM9 13h6" />)
 export const HeadphonesIcon = svg(
   <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
 )
@@ -121,6 +121,7 @@ export const ThumbsDownIcon = svg(
   </>
 )
 export const DislikeIcon = ThumbsDownIcon
+export const CommentIcon = svg(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />)
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {
   const char = level === "muted" ? "🔇" : level === "low" ? "🔉" : "🔊"
