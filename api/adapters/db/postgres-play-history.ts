@@ -48,7 +48,7 @@ const LIST_LISTENED = `
     WHERE e.user_id = $1 AND e.event_type = 'music_listened'
     GROUP BY e.music_id
   ) listened
-  JOIN musics m ON m.id = listened.music_id
+  JOIN musics m ON m.id = listened.music_id AND ($2 OR NOT m.is_explicit)
   CROSS JOIN LATERAL (
     SELECT coalesce(json_agg(json_build_object('id', a.id, 'name', a.name) ORDER BY a.name, a.id), '[]') AS artists
     FROM artist_music am
@@ -85,8 +85,8 @@ export class PostgresPlayHistory implements PlayHistory {
     return rowCount === 1;
   }
 
-  async listListenedForUser(userId: number): Promise<ListenedEntry[]> {
-    const { rows } = await this.pool.query<ListenedRow>(LIST_LISTENED, [userId]);
+  async listListenedForUser(userId: number, includeExplicit: boolean): Promise<ListenedEntry[]> {
+    const { rows } = await this.pool.query<ListenedRow>(LIST_LISTENED, [userId, includeExplicit]);
     return rows.map((row) => ({ ...toMusicFields(row), lastListenedAt: row.last_listened_at.toISOString() }));
   }
 }
