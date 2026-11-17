@@ -6,12 +6,10 @@ import type { GetMusicAudio } from "../../domain/use-cases/get-music-audio.ts";
 import type { ManageCatalog } from "../../domain/use-cases/manage-catalog.ts";
 import type { ManageUsers } from "../../domain/use-cases/manage-users.ts";
 import type { LocalFileStorage } from "../storage/local-file-storage.ts";
+import { IMAGE_CACHE_CONTROL, sendStoredFile } from "./send-stored-file.ts";
 
 /** Quantas reproduções recentes o painel mostra por usuário. */
 const RECENT_PLAYS_LIMIT = 50;
-
-/** A URL da capa muda a cada troca (?v=), mas quem pede sem a versão também precisa ver a nova logo. */
-const COVER_CACHE_CONTROL = "private, max-age=86400";
 
 /**
  * O navegador guarda o arquivo, mas confirma com a API antes de cada uso (304 pelo ETag). Assim a
@@ -40,6 +38,7 @@ export interface CatalogController {
   listArtists: RequestHandler;
   listAlbums: RequestHandler;
   albumCover: RequestHandler;
+  artistImage: RequestHandler;
   musicAudio: RequestHandler;
   listGenres: RequestHandler;
   recordPlay: RequestHandler;
@@ -72,12 +71,12 @@ export function makeCatalogController(
     albumCover: async (req, res, next) => {
       const coverFile = await queries.findAlbumCoverFile(idParam(req));
       if (!coverFile) throw new NotFoundError("Cover not found");
-      res.set("Cache-Control", COVER_CACHE_CONTROL);
-      // O sendFile define o Content-Type pela extensão; um arquivo que sumiu do disco vira 404.
-      res.sendFile(covers.pathOf(coverFile), (error) => {
-        // Com os cabeçalhos já enviados, o erro é o navegador cancelando o download: não há o que responder.
-        if (error && !res.headersSent) next(new NotFoundError("Cover not found"));
-      });
+      sendStoredFile(res, next, { path: covers.pathOf(coverFile), cacheControl: IMAGE_CACHE_CONTROL, notFoundMessage: "Cover not found" });
+    },
+    artistImage: async (req, res, next) => {
+      const imageFile = await queries.findArtistImageFile(idParam(req));
+      if (!imageFile) throw new NotFoundError("Image not found");
+      sendStoredFile(res, next, { path: covers.pathOf(imageFile), cacheControl: IMAGE_CACHE_CONTROL, notFoundMessage: "Image not found" });
     },
     musicAudio: async (req, res, next) => {
       const { audioFile } = await getMusicAudio.execute({
@@ -86,12 +85,8 @@ export function makeCatalogController(
         now: new Date(),
         isAdmin: res.locals.role === "admin",
       });
-      res.set("Cache-Control", AUDIO_CACHE_CONTROL);
-      // O sendFile responde a Range (206), que o <audio> usa para pular trechos; um arquivo que sumiu do disco vira 404.
-      res.sendFile(audio.pathOf(audioFile), (error) => {
-        // O <audio> cancela downloads o tempo todo (pular trecho, trocar de faixa): aí não há o que responder.
-        if (error && !res.headersSent) next(new NotFoundError("Audio not found"));
-      });
+      // O <audio> usa o Range (206) para pular trechos, e cancela downloads o tempo todo.
+      sendStoredFile(res, next, { path: audio.pathOf(audioFile), cacheControl: AUDIO_CACHE_CONTROL, notFoundMessage: "Audio not found" });
     },
     listGenres: async (_req, res) => {
       res.json(await queries.listGenres());
@@ -116,6 +111,8 @@ export interface AdminController {
   updateAlbum: RequestHandler;
   removeAlbum: RequestHandler;
   changeAlbumCover: RequestHandler;
+  changeArtistImage: RequestHandler;
+  removeArtistImage: RequestHandler;
   createGenre: RequestHandler;
   createArtist: RequestHandler;
   renameArtist: RequestHandler;
@@ -166,6 +163,13 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
     },
     changeAlbumCover: async (req, res) => {
       res.json(await catalog.changeAlbumCover(idParam(req), req.file?.buffer ?? null));
+    },
+    changeArtistImage: async (req, res) => {
+      // O receiveArtistImage deixa a imagem da parte "image" em req.file; sem ela, o domínio recusa.
+      res.json(await catalog.changeArtistImage(idParam(req), req.file?.buffer ?? null));
+    },
+    removeArtistImage: async (req, res) => {
+      res.json(await catalog.removeArtistImage(idParam(req)));
     },
     createGenre: async (req, res) => {
       res.status(201).json(await catalog.createGenre(req.body));

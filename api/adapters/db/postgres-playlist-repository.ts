@@ -13,13 +13,14 @@ interface PlaylistRow {
   created_at: Date;
   deleted_at: Date | null;
   liked_by_user_id: number | null;
+  cover_file: string | null;
   member_ids: number[];
   member_is_admin: boolean[];
 }
 
 // Os membros vêm na mesma linha, em dois arrays na mesma ordem (por user_id).
 const SELECT_ACTIVE = `
-  SELECT p.id, p.name, p.is_private, p.color, p.created_at, p.deleted_at, p.liked_by_user_id,
+  SELECT p.id, p.name, p.is_private, p.color, p.created_at, p.deleted_at, p.liked_by_user_id, p.cover_file,
     ARRAY(SELECT user_id FROM playlist_user WHERE playlist_id = p.id ORDER BY user_id) AS member_ids,
     ARRAY(SELECT is_admin FROM playlist_user WHERE playlist_id = p.id ORDER BY user_id) AS member_is_admin
   FROM playlists p
@@ -47,15 +48,25 @@ export class PostgresPlaylistRepository implements PlaylistRepository {
       await client.query("BEGIN");
       // `xmax = 0` só na linha recém-inserida: diz se a playlist é nova ou foi atualizada
       const { rows } = await client.query<{ is_new: boolean }>(
-        `INSERT INTO playlists (id, name, is_private, color, created_at, deleted_at, liked_by_user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO playlists (id, name, is_private, color, created_at, deleted_at, liked_by_user_id, cover_file)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            is_private = EXCLUDED.is_private,
            color = EXCLUDED.color,
-           deleted_at = EXCLUDED.deleted_at
+           deleted_at = EXCLUDED.deleted_at,
+           cover_file = EXCLUDED.cover_file
          RETURNING xmax = 0 AS is_new`,
-        [data.id, data.name, data.isPrivate, data.color, data.createdAt, data.deletedAt, data.likedByUserId ?? null],
+        [
+          data.id,
+          data.name,
+          data.isPrivate,
+          data.color,
+          data.createdAt,
+          data.deletedAt,
+          data.likedByUserId ?? null,
+          data.coverFile ?? null,
+        ],
       );
       // Os membros só entram na criação: uma cópia antiga salva depois (ao renomear, por
       // exemplo) não pode desfazer quem entrou ou saiu por addMember e removeMember (HU-19)
@@ -161,6 +172,7 @@ function toPlaylist(row: PlaylistRow): Playlist {
     createdAt: row.created_at,
     deletedAt: row.deleted_at,
     likedByUserId: row.liked_by_user_id,
+    coverFile: row.cover_file,
   });
 }
 

@@ -54,7 +54,7 @@ Para pular as perguntas, passe as respostas como argumentos: `bun start backend`
 
 Em produção, o site fica em https://zovic.com.br e a API em https://api.zovic.com.br.
 
-**Arquivos enviados pelo painel.** Os MP3 das músicas ficam em `AUDIO_DIR`, e as capas dos álbuns em `COVER_DIR`. Com `bun dev`, os padrões são `api/storage/audio/` e `api/storage/covers/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam nos volumes `audio` e `covers`, em `/data/audio` e `/data/covers`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esses volumes junto com o banco.
+**Arquivos enviados.** Os MP3 das músicas ficam em `AUDIO_DIR`, e as imagens (capas dos álbuns e das playlists e fotos dos artistas) em `COVER_DIR`. Com `bun dev`, os padrões são `api/storage/audio/` e `api/storage/covers/`, que o git ignora. Com a API no Docker (`frontend`, `full` ou o servidor), eles ficam nos volumes `audio` e `covers`, em `/data/audio` e `/data/covers`, e continuam lá depois de um `bun stop`. `docker compose down -v` apaga esses volumes junto com o banco.
 
 ## Comandos
 

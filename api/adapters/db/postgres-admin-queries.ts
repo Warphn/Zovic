@@ -1,9 +1,11 @@
 import type { Pool } from "pg";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
+import { versionedImageUrl } from "../../domain/shared/cover-image.ts";
 import type {
   AdminQueries,
   AlbumListItem,
   AdminUserItem,
+  ArtistListItem,
   CatalogQueries,
   MusicListItem,
   PlayLog,
@@ -16,13 +18,12 @@ const TOP_CONTENT = 10;
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
-/**
- * A versão é o nome do arquivo sem a extensão: muda a cada troca de capa, então o navegador pode
- * guardar a imagem em cache sem nunca mostrar a antiga. O nome em si não é segredo (é um UUID).
- */
 function coverUrlOf(albumId: number, coverFile: string): string {
-  const version = coverFile.slice(0, coverFile.lastIndexOf("."));
-  return `/api/albums/${albumId}/cover?v=${version}`;
+  return versionedImageUrl(`/api/albums/${albumId}/cover`, coverFile);
+}
+
+export function artistImageUrlOf(artistId: number, imageFile: string | null): string | null {
+  return imageFile === null ? null : versionedImageUrl(`/api/artists/${artistId}/image`, imageFile);
 }
 
 interface MusicRow {
@@ -88,11 +89,19 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     }));
   }
 
-  async listArtists(): Promise<{ id: number; name: string }[]> {
-    const { rows } = await this.pool.query<{ id: number; name: string }>(
-      "SELECT id, name FROM artist WHERE deleted_at IS NULL ORDER BY name, id",
+  async listArtists(): Promise<ArtistListItem[]> {
+    const { rows } = await this.pool.query<{ id: number; name: string; image_file: string | null }>(
+      "SELECT id, name, image_file FROM artist WHERE deleted_at IS NULL ORDER BY name, id",
     );
-    return rows;
+    return rows.map((row) => ({ id: row.id, name: row.name, imageUrl: artistImageUrlOf(row.id, row.image_file) }));
+  }
+
+  async findArtistImageFile(artistId: number): Promise<string | null> {
+    const { rows } = await this.pool.query<{ image_file: string | null }>(
+      "SELECT image_file FROM artist WHERE id = $1 AND deleted_at IS NULL",
+      [artistId],
+    );
+    return rows[0]?.image_file ?? null;
   }
 
   async listAlbums({ includeExplicit }: { includeExplicit: boolean }): Promise<AlbumListItem[]> {

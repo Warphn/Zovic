@@ -75,6 +75,7 @@ Arquivo: `api/domain/entities/playlist.ts` · Tabelas: `playlists`, `playlist_us
 | `name` | `string` | Até 150 caracteres. |
 | `isPrivate` | `boolean` | Padrão `false`. |
 | `color` | `string \| null` | Hex `#RRGGBB`, opcional. |
+| `coverFile` | `string \| null` | Nome da imagem de capa no armazenamento (HU-35). Opcional: a playlist nasce sem capa. |
 | `members` | `{ userId, isAdmin }[]` | Quem cria vira o primeiro membro, como admin. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
@@ -89,9 +90,10 @@ Arquivo: `api/domain/entities/playlist.ts` · Tabelas: `playlists`, `playlist_us
 | `removeMember(userId)` | Remove o membro. Recusa quem não é membro e **não deixa sair o último admin**. |
 | `promote(userId)` | Torna o membro admin. |
 | `createLikedSongs({ id, userId, now? })` | Cria a Músicas Curtidas da conta (HU-34): privada, com o nome `LIKED_SONGS_NAME` e a cor `LIKED_SONGS_COLOR` fixos e a conta como admin. |
-| `isLikedSongs` | `true` na Músicas Curtidas. Nela, `rename`, `changeColor`, `setPrivate`, `delete` e `addMember` lançam `BusinessRuleError`: ela só muda pela curtida (`LikeMusic` e `UnlikeMusic`, em `liked-songs.ts`). |
+| `isLikedSongs` | `true` na Músicas Curtidas. Nela, `rename`, `changeColor`, `changeCover`, `removeCover`, `setPrivate`, `delete` e `addMember` lançam `BusinessRuleError`: ela só muda pela curtida (`LikeMusic` e `UnlikeMusic`, em `liked-songs.ts`). |
 | `rename(name)` | Troca o nome. |
 | `changeColor(color)` | Troca a cor (`null` tira a cor). |
+| `changeCover(coverFile)` / `removeCover()` | Põe ou troca a capa, e tira a capa. Recusa nome de arquivo vazio. |
 | `setPrivate(isPrivate)` | Torna a playlist privada ou pública. |
 | `delete(now?)` | Soft delete. |
 
@@ -123,6 +125,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 | --- | --- | --- |
 | `id` | `number` | |
 | `name` | `string` | Até 255 caracteres. |
+| `imageFile` | `string \| null` | Nome da foto no armazenamento (HU-36). Opcional: o artista nasce sem foto. |
 | `createdAt` / `deletedAt` | `Date` / `Date \| null` | |
 
 | Função | O que faz |
@@ -131,6 +134,7 @@ Arquivo: `api/domain/entities/artist.ts` · Tabela: `artist`
 | `restore(dados)` | Reconstrói a partir do banco. |
 | `toData()` | Dados do artista. |
 | `rename(name)` | Troca o nome. |
+| `changeImage(imageFile)` / `removeImage()` | Põe ou troca a foto, e tira a foto. Recusa nome de arquivo vazio. |
 | `delete(now?)` | Soft delete. |
 
 ### Album
@@ -232,19 +236,19 @@ Os helpers comuns aos repositórios ficam em `api/adapters/db/sql.ts`:
 
 ## Armazenamento de arquivos
 
-A porta `FileStorage` (`api/domain/ports/file-storage.ts`) guarda os arquivos enviados pelo painel: os MP3 das músicas e as capas dos álbuns. O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile` e em `Album.coverFile`.
+A porta `FileStorage` (`api/domain/ports/file-storage.ts`) guarda os arquivos enviados: os MP3 das músicas e as imagens (capas dos álbuns e das playlists e fotos dos artistas). O domínio só conhece o nome que ela devolve, e é esse nome que fica em `Music.audioFile`, `Album.coverFile`, `Playlist.coverFile` e `Artist.imageFile`.
 
 | Função | O que faz |
 | --- | --- |
 | `save(bytes, extension)` | Grava o arquivo e devolve o nome com que ele foi guardado, como `<uuid>.mp3`. |
 | `remove(fileName)` | Apaga o arquivo. Um nome que não existe não é erro. |
 
-A implementação, `LocalFileStorage` (`api/adapters/storage/local-file-storage.ts`), grava num diretório (`AUDIO_DIR` para os áudios, `COVER_DIR` para as capas) com um nome gerado e descarta o nome enviado pelo admin. As regras conferem os primeiros bytes, sem confiar na extensão:
+A implementação, `LocalFileStorage` (`api/adapters/storage/local-file-storage.ts`), grava num diretório (`AUDIO_DIR` para os áudios, `COVER_DIR` para todas as imagens) com um nome gerado e descarta o nome enviado pelo admin. As regras conferem os primeiros bytes, sem confiar na extensão:
 
 - **Áudio** (`api/domain/shared/audio.ts`): `validateAudio(bytes)`, MP3 de até 20 MB.
-- **Capa** (`api/domain/shared/cover-image.ts`): `validateCover(bytes)`, JPEG, PNG ou WebP de até 2 MB. Ela devolve a extensão com que a imagem é guardada (`.jpg`, `.png` ou `.webp`).
+- **Imagem** (`api/domain/shared/cover-image.ts`): `validateCover(bytes, missingMessage?)`, JPEG, PNG ou WebP de até 2 MB, para as capas e as fotos. Ela devolve a extensão com que a imagem é guardada (`.jpg`, `.png` ou `.webp`). `missingMessage` é o erro de quando nenhuma imagem veio. `versionedImageUrl(path, fileName)` monta o endereço com a versão (`?v=`) que vai nas respostas.
 
-No `ManageCatalog.createMusic` e no `createAlbum`, o arquivo só vai para o disco depois das conferências. Se a música ou o álbum não chegar a ser salvo, o arquivo é apagado. No `changeAlbumCover`, a capa antiga só é apagada depois que o álbum foi salvo com a nova.
+No `ManageCatalog.createMusic` e no `createAlbum`, o arquivo só vai para o disco depois das conferências. Se a música ou o álbum não chegar a ser salvo, o arquivo é apagado. No `changeAlbumCover`, no `changeArtistImage` e no `ChangePlaylistCover` (`api/domain/use-cases/playlist-cover.ts`), a imagem antiga só é apagada depois que o registro foi salvo com a nova. O `removeArtistImage` e o `RemovePlaylistCover` apagam o arquivo depois de salvar o registro sem imagem.
 
 ## Portas de consulta
 

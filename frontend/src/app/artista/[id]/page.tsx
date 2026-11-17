@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { AddToPlaylistMenu } from "@/components/add-to-playlist-menu"
 import { AddToQueueButton } from "@/components/add-to-queue-button"
 import { AlbumCard } from "@/components/album-card"
+import { ArtistPhoto } from "@/components/artist-photo"
 import { TrackCommentsButton } from "@/components/comments/track-comments-button"
 import Header from "@/components/header"
 import { TrackLikeButton } from "@/components/track-like-button"
@@ -93,9 +94,14 @@ export default function ArtistPage() {
 
   return (
     <PageShell>
-      <p className="font-mono text-xs text-muted-foreground">Artista</p>
-      <h1 className="mt-2 text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">{artist.name}</h1>
-      <p className="mt-4 font-mono text-xs text-muted-foreground tabular-nums">{meta}</p>
+      <div className="flex items-center gap-6">
+        <ArtistPhoto artist={artist} className="size-24 text-3xl sm:size-28" />
+        <div className="min-w-0">
+          <p className="font-mono text-xs text-muted-foreground">Artista</p>
+          <h1 className="mt-2 text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">{artist.name}</h1>
+          <p className="mt-4 font-mono text-xs text-muted-foreground tabular-nums">{meta}</p>
+        </div>
+      </div>
 
       {/* Always rendered, so the live region exists before the first message */}
       <output

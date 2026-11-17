@@ -577,3 +577,99 @@ describe("capa do álbum", () => {
     expect((await putCover(userCookie, albumId, PNG)).status).toBe(403);
   });
 });
+
+/** Troca da foto do artista em multipart, com a imagem na parte `image`. */
+function putArtistImage(cookie: string, artistId: number, image: Uint8Array) {
+  const form = new FormData();
+  form.append("image", new File([image], "foto.png", { type: "image/png" }));
+  return fetch(`${url}/api/admin/artists/${artistId}/image`, { method: "PUT", headers: { Origin: ORIGIN, Cookie: cookie }, body: form });
+}
+
+async function listedArtistImageUrl(id: number): Promise<string | null | undefined> {
+  const listed = await json<{ id: number; imageUrl: string | null }[]>(await call("/artists", userCookie));
+  return listed.find((artist) => artist.id === id)?.imageUrl;
+}
+
+describe("foto do artista (HU-36)", () => {
+  let artistId: number;
+  let artistName: string;
+
+  beforeAll(async () => {
+    artistName = `${PREFIX} Fotografado${crypto.randomUUID().slice(0, 6)}`;
+    const artist = await json<{ id: number; hasImage: boolean }>(await call("/admin/artists", adminCookie, { method: "POST", body: { name: artistName } }));
+    artistId = artist.id;
+    created.artist.push(artistId);
+    expect(artist.hasImage).toBe(false);
+  });
+
+  it("critério 1: o admin envia a foto, e ela aparece na lista de artistas e na busca", async () => {
+    expect(await listedArtistImageUrl(artistId)).toBeNull();
+
+    const res = await putArtistImage(adminCookie, artistId, PNG);
+
+    expect(res.status).toBe(200);
+    const body = await json<{ hasImage: boolean }>(res);
+    expect(body).toMatchObject({ id: artistId, hasImage: true });
+    expect(body).not.toHaveProperty("imageFile");
+    const imageUrl = await listedArtistImageUrl(artistId);
+    expect(imageUrl).toMatch(new RegExp(`^/api/artists/${artistId}/image\\?v=`));
+
+    const found = await json<{ artists: { id: number; imageUrl: string | null }[] }>(
+      await call(`/search?q=${encodeURIComponent(artistName)}`, userCookie),
+    );
+    expect(found.artists.find((hit) => hit.id === artistId)?.imageUrl).toBe(imageUrl);
+
+    const image = await fetch(`${url}${imageUrl}`, { headers: { Cookie: userCookie } });
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toBe("image/png");
+    expect([...new Uint8Array(await image.arrayBuffer())]).toEqual([...PNG]);
+  });
+
+  it("troca a foto: a URL muda e o arquivo antigo sai do disco", async () => {
+    const before = await listedArtistImageUrl(artistId);
+    const filesBefore = await readdir(coverDir);
+
+    expect((await putArtistImage(adminCookie, artistId, PNG)).status).toBe(200);
+
+    expect(await listedArtistImageUrl(artistId)).not.toBe(before);
+    expect(await readdir(coverDir)).toHaveLength(filesBefore.length);
+  });
+
+  it("critério 3: quem não é admin recebe 403 ao trocar ou remover a foto", async () => {
+    const before = await listedArtistImageUrl(artistId);
+
+    expect((await putArtistImage(userCookie, artistId, PNG)).status).toBe(403);
+    expect((await call(`/admin/artists/${artistId}/image`, userCookie, { method: "DELETE" })).status).toBe(403);
+    expect(await listedArtistImageUrl(artistId)).toBe(before);
+  });
+
+  it("critério 4: um arquivo que não é imagem, ou acima de 2 MB, não muda a foto e diz o motivo", async () => {
+    const before = await listedArtistImageUrl(artistId);
+
+    const wrongType = await putArtistImage(adminCookie, artistId, MP3);
+    expect(wrongType.status).toBe(400);
+    expect(await json(wrongType)).toMatchObject({ message: "Cover image must be a JPEG, PNG or WebP" });
+
+    const tooLarge = await putArtistImage(adminCookie, artistId, audioFile([0x89, 0x50, 0x4e, 0x47], MAX_COVER_BYTES + 1));
+    expect(tooLarge.status).toBe(413);
+    expect(await json(tooLarge)).toMatchObject({ error: "IMAGE_TOO_LARGE" });
+
+    expect(await listedArtistImageUrl(artistId)).toBe(before);
+  });
+
+  it("critério 2: o admin remove a foto, e o artista volta a ficar sem imagem", async () => {
+    const filesBefore = await readdir(coverDir);
+
+    const res = await call(`/admin/artists/${artistId}/image`, adminCookie, { method: "DELETE" });
+
+    expect(res.status).toBe(200);
+    expect(await json(res)).toMatchObject({ hasImage: false });
+    expect(await listedArtistImageUrl(artistId)).toBeNull();
+    expect(await readdir(coverDir)).toHaveLength(filesBefore.length - 1);
+    expect((await fetch(`${url}/api/artists/${artistId}/image`, { headers: { Cookie: userCookie } })).status).toBe(404);
+  });
+
+  it("a rota da foto exige sessão", async () => {
+    expect((await fetch(`${url}/api/artists/${artistId}/image`)).status).toBe(401);
+  });
+});

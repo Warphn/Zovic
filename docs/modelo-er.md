@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261112_120000__Adiciona_numero_da_faixa.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261117_150000__Adiciona_imagem_da_playlist_e_do_artista.sql`).
 
 ### Diagrama gerado do banco
 
@@ -189,6 +189,7 @@ erDiagram
         timestamptz deleted_at
         timestamptz created_at
         int liked_by_user_id FK, UK "só na Músicas Curtidas"
+        varchar cover_file "nome da imagem, como <uuid>.png"
     }
     music_playlist {
         int music_id PK, FK
@@ -243,6 +244,7 @@ erDiagram
     artist {
         serial id PK
         varchar name
+        varchar image_file "nome da foto, como <uuid>.png"
         timestamptz created_at
         timestamptz deleted_at
     }
@@ -281,7 +283,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 
 | Tabela | O que guarda | Regras |
 | --- | --- | --- |
-| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional. `liked_by_user_id` só é preenchida na Músicas Curtidas (HU-34) e guarda a conta dona dela; é única, então cada conta tem uma só. Apagar a conta apaga a playlist. |
+| `playlists` | As playlists | `color` no formato `#RRGGBB`, opcional. `liked_by_user_id` só é preenchida na Músicas Curtidas (HU-34) e guarda a conta dona dela; é única, então cada conta tem uma só. Apagar a conta apaga a playlist. `cover_file` é o nome da imagem de capa no armazenamento (`COVER_DIR`), opcional (HU-35). |
 | `playlist_user` | Os membros de cada playlist e quem é admin | Toda playlist tem ao menos um membro |
 | `music_playlist` | As músicas de cada playlist, com a posição e a data em que entraram | `position` é única em cada playlist e pode ter buracos. A unicidade só é conferida no `COMMIT`, para a reordenação trocar as posições num `UPDATE` só. |
 
@@ -292,7 +294,7 @@ As colunas estão no diagrama. As tabelas abaixo dizem o que cada uma guarda e a
 | `musics` | As músicas | `duration > 0`. `streams` e `rating` (a média das avaliações ativas) são estatísticas da própria música. `audio_file` é o nome do MP3 no armazenamento (`AUDIO_DIR`) e fica nulo nas músicas antigas, sem áudio. `is_explicit` marca o conteúdo explícito (padrão `false`). |
 | `genre` | Os gêneros | Nome único entre os gêneros ativos. `color` obrigatória, no formato `#RRGGBB`. |
 | `album` | Os álbuns | `year >= 1900`. O limite "até o ano atual" fica no domínio. `cover_file` é o nome da imagem de capa no armazenamento (`COVER_DIR`). O ano e a capa são opcionais só nos álbuns antigos: todo álbum novo tem os dois. |
-| `artist` | Os artistas | |
+| `artist` | Os artistas | `image_file` é o nome da foto no armazenamento (`COVER_DIR`), opcional (HU-36). |
 | `artist_music` | Os artistas de cada música | Toda música tem ao menos um artista |
 | `album_artist` | Os artistas de cada álbum | Todo álbum tem ao menos um artista |
 | `album_music` | As faixas de cada álbum | `track_number > 0`, único dentro do álbum. A música entra como a última faixa, e editá-la não muda o número. Pode ter buracos: tirar uma música do álbum não renumera as outras. |

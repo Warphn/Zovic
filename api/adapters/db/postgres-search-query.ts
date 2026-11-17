@@ -8,6 +8,8 @@ import type {
   SearchQuery,
   SearchResults,
 } from "../../domain/ports/search-query.ts";
+import { playlistCoverUrlOf } from "../../domain/use-cases/playlist-output.ts";
+import { artistImageUrlOf } from "./postgres-admin-queries.ts";
 
 interface MusicRow {
   id: number;
@@ -20,6 +22,7 @@ interface ArtistRow {
   id: number;
   name: string;
   music_count: number;
+  image_file: string | null;
 }
 
 interface PlaylistRow {
@@ -28,6 +31,7 @@ interface PlaylistRow {
   is_private: boolean;
   color: string | null;
   music_count: number;
+  cover_file: string | null;
 }
 
 // Em todas as consultas, $1 é o termo já com os curingas do LIKE escapados, $2 é o limite. Em músicas e artistas, $3
@@ -60,7 +64,7 @@ const SEARCH_MUSICS = `
   LIMIT $2`;
 
 const SEARCH_ARTISTS = `
-  SELECT a.id, a.name,
+  SELECT a.id, a.name, a.image_file,
          (SELECT count(*)::int
           FROM artist_music am
           JOIN musics m ON m.id = am.music_id AND m.deleted_at IS NULL
@@ -74,7 +78,7 @@ const SEARCH_ARTISTS = `
 
 // Mesma regra de visibilidade do GET /playlists/:id: públicas, ou privadas de que $3 é membro.
 const SEARCH_PLAYLISTS = `
-  SELECT p.id, p.name, p.is_private, p.color,
+  SELECT p.id, p.name, p.is_private, p.color, p.cover_file,
          (SELECT count(*)::int
           FROM music_playlist mp
           JOIN musics m ON m.id = mp.music_id AND m.deleted_at IS NULL
@@ -118,9 +122,16 @@ function toMusicHit(row: MusicRow): MusicHit {
 }
 
 function toArtistHit(row: ArtistRow): ArtistHit {
-  return { id: row.id, name: row.name, musicCount: row.music_count };
+  return { id: row.id, name: row.name, musicCount: row.music_count, imageUrl: artistImageUrlOf(row.id, row.image_file) };
 }
 
 function toPlaylistHit(row: PlaylistRow): PlaylistHit {
-  return { id: row.id, name: row.name, isPrivate: row.is_private, color: row.color, musicCount: row.music_count };
+  return {
+    id: row.id,
+    name: row.name,
+    isPrivate: row.is_private,
+    color: row.color,
+    musicCount: row.music_count,
+    coverUrl: playlistCoverUrlOf(row.id, row.cover_file),
+  };
 }

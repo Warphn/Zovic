@@ -77,6 +77,25 @@ describe("playlist apagada", () => {
     playlist.delete(now);
     expect(playlist.deletedAt).toEqual(now);
     expect(() => playlist.rename("Jazz")).toThrow(BusinessRuleError);
+    expect(() => playlist.changeCover("capa.png")).toThrow(BusinessRuleError);
+  });
+});
+
+// HU-35: a capa é opcional, e a playlist sem capa mostra as iniciais sobre a cor
+describe("capa da playlist", () => {
+  it("começa sem capa, troca e remove", () => {
+    const playlist = Playlist.create(valid);
+    expect(playlist.coverFile).toBeNull();
+
+    playlist.changeCover("capa.png");
+    expect(playlist.coverFile).toBe("capa.png");
+
+    playlist.removeCover();
+    expect(playlist.coverFile).toBeNull();
+  });
+
+  it("recusa um nome de arquivo vazio", () => {
+    expect(() => Playlist.create(valid).changeCover(" ")).toThrow(ValidationError);
   });
 });
 // HU-34: a playlist fixa de cada conta, alimentada pela curtida
@@ -103,7 +122,10 @@ describe("Músicas Curtidas", () => {
     expect(() => likedSongs.setPrivate(false)).toThrow(BusinessRuleError);
     expect(() => likedSongs.delete(now)).toThrow(BusinessRuleError);
     expect(() => likedSongs.addMember(8)).toThrow(BusinessRuleError);
+    expect(() => likedSongs.changeCover("capa.png")).toThrow(BusinessRuleError);
+    expect(() => likedSongs.removeCover()).toThrow(BusinessRuleError);
     expect(likedSongs.name).toBe("Músicas Curtidas");
+    expect(likedSongs.coverFile).toBeNull();
   });
 
   it("uma playlist comum não é a Músicas Curtidas", () => {

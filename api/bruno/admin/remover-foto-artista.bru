@@ -1,0 +1,22 @@
+meta {
+  name: Tirar a foto do artista
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/artists/{{artistId}}/image
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+}
+
+tests {
+  test("responde 200 sem foto", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().hasImage).to.equal(false);
+  });
+}

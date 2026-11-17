@@ -532,6 +532,93 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/playlists/{id}/cover": {
+      get: {
+        tags: ["Playlists"],
+        summary: "Entrega a imagem de capa de uma playlist",
+        description:
+          "A imagem (HU-35), com o `Content-Type` do formato (`image/jpeg`, `image/png` ou `image/webp`). Use o `coverUrl` da playlist, que tem a versão no fim e muda a cada troca. Quem vê a playlist vê a capa: a de uma playlist privada só sai para o dono e os colaboradores.",
+        operationId: "getPlaylistCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { $ref: "#/components/parameters/PlaylistId" },
+          { name: "v", in: "query", required: false, description: "Versão da capa, só para o cache do navegador.", schema: { type: "string" } },
+        ],
+        responses: {
+          "200": { description: "A imagem de capa", content: { "image/png": { schema: { type: "string", format: "binary" } }, "image/jpeg": { schema: { type: "string", format: "binary" } }, "image/webp": { schema: { type: "string", format: "binary" } } } },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Playlist inexistente, apagada, privada de outra pessoa, ou sem capa",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Cover not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      put: {
+        tags: ["Playlists"],
+        summary: "Põe ou troca a imagem de capa da playlist",
+        description:
+          "Recebe `multipart/form-data` com a parte `cover` (HU-35). Só o dono da playlist troca a capa. O formato é conferido pelos primeiros bytes do arquivo. A capa antiga só é apagada depois que a playlist foi salva com a nova. A Músicas Curtidas não aceita capa.",
+        operationId: "changePlaylistCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["cover"],
+                properties: { cover: { type: "string", format: "binary", description: "A imagem de capa (JPEG, PNG ou WebP), de até 2 MB." } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "A playlist com a capa nova", content: { "application/json": { schema: { $ref: "#/components/schemas/Playlist" } } } },
+          "400": {
+            description:
+              "Id inválido; sem a parte `cover`, ou com um arquivo que não é JPEG, PNG ou WebP; arquivo numa parte que não é `cover`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`)",
+            content: { "application/json": { schema: errorResponse("VALIDATION_ERROR", "Cover image must be a JPEG, PNG or WebP") } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Quem pede não é o dono da playlist (o colaborador também não troca a capa), ou não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner changes its cover") } },
+          },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("COVER_TOO_LARGE", "Cover image must be at most 2 MB") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Playlists"],
+        summary: "Tira a imagem de capa da playlist",
+        description:
+          "Só o dono tira a capa (HU-35). Sem capa, a playlist volta a mostrar as iniciais sobre a cor dela. Tirar a capa de uma playlist que não tem não é erro.",
+        operationId: "removePlaylistCover",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/PlaylistId" }],
+        responses: {
+          "200": { description: "A playlist sem capa", content: { "application/json": { schema: { $ref: "#/components/schemas/Playlist" } } } },
+          "400": { $ref: "#/components/responses/InvalidPlaylistId" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": {
+            description: "Quem pede não é o dono da playlist, ou não tem assinatura ativa",
+            content: { "application/json": { schema: errorResponse("FORBIDDEN", "Only the playlist owner changes its cover") } },
+          },
+          "404": { $ref: "#/components/responses/PlaylistNotFound" },
+          "409": { $ref: "#/components/responses/LikedSongsUnchangeable" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/musics/{musicId}/comments": {
       get: {
         tags: ["Comentários"],
@@ -1335,6 +1422,48 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/artists": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Lista os artistas do catálogo",
+        description: "Artistas ativos, por nome, com o endereço da foto (HU-36).",
+        operationId: "listArtists",
+        security: [{ cookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Os artistas",
+            content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/ArtistListItem" } } } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/artists/{id}/image": {
+      get: {
+        tags: ["Catálogo"],
+        summary: "Entrega a foto de um artista",
+        description:
+          "A imagem (HU-36), com o `Content-Type` do formato (`image/jpeg`, `image/png` ou `image/webp`). Use o `imageUrl` da `GET /api/artists` ou da busca, que tem a versão no fim e muda a cada troca de foto.",
+        operationId: "getArtistImage",
+        security: [{ cookieAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+          { name: "v", in: "query", required: false, description: "Versão da foto, só para o cache do navegador.", schema: { type: "string" } },
+        ],
+        responses: {
+          "200": { description: "A foto", content: { "image/png": { schema: { type: "string", format: "binary" } }, "image/jpeg": { schema: { type: "string", format: "binary" } }, "image/webp": { schema: { type: "string", format: "binary" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/SubscriptionRequired" },
+          "404": {
+            description: "Artista inexistente, removido ou sem foto",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Image not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
     "/api/albums": {
       get: {
         tags: ["Catálogo"],
@@ -1587,6 +1716,66 @@ export const openApiDocument = {
           "404": {
             description: "Artista inexistente ou removido",
             content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist 7 not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/artists/{id}/image": {
+      put: {
+        tags: ["Admin"],
+        summary: "Põe ou troca a foto de um artista",
+        description:
+          "Recebe `multipart/form-data` com a parte `image` (HU-36). O formato é conferido pelos primeiros bytes do arquivo. A foto antiga só é apagada depois que o artista foi salvo com a nova.",
+        operationId: "changeArtistImage",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["image"],
+                properties: { image: { type: "string", format: "binary", description: "A foto (JPEG, PNG ou WebP), de até 2 MB." } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "O artista com a foto nova", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "400": {
+            description:
+              "Sem a parte `image`, ou com um arquivo que não é JPEG, PNG ou WebP; arquivo numa parte que não é `image`, mais de um arquivo ou multipart malformado (`INVALID_UPLOAD`)",
+            content: { "application/json": { schema: errorResponse("VALIDATION_ERROR", "Cover image must be a JPEG, PNG or WebP") } },
+          },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
+          },
+          "413": {
+            description: "A imagem passa de 2 MB",
+            content: { "application/json": { schema: errorResponse("IMAGE_TOO_LARGE", "Image must be at most 2 MB") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        summary: "Tira a foto de um artista",
+        description: "Sem foto, o artista volta a aparecer com as iniciais (HU-36). Tirar a foto de um artista que não tem não é erro.",
+        operationId: "removeArtistImage",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "200": { description: "O artista sem foto", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
           },
           "500": { $ref: "#/components/responses/InternalError" },
         },
@@ -2105,7 +2294,7 @@ export const openApiDocument = {
       },
       Playlist: {
         type: "object",
-        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics", "isLikedSongs"],
+        required: ["id", "name", "isPrivate", "color", "createdAt", "isAdmin", "canEditMusics", "isLikedSongs", "coverUrl"],
         properties: {
           id: { type: "integer", example: 42 },
           name: { type: "string", example: "Rock nacional" },
@@ -2128,6 +2317,11 @@ export const openApiDocument = {
             description:
               "Se é a Músicas Curtidas da conta (HU-34): privada, criada sob demanda, alimentada só pela curtida. Ela não é renomeada, apagada, reordenada nem compartilhada, e não aceita música pelo menu (409).",
             example: false,
+          },
+          coverUrl: {
+            type: ["string", "null"],
+            description: "Endereço da capa (HU-35), relativo à API, com a versão no fim. null na playlist sem capa.",
+            example: "/api/playlists/42/cover?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
           },
         },
       },
@@ -2292,22 +2486,45 @@ export const openApiDocument = {
       },
       ArtistHit: {
         type: "object",
-        required: ["id", "name", "musicCount"],
+        required: ["id", "name", "musicCount", "imageUrl"],
         properties: {
           id: { type: "integer", example: 3 },
           name: { type: "string", example: "Elis Regina" },
           musicCount: { type: "integer", description: "Músicas ativas do artista.", example: 7 },
+          imageUrl: {
+            type: ["string", "null"],
+            description: "Endereço da foto (HU-36), relativo à API, com a versão no fim. null no artista sem foto.",
+            example: "/api/artists/3/image?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
         },
       },
       PlaylistHit: {
         type: "object",
-        required: ["id", "name", "isPrivate", "color", "musicCount"],
+        required: ["id", "name", "isPrivate", "color", "musicCount", "coverUrl"],
         properties: {
           id: { type: "integer", example: 42 },
           name: { type: "string", example: "Água fresca" },
           isPrivate: { type: "boolean", example: false },
           color: { type: ["string", "null"], example: "#1DB954" },
           musicCount: { type: "integer", description: "Músicas ativas da playlist.", example: 10 },
+          coverUrl: {
+            type: ["string", "null"],
+            description: "Endereço da capa (HU-35), relativo à API, com a versão no fim. null na playlist sem capa.",
+            example: "/api/playlists/42/cover?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
+        },
+      },
+      ArtistListItem: {
+        type: "object",
+        required: ["id", "name", "imageUrl"],
+        properties: {
+          id: { type: "integer", example: 3 },
+          name: { type: "string", example: "Elis Regina" },
+          imageUrl: {
+            type: ["string", "null"],
+            description: "Endereço da foto (HU-36), relativo à API, com a versão no fim. null no artista sem foto.",
+            example: "/api/artists/3/image?v=3f2c9a1e-7b4d-4c8e-9a51-2d6e0f8b1c77",
+          },
         },
       },
       MusicListItem: {
@@ -2426,6 +2643,17 @@ export const openApiDocument = {
           year: { type: ["integer", "null"], example: 2018 },
           artistIds: { type: "array", items: { type: "integer" }, example: [1] },
           hasCover: { type: "boolean", example: true },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+        },
+      },
+      AdminArtist: {
+        type: "object",
+        required: ["id", "name", "hasImage", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 3 },
+          name: { type: "string", example: "Elis Regina" },
+          hasImage: { type: "boolean", description: "Se o artista tem foto (HU-36). O nome do arquivo não sai da API.", example: true },
           createdAt: { type: "string", format: "date-time" },
           deletedAt: { type: ["string", "null"], format: "date-time", example: null },
         },

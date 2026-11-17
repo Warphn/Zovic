@@ -1,10 +1,17 @@
 import type { RequestHandler } from "express";
+import type { LocalFileStorage } from "../storage/local-file-storage.ts";
+import { IMAGE_CACHE_CONTROL, sendStoredFile } from "./send-stored-file.ts";
 import type { AddMusicToPlaylistUseCase } from "../../domain/use-cases/add-music-to-playlist.ts";
 import type { CreatePlaylistUseCase } from "../../domain/use-cases/create-playlist.ts";
 import type { DeletePlaylistUseCase } from "../../domain/use-cases/delete-playlist.ts";
 import type { GetPlaylistUseCase } from "../../domain/use-cases/get-playlist.ts";
 import type { ListMyPlaylistsUseCase } from "../../domain/use-cases/list-my-playlists.ts";
 import type { ListPlaylistMusicsUseCase } from "../../domain/use-cases/list-playlist-musics.ts";
+import type {
+  ChangePlaylistCoverUseCase,
+  GetPlaylistCoverUseCase,
+  RemovePlaylistCoverUseCase,
+} from "../../domain/use-cases/playlist-cover.ts";
 import type { RemoveMusicFromPlaylistUseCase } from "../../domain/use-cases/remove-music-from-playlist.ts";
 import type { ReorderPlaylistMusicsUseCase } from "../../domain/use-cases/reorder-playlist-musics.ts";
 import type {
@@ -27,6 +34,9 @@ export interface PlaylistUseCases {
   listCollaborators: ListCollaboratorsUseCase;
   addCollaborator: AddCollaboratorUseCase;
   removeCollaborator: RemoveCollaboratorUseCase;
+  getPlaylistCover: GetPlaylistCoverUseCase;
+  changePlaylistCover: ChangePlaylistCoverUseCase;
+  removePlaylistCover: RemovePlaylistCoverUseCase;
 }
 
 export interface PlaylistController {
@@ -42,10 +52,13 @@ export interface PlaylistController {
   listCollaborators: RequestHandler;
   addCollaborator: RequestHandler;
   removeCollaborator: RequestHandler;
+  cover: RequestHandler;
+  changeCover: RequestHandler;
+  removeCover: RequestHandler;
 }
 
 // `:id`, `:musicId` e `:userId` já passaram pelo validateParams; o corpo, pelo validateBody.
-export function makePlaylistController(useCases: PlaylistUseCases): PlaylistController {
+export function makePlaylistController(useCases: PlaylistUseCases, covers: LocalFileStorage): PlaylistController {
   return {
     create: async (req, res) => {
       const playlist = await useCases.createPlaylist.execute({
@@ -172,6 +185,35 @@ export function makePlaylistController(useCases: PlaylistUseCases): PlaylistCont
       });
 
       res.sendStatus(204);
+    },
+
+    cover: async (req, res, next) => {
+      const { coverFile } = await useCases.getPlaylistCover.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+      });
+
+      sendStoredFile(res, next, { path: covers.pathOf(coverFile), cacheControl: IMAGE_CACHE_CONTROL, notFoundMessage: "Cover not found" });
+    },
+
+    changeCover: async (req, res) => {
+      // O receiveCover deixa a imagem da parte "cover" em req.file; sem ela, o domínio recusa.
+      const playlist = await useCases.changePlaylistCover.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+        cover: req.file?.buffer ?? null,
+      });
+
+      res.json(playlist);
+    },
+
+    removeCover: async (req, res) => {
+      const playlist = await useCases.removePlaylistCover.execute({
+        userId: res.locals.userId,
+        playlistId: Number(req.params.id),
+      });
+
+      res.json(playlist);
     },
   };
 }

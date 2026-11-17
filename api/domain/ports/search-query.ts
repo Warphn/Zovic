@@ -20,6 +20,8 @@ export interface ArtistHit {
   name: string;
   /** Músicas ativas do artista. */
   musicCount: number;
+  /** Caminho da foto na API; nulo no artista sem foto (HU-36). */
+  imageUrl: string | null;
 }
 
 export interface PlaylistHit {
@@ -29,6 +31,8 @@ export interface PlaylistHit {
   color: string | null;
   /** Músicas ativas da playlist. */
   musicCount: number;
+  /** Caminho da capa na API; nulo na playlist sem capa (HU-35). */
+  coverUrl: string | null;
 }
 
 export interface SearchResults {

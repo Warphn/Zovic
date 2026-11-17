@@ -44,9 +44,16 @@ export const receiveAudio = receiveFile({
   tooLarge: { error: "AUDIO_TOO_LARGE", message: "Audio file must be at most 20 MB" },
 });
 
-/** A imagem da parte `cover`, no cadastro e na troca de capa do álbum. */
+/** A imagem da parte `cover`, no cadastro e na troca de capa do álbum e na capa da playlist. */
 export const receiveCover = receiveFile({
   field: "cover",
   maxBytes: MAX_COVER_BYTES,
   tooLarge: { error: "COVER_TOO_LARGE", message: "Cover image must be at most 2 MB" },
+});
+
+/** A foto da parte `image`, na troca de foto do artista; o limite é o mesmo da capa. */
+export const receiveArtistImage = receiveFile({
+  field: "image",
+  maxBytes: MAX_COVER_BYTES,
+  tooLarge: { error: "IMAGE_TOO_LARGE", message: "Image must be at most 2 MB" },
 });

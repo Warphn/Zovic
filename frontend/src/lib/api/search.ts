@@ -14,8 +14,10 @@ export interface SearchMusic {
 
 export interface SearchResults {
   musics: SearchMusic[]
-  artists: { id: number; name: string; musicCount: number }[]
-  playlists: { id: number; name: string; isPrivate: boolean; color: string | null; musicCount: number }[]
+  /** `imageUrl`: API path of the artist's photo, or null (HU-36). */
+  artists: { id: number; name: string; musicCount: number; imageUrl: string | null }[]
+  /** `coverUrl`: API path of the playlist's cover, or null (HU-35). */
+  playlists: { id: number; name: string; isPrivate: boolean; color: string | null; musicCount: number; coverUrl: string | null }[]
 }
 
 /** Most items per group the API returns (SEARCH_LIMIT.max in the API). */

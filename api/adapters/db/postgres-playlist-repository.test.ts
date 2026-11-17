@@ -145,7 +145,19 @@ describe("PostgresPlaylistRepository", () => {
       createdAt: new Date("2026-01-01T12:00:00Z"),
       deletedAt: null,
       likedByUserId: null,
+      coverFile: null,
     });
+  });
+
+  it("grava, troca e tira a capa (HU-35)", async () => {
+    const playlist = await newPlaylist(userId, "Com capa");
+    playlist.changeCover("capa.png");
+    await repository.save(playlist);
+    expect((await repository.findById(playlist.id))?.coverFile).toBe("capa.png");
+
+    playlist.removeCover();
+    await repository.save(playlist);
+    expect((await repository.findById(playlist.id))?.coverFile).toBeNull();
   });
 
   it("findById e listByUser ignoram playlists apagadas", async () => {

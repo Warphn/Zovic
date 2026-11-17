@@ -4,8 +4,8 @@ import { SEARCH_LIMIT, SearchCatalog } from "./search-catalog.ts";
 
 const RESULTS: SearchResults = {
   musics: [{ id: 1, name: "Águas de Março", duration: 212, artists: [{ id: 3, name: "Elis Regina" }] }],
-  artists: [{ id: 3, name: "Elis Regina", musicCount: 7 }],
-  playlists: [{ id: 42, name: "Água fresca", isPrivate: false, color: "#1DB954", musicCount: 10 }],
+  artists: [{ id: 3, name: "Elis Regina", musicCount: 7, imageUrl: null }],
+  playlists: [{ id: 42, name: "Água fresca", isPrivate: false, color: "#1DB954", musicCount: 10, coverUrl: null }],
 };
 
 class FakeSearchQuery implements SearchQuery {
