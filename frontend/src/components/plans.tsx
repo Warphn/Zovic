@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { CheckIcon } from "@/components/icons"
 import { buttonVariants } from "./ui/button"
 import { describePlanSize, formatPlanPrice, PLAN_TYPES } from "@/lib/subscription/rules"
 import { cn } from "@/lib/utils"
@@ -31,9 +32,7 @@ export default function Plans() {
               <ul className="mt-6 flex-1 space-y-2 text-sm text-muted-foreground">
                 {plan.perks.map((perk) => (
                   <li key={perk} className="flex gap-2">
-                    <span aria-hidden="true" className="text-primary">
-                      ✓
-                    </span>
+                    <CheckIcon size={16} className="mt-0.5 text-primary" />
                     {perk}
                   </li>
                 ))}

@@ -32,7 +32,7 @@ export function FamilyManager() {
   return (
     <section aria-labelledby="family-members" className="mt-6 rounded-2xl bg-surface/70 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="family-members" className="text-xl font-bold tracking-tight">
+        <h2 id="family-members" className="text-xl font-medium tracking-[-0.02em]">
           Pessoas do plano
         </h2>
         <p className="text-sm text-muted-foreground">

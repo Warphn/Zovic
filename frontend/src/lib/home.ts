@@ -10,10 +10,6 @@ export const RECENT_COUNT = 5
 export const PLAYLIST_TILE_COUNT = 4
 export const NEWEST_ALBUM_COUNT = 4
 
-const MORNING_START_HOUR = 5
-const AFTERNOON_START_HOUR = 12
-const EVENING_START_HOUR = 18
-
 function isActive(music: CatalogMusic) {
   return music.deletedAt === null
 }
@@ -77,15 +73,7 @@ export function countByGenre(musics: CatalogMusic[]): Map<number, number> {
   return counts
 }
 
-export function greetingFor(hour: number): "Bom dia" | "Boa tarde" | "Boa noite" {
-  if (hour >= MORNING_START_HOUR && hour < AFTERNOON_START_HOUR) return "Bom dia"
-  if (hour >= AFTERNOON_START_HOUR && hour < EVENING_START_HOUR) return "Boa tarde"
-  return "Boa noite"
-}
 
-export function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] ?? ""
-}
 
 /** The id in a route like /album/[id]; null for anything but a positive integer. */
 export function parseRouteId(param: string | string[] | undefined): number | null {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { CommentIcon } from "@/components/icons"
 import { TrackComments } from "@/components/comments/track-comments"
-import { PauseIcon, PlayIcon } from "@/components/icons"
+import { CloseIcon, PauseIcon, PlayIcon } from "@/components/icons"
 import { useSession } from "@/lib/auth/client"
 import type { UserProfile } from "@/lib/comments-store"
 import { currentTrackOf, playOrToggleTrack, useCatalogTracks, usePlayback } from "@/lib/playback-store"
@@ -151,7 +151,7 @@ export function CommentsPanelProvider({ children }: { children: React.ReactNode 
           <div
             className={cn(
               "fixed bottom-0 inset-x-0 bg-surface/98 backdrop-blur-md border-t-2 border-primary/30 z-50 shadow-2xl ease-in-out flex flex-col overflow-hidden rounded-t-2xl",
-              !isDragging && "transition-all duration-300",
+              !isDragging && "transition-[height] duration-300",
             )}
             style={{ height: `min(${panelHeight}px, 85vh)` }}
           >
@@ -202,11 +202,11 @@ export function CommentsPanelProvider({ children }: { children: React.ReactNode 
                 <button
                   type="button"
                   onClick={close}
-                  className="size-8 rounded-md border border-border bg-background hover:bg-surface text-foreground flex items-center justify-center text-xs cursor-pointer transition-colors"
+                  className="size-8 rounded-md border border-border bg-background hover:bg-surface text-foreground flex items-center justify-center cursor-pointer transition-colors"
                   aria-label="Fechar painel de comentários"
                   title="Fechar comentários"
                 >
-                  ✕
+                  <CloseIcon size={16} />
                 </button>
               </div>
             </div>

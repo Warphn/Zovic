@@ -4,8 +4,8 @@ import * as React from "react"
 import { SearchIcon } from "@/components/icons"
 import { getContrastTextColor } from "@/components/color-picker"
 import { CoverPhoto } from "@/components/cover-photo"
+import { TrackAlbumCover } from "@/components/track-album-cover"
 import { getPlaylistInitials } from "@/lib/playlist-store"
-import { useTrackCover } from "@/lib/track-cover"
 import { normalize, type SearchSuggestion, type SuggestionKind } from "@/lib/search/suggestions"
 import { cn } from "@/lib/utils"
 
@@ -77,11 +77,6 @@ function Cover({ label, color, round, imageUrl }: { label: string; color: string
   )
 }
 
-/** A track shows the cover of its album; without one, its initials. */
-function TrackCover({ trackId, title }: { trackId: string; title: string }) {
-  const coverUrl = useTrackCover(trackId)
-  return <Cover label={getPlaylistInitials(title)} color="#171512" imageUrl={coverUrl} />
-}
 
 export const SUGGESTION_RENDERERS: SuggestionRenderers = {
   query: ({ suggestion, query }) => (
@@ -96,7 +91,7 @@ export const SUGGESTION_RENDERERS: SuggestionRenderers = {
   ),
   track: ({ suggestion, query, showKind }) => (
     <Row
-      media={<TrackCover trackId={suggestion.id} title={suggestion.title} />}
+      media={<TrackAlbumCover trackId={suggestion.id} className="size-9" />}
       title={<Highlight text={suggestion.title} query={query} />}
       subtitle={subtitleOf("Música", suggestion.artist, showKind)}
     />

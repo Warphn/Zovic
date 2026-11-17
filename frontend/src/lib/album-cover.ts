@@ -1,12 +1,16 @@
-import { PRESET_COLORS } from "@/components/color-picker"
-
-// Albums have no cover image yet: the admin panel draws one from the name and a palette color.
+// An album without a cover image gets one drawn from its name and a color.
 
 export interface AlbumCover {
   initials: string
-  /** Hex color from the playlist palette; the same album always gets the same one. */
+  /** Hex color from ALBUM_COVER_COLORS; the same album always gets the same one. */
   color: string
 }
+
+/**
+ * The colors of a drawn cover: the app's own ink, red, teal and the browns of the paper, so a list
+ * of albums reads like a shelf of printed sleeves and not a rainbow.
+ */
+export const ALBUM_COVER_COLORS = ["#171512", "#d33a2c", "#1e7f82", "#565043", "#b9ad91"] as const
 
 const COVER_INITIALS_LENGTH = 2
 
@@ -20,6 +24,6 @@ function coverInitials(name: string): string {
 
 export function albumCover(album: { id: number; name: string }): AlbumCover {
   // By id, not by name: renaming the album keeps its color
-  const preset = PRESET_COLORS[album.id % PRESET_COLORS.length]
-  return { initials: coverInitials(album.name), color: preset.color }
+  const color = ALBUM_COVER_COLORS[album.id % ALBUM_COVER_COLORS.length] ?? ALBUM_COVER_COLORS[0]
+  return { initials: coverInitials(album.name), color }
 }

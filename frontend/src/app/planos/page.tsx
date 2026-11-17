@@ -1,5 +1,6 @@
 "use client"
 
+import { CheckIcon } from "@/components/icons"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -34,7 +35,7 @@ function PlansContent() {
 
   return (
     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 md:px-8 py-10">
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Planos</h1>
+      <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">Planos</h1>
       <p className="mt-2 text-sm text-muted-foreground">Escolha como você quer ouvir. Dá para cancelar quando quiser.</p>
 
       <div className="mt-6 space-y-3">
@@ -66,21 +67,19 @@ function PlansContent() {
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <h2 id={`plan-${plan.id}`} className="text-lg font-bold tracking-tight">
+                <h2 id={`plan-${plan.id}`} className="text-lg font-medium">
                   {plan.name}
                 </h2>
                 {current && <Badge className="text-[10px]">Seu plano</Badge>}
               </div>
               <p className="mt-3">
-                <span className="text-3xl font-black tabular-nums tracking-tight">{formatPlanPrice(plan.price)}</span>
+                <span className="text-3xl font-medium tabular-nums tracking-[-0.02em]">{formatPlanPrice(plan.price)}</span>
                 <span className="text-sm text-muted-foreground"> /mês</span>
               </p>
               <ul className="mt-4 flex-1 space-y-1.5 text-sm">
                 {plan.perks.map((perk) => (
                   <li key={perk} className="flex gap-2">
-                    <span aria-hidden="true" className="text-[var(--color-red)]">
-                      ✓
-                    </span>
+                    <CheckIcon size={16} className="mt-0.5 text-primary" />
                     {perk}
                   </li>
                 ))}

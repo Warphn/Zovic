@@ -107,7 +107,7 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
           >
             {/* Center icon indicator */}
             <svg
-              className={cn("size-4 transition-transform group-hover:scale-110", contrastClass)}
+              className={cn("size-4", contrastClass)}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -143,7 +143,7 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
             placeholder="#d33a2c"
             maxLength={7}
             aria-label="Código hexadecimal da cor"
-            className="font-mono text-xs tracking-widest uppercase pl-3 pr-9 bg-background/80"
+            className="font-mono text-xs uppercase pl-3 pr-9 bg-background/80"
           />
           <div
             className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 rounded-full border border-black/20"
@@ -165,8 +165,8 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
 
       {/* Preset Swatches Palette */}
       <div className="pt-1">
-        <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2">
-          Cores Curadas
+        <div className="text-xs text-muted-foreground mb-2">
+          Cores sugeridas
         </div>
         <div className="flex flex-wrap gap-2">
           {PRESET_COLORS.map((preset) => {
@@ -183,7 +183,7 @@ export function ColorPicker({ color, onChange, className }: ColorPickerProps) {
                 aria-label={`Selecionar cor ${preset.color}`}
                 aria-pressed={isSelected}
                 className={cn(
-                  "size-7 rounded-full border border-black/10 shadow-2xs transition-transform cursor-pointer hover:scale-110",
+                  "size-7 rounded-full border border-black/10 shadow-2xs cursor-pointer transition-shadow hover:ring-2 hover:ring-foreground/20",
                   isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
                 )}
                 style={{ backgroundColor: preset.color }}

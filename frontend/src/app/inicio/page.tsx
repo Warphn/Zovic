@@ -13,12 +13,9 @@ import { useAlbums, useCatalogMusics, useGenres } from "@/lib/api/catalog"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useHistory } from "@/lib/api/history"
 import { useRecommendations } from "@/lib/api/recommendations"
-import { useSession } from "@/lib/auth/client"
 import { formatDuration } from "@/lib/format-duration"
 import {
   countByGenre,
-  firstName,
-  greetingFor,
   NEWEST_ALBUM_COUNT,
   newestAlbums,
   PLAYLIST_TILE_COUNT,
@@ -102,36 +99,18 @@ function TrackText({ title, musicId, meta }: { title: string; musicId: number; m
   )
 }
 
-// The hour is the visitor's clock, read in the browser only: the server render has none, so the
-// first paint matches it and the greeting appears right after
-function subscribeToNothing() {
-  return () => {}
-}
-
-function currentHour() {
-  return new Date().getHours()
-}
-
-function noHourOnServer() {
-  return null
-}
-
-function Greeting() {
-  const { data: session } = useSession()
+// The page's title and what the catalog holds
+function Overview() {
   const musics = useCatalogMusics()
   const albums = useAlbums()
   const genres = useGenres()
-  const hour = React.useSyncExternalStore(subscribeToNothing, currentHour, noHourOnServer)
-
-  const name = firstName(session?.user.name ?? "")
-  const greeting = hour === null ? name : name ? `${greetingFor(hour)}, ${name}` : greetingFor(hour)
   const musicCount = musics.data?.filter((music) => music.deletedAt === null).length
   const albumCount = albums.data?.length
   const genreCount = genres.data?.length
 
   return (
     <div>
-      <h1 className="min-h-[1.05em] text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">{greeting}</h1>
+      <h1 className="text-3xl leading-[1.05] font-medium tracking-[-0.03em] sm:text-4xl">Início</h1>
       {musicCount !== undefined && albumCount !== undefined && genreCount !== undefined && (
         <p className="mt-3 font-mono text-xs text-muted-foreground tabular-nums">
           {musicCount} {musicCount === 1 ? "música" : "músicas"} · {albumCount} {albumCount === 1 ? "álbum" : "álbuns"} ·{" "}
@@ -318,13 +297,13 @@ function Genres() {
             <Link
               key={genre.id}
               href={`/genero/${genre.id}`}
-              className="rounded-xl border px-4 py-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
-              style={{
-                borderColor: genre.color,
-                background: `color-mix(in oklab, ${genre.color} 14%, transparent)`,
-              }}
+              // Neutral like the rest of the page; the genre's own color is the dot, as on its page
+              className="rounded-xl border border-border bg-surface px-4 py-5 transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
             >
-              <span className="block truncate text-sm font-medium">{genre.name}</span>
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: genre.color }} />
+                <span className="truncate">{genre.name}</span>
+              </span>
               <span className="mt-1 block font-mono text-xs text-muted-foreground tabular-nums">
                 {count} {count === 1 ? "música" : "músicas"}
               </span>
@@ -350,7 +329,7 @@ export default function HomePage() {
       <main className="flex-1 pt-16">
         <div className="mx-auto w-full max-w-6xl space-y-14 px-6 py-10 md:px-8">
           <div>
-            <Greeting />
+            <Overview />
             {/* Always rendered, so the live region exists before the first message */}
             <output
               className={

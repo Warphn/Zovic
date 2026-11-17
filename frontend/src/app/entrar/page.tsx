@@ -61,6 +61,7 @@ function SignInForm() {
     <AuthShell
       catSays="Demorou, hein?"
       title="Entrar"
+      titleImage={{ src: "/illustrations/title-entrar.png", width: 1379, height: 435 }}
       description="Acesse suas playlists e continue ouvindo de onde parou"
       footer={
         <>

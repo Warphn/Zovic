@@ -121,6 +121,9 @@ export const ThumbsDownIcon = svg(
   </>
 )
 export const DislikeIcon = ThumbsDownIcon
+export const CheckIcon = svg(<path d="M20 6 9 17l-5-5" />)
+export const FlagIcon = svg(<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" />)
+export const TrashIcon = svg(<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />)
 export const CommentIcon = svg(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />)
 
 export function VolumeIcon({ level, size = 16, className }: VolumeIconProps) {

@@ -4,8 +4,6 @@ import type { HistoryEntry } from "./api/history"
 import {
   albumsOfArtist,
   countByGenre,
-  firstName,
-  greetingFor,
   musicsOfGenre,
   newestAlbums,
   parseRouteId,
@@ -169,26 +167,6 @@ describe("countByGenre", () => {
         [2, 1],
       ])
     )
-  })
-})
-
-describe("greetingFor", () => {
-  it("follows the hour", () => {
-    expect([4, 5, 11, 12, 17, 18].map(greetingFor)).toEqual([
-      "Boa noite",
-      "Bom dia",
-      "Bom dia",
-      "Boa tarde",
-      "Boa tarde",
-      "Boa noite",
-    ])
-  })
-})
-
-describe("firstName", () => {
-  it("takes the first word", () => {
-    expect(firstName("  Ana Andrade ")).toBe("Ana")
-    expect(firstName("")).toBe("")
   })
 })
 

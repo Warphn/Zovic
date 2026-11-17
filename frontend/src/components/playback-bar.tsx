@@ -179,7 +179,7 @@ export function PlaybackBar({
             />
           ) : (
             <div
-              className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border border-black/10 shadow-2xs"
+              className="size-10 rounded-lg flex items-center justify-center font-medium text-xs shrink-0 border border-black/10 shadow-2xs"
               style={{ backgroundColor: color }}
             >
               <span className={cn(getContrastTextColor(color))}>{coverLabel}</span>
@@ -189,11 +189,11 @@ export function PlaybackBar({
         <div className="min-w-0 hidden sm:block">
           {/* The title and the album name open the album page */}
           {albumHref && track ? (
-            <Link href={albumHref} className="block truncate rounded-sm text-xs font-bold text-foreground hover:underline focus-visible:outline-2">
+            <Link href={albumHref} className="block truncate rounded-sm text-xs font-medium text-foreground hover:underline focus-visible:outline-2">
               {track.title}
             </Link>
           ) : (
-            <div className="font-bold text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
+            <div className="font-medium text-xs text-foreground truncate">{track?.title ?? "Nada tocando"}</div>
           )}
           {actionResult ? (
             <div className={cn("text-[11px] truncate", actionResult.ok ? "text-muted-foreground" : "text-destructive")}>
@@ -292,7 +292,7 @@ export function PlaybackBar({
           >
             <span className="w-full h-1.5 bg-border rounded-full overflow-hidden block">
               <span
-                className="h-full rounded-full transition-all block"
+                className="h-full rounded-full block"
                 style={{ width: `${progressPercent}%`, backgroundColor: color }}
               />
             </span>
