@@ -65,6 +65,24 @@ describe("request", () => {
       mock.restore()
     }
   })
+
+  // What the comments panel and the admin's artist form show for each refusal
+  it("translates the comments and repeated artist errors", async () => {
+    const translations: [number, string, string][] = [
+      [403, "Underage users cannot comment", "Só maiores de 18 anos podem comentar."],
+      [404, "Comment not found", "Esse comentário já foi apagado."],
+      [403, "You can only delete your own comments", "Você só pode apagar os seus próprios comentários."],
+      [409, "You have already reported this comment", "Você já denunciou este comentário."],
+      [409, "An artist with this name already exists", "Já existe um artista com esse nome."],
+    ]
+    for (const [status, apiMessage, shown] of translations) {
+      spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "ERROR", message: apiMessage }), { status })
+      )
+      await expect(request("/x")).rejects.toThrow(shown)
+      mock.restore()
+    }
+  })
 })
 
 describe("apiUrl", () => {

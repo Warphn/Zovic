@@ -1676,6 +1676,65 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/admin/artists": {
+      post: {
+        tags: ["Admin"],
+        summary: "Cadastra um artista",
+        description: "O nome é único entre os artistas ativos, sem diferenciar maiúsculas de minúsculas.",
+        operationId: "createArtist",
+        security: [{ cookieAuth: [] }],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/ArtistInput" } } } },
+        responses: {
+          "201": { description: "O artista criado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "400": { description: "Nome vazio ou longo demais", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "409": { $ref: "#/components/responses/ArtistNameTaken" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
+    "/api/admin/artists/{id}": {
+      patch: {
+        tags: ["Admin"],
+        summary: "Renomeia um artista",
+        description: "O novo nome segue a mesma regra do cadastro: único entre os ativos, sem diferenciar maiúsculas.",
+        operationId: "renameArtist",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/ArtistInput" } } } },
+        responses: {
+          "200": { description: "O artista renomeado", content: { "application/json": { schema: { $ref: "#/components/schemas/AdminArtist" } } } },
+          "400": { description: "Nome vazio ou longo demais", content: { "application/json": { schema: { $ref: "#/components/schemas/FieldValidationError" } } } },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
+          },
+          "409": { $ref: "#/components/responses/ArtistNameTaken" },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+      delete: {
+        tags: ["Admin"],
+        summary: "Remove um artista",
+        description: "Soft delete: o artista some das listas, e o nome dele fica livre para um novo cadastro.",
+        operationId: "deleteArtist",
+        security: [{ cookieAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          "204": { description: "Removido" },
+          "401": { $ref: "#/components/responses/Unauthenticated" },
+          "403": { $ref: "#/components/responses/NotPlatformAdmin" },
+          "404": {
+            description: "Artista inexistente ou já removido",
+            content: { "application/json": { schema: errorResponse("NOT_FOUND", "Artist not found") } },
+          },
+          "500": { $ref: "#/components/responses/InternalError" },
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -1744,6 +1803,12 @@ export const openApiDocument = {
           "application/json": { schema: errorResponse("FORBIDDEN", "Platform admin role required") },
         },
       },
+      ArtistNameTaken: {
+        description: "Já existe um artista ativo com esse nome (sem diferenciar maiúsculas)",
+        content: {
+          "application/json": { schema: errorResponse("BUSINESS_RULE_ERROR", "An artist with this name already exists") },
+        },
+      },
       SubscriptionRequired: {
         description: "A conta não tem assinatura ativa. Admins da plataforma passam sem assinatura",
         content: {
@@ -1788,6 +1853,21 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      ArtistInput: {
+        type: "object",
+        required: ["name"],
+        properties: { name: { type: "string", minLength: 1, maxLength: 255, example: "Lô Borges" } },
+      },
+      AdminArtist: {
+        type: "object",
+        required: ["id", "name", "createdAt", "deletedAt"],
+        properties: {
+          id: { type: "integer", example: 13 },
+          name: { type: "string", example: "Lô Borges" },
+          createdAt: { type: "string", format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time", example: null },
+        },
+      },
       Subscription: {
         type: "object",
         required: ["planId", "kind", "isManager", "startedAt"],

@@ -3,8 +3,20 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatTime, useComments, type CommentItem, type UserProfile } from "@/lib/comments-store"
+import { apiErrorMessage } from "@/lib/api/client"
+import {
+  useCreateComment,
+  useDeleteComment,
+  useMusicComments,
+  useReportComment,
+  type MusicComment,
+} from "@/lib/api/comments"
+import { formatTime, type UserProfile } from "@/lib/comments-store"
 import { cn } from "@/lib/utils"
+
+const MAX_COMMENT_LENGTH = 280
+/** Stable while the list loads, so the memos that depend on it don't recompute every render. */
+const NO_COMMENTS: MusicComment[] = []
 
 export interface TrackCommentsProps {
   track: {
@@ -20,6 +32,11 @@ export interface TrackCommentsProps {
 
 function clampSeconds(seconds: number, duration: number): number {
   return Math.max(0, Math.min(duration, Math.round(seconds)))
+}
+
+/** "17/11/2026, 14:05": the API sends the date in ISO. */
+function formatCommentDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
 }
 
 /* ---------------------------------------------------------------------------
@@ -157,11 +174,13 @@ export function TrackComments({
   currentPlaybackSec,
   onSeek,
 }: TrackCommentsProps) {
-  const { comments, addComment, deleteComment, reportComment } = useComments(
-    track.id,
-    user.id,
-    user.isUnderage,
-  )
+  // The panel's Track keeps the music's id as a string (lib/playlist-store.ts)
+  const musicId = Number(track.id)
+  const commentsQuery = useMusicComments(musicId)
+  const createComment = useCreateComment(musicId)
+  const deleteComment = useDeleteComment(musicId)
+  const reportComment = useReportComment()
+  const comments = commentsQuery.data ?? NO_COMMENTS
 
   const [commentText, setCommentText] = React.useState("")
   // null = comentário sem tempo; número = segundos da faixa ligados ao comentário
@@ -169,12 +188,12 @@ export function TrackComments({
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null)
 
   // Denúncia inline
-  const [reportingCommentId, setReportingCommentId] = React.useState<string | null>(null)
+  const [reportingCommentId, setReportingCommentId] = React.useState<number | null>(null)
   const [reportReason, setReportReason] = React.useState("")
   const [reportSuccessMsg, setReportSuccessMsg] = React.useState<string | null>(null)
 
   const charCount = commentText.length
-  const isOverLimit = charCount > 280
+  const isOverLimit = charCount > MAX_COMMENT_LENGTH
 
   // Marcas dos comentários que já têm tempo, para exibir na linha do tempo
   const timeMarkers = React.useMemo(
@@ -186,30 +205,24 @@ export function TrackComments({
     e.preventDefault()
     setErrorMsg(null)
 
-    try {
-      addComment(commentText, markedTime, user.name)
-      setCommentText("")
-      setMarkedTime(null)
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message)
-      } else {
-        setErrorMsg("Erro ao publicar comentário.")
-      }
-    }
+    createComment.mutate(
+      { comment: commentText.trim(), timestamp: markedTime },
+      {
+        onSuccess: () => {
+          setCommentText("")
+          setMarkedTime(null)
+        },
+        onError: (error) => setErrorMsg(apiErrorMessage(error)),
+      },
+    )
   }
 
-  const handleDelete = (commentId: string) => {
-    try {
-      deleteComment(commentId)
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message)
-      }
-    }
+  const handleDelete = (commentId: number) => {
+    setErrorMsg(null)
+    deleteComment.mutate(commentId, { onError: (error) => setErrorMsg(apiErrorMessage(error)) })
   }
 
-  const handleOpenReport = (commentId: string) => {
+  const handleOpenReport = (commentId: number) => {
     setReportingCommentId(commentId)
     setReportReason("")
     setReportSuccessMsg(null)
@@ -218,18 +231,20 @@ export function TrackComments({
 
   const handleSubmitReport = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!reportingCommentId) return
+    if (reportingCommentId === null) return
+    setErrorMsg(null)
 
-    try {
-      reportComment(reportingCommentId, reportReason)
-      setReportSuccessMsg("Denúncia registrada com sucesso. Analisaremos o conteúdo.")
-      setReportingCommentId(null)
-      setReportReason("")
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message)
-      }
-    }
+    reportComment.mutate(
+      { commentId: reportingCommentId, reason: reportReason.trim() },
+      {
+        onSuccess: () => {
+          setReportSuccessMsg("Denúncia registrada com sucesso. Analisaremos o conteúdo.")
+          setReportingCommentId(null)
+          setReportReason("")
+        },
+        onError: (error) => setErrorMsg(apiErrorMessage(error)),
+      },
+    )
   }
 
   // Se menor de idade, não renderiza absolutamente nada
@@ -289,18 +304,19 @@ export function TrackComments({
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               placeholder="Descreva o motivo da denúncia (máx 280 caracteres)..."
-              maxLength={280}
+              maxLength={MAX_COMMENT_LENGTH}
               required
               rows={2}
               className="w-full text-xs p-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-destructive resize-none"
             />
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground font-mono">
-                {reportReason.length}/280 caracteres
+                {reportReason.length}/{MAX_COMMENT_LENGTH} caracteres
               </span>
               <Button
                 type="submit"
                 size="sm"
+                disabled={!reportReason.trim() || reportComment.isPending}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs h-7 px-3 cursor-pointer"
               >
                 Confirmar Denúncia
@@ -312,13 +328,19 @@ export function TrackComments({
 
       {/* Lista rolável de comentários */}
       <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2.5 min-h-0">
-        {comments.length === 0 ? (
+        {commentsQuery.isPending ? (
+          <div className="text-center py-10 text-xs text-muted-foreground font-mono">Carregando comentários…</div>
+        ) : commentsQuery.isError ? (
+          <div role="alert" className="text-center py-10 text-xs text-destructive font-mono">
+            {apiErrorMessage(commentsQuery.error)}
+          </div>
+        ) : comments.length === 0 ? (
           <div className="text-center py-10 text-xs text-muted-foreground font-mono">
             Nenhum comentário ainda nesta faixa. Seja o primeiro a comentar!
           </div>
         ) : (
-          comments.map((item: CommentItem) => {
-            const isMine = item.userId === user.id
+          comments.map((item: MusicComment) => {
+            const isMine = item.isMine
             return (
               <div
                 key={item.id}
@@ -335,7 +357,7 @@ export function TrackComments({
                       </span>
                     )}
                     <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                      • {item.createdAt}
+                      • {formatCommentDate(item.createdAt)}
                     </span>
                   </div>
 
@@ -345,6 +367,7 @@ export function TrackComments({
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
+                        disabled={deleteComment.isPending}
                         title="Apagar meu comentário"
                         className="text-[11px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded cursor-pointer"
                       >
@@ -397,7 +420,7 @@ export function TrackComments({
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             placeholder="Escreva seu comentário sobre esta faixa (máx 280 caracteres)..."
-            maxLength={280}
+            maxLength={MAX_COMMENT_LENGTH}
             required
             rows={2}
             className="w-full text-xs p-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60"
@@ -440,13 +463,13 @@ export function TrackComments({
                 isOverLimit ? "text-destructive font-bold" : "text-muted-foreground",
               )}
             >
-              {charCount}/280
+              {charCount}/{MAX_COMMENT_LENGTH}
             </span>
 
             <Button
               type="submit"
               size="sm"
-              disabled={!commentText.trim() || isOverLimit}
+              disabled={!commentText.trim() || isOverLimit || createComment.isPending}
               className="h-7 text-xs font-semibold px-4 cursor-pointer"
             >
               Comentar
