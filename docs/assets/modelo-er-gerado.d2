@@ -88,6 +88,7 @@ catalogo: "Catálogo" {
     name: "varchar(255)"
     created_at: "timestamptz"
     deleted_at: "timestamptz"
+    image_file: "varchar(255)"
   }
   genre: {
     shape: sql_table
@@ -135,6 +136,7 @@ playlists: "Playlists" {
     deleted_at: "timestamptz"
     created_at: "timestamptz"
     liked_by_user_id: "integer" {constraint: [foreign_key]}
+    cover_file: "varchar(255)"
   }
   playlist_user: {
     shape: sql_table
