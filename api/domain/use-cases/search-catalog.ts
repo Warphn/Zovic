@@ -33,7 +33,7 @@ export class SearchCatalog implements SearchCatalogUseCase {
     isAdmin = false,
   }: SearchCatalogInput): Promise<SearchCatalogOutput> {
     const trimmed = term.trim();
-    if (!trimmed) return { musics: [], artists: [], playlists: [] };
+    if (!trimmed) return { musics: [], artists: [], albums: [], playlists: [] };
 
     return this.query.search({
       term: trimmed,

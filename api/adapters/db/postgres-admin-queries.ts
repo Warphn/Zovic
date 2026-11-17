@@ -19,8 +19,8 @@ const TOP_CONTENT = 10;
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
-function coverUrlOf(albumId: number, coverFile: string): string {
-  return versionedImageUrl(`/api/albums/${albumId}/cover`, coverFile);
+export function albumCoverUrlOf(albumId: number, coverFile: string | null): string | null {
+  return coverFile === null ? null : versionedImageUrl(`/api/albums/${albumId}/cover`, coverFile);
 }
 
 export function artistImageUrlOf(artistId: number, imageFile: string | null): string | null {
@@ -122,7 +122,7 @@ export class PostgresCatalogQueries implements CatalogQueries, PlayLog {
     return rows.map(({ music_count: musicCount, cover_file: coverFile, ...album }) => ({
       ...album,
       musicCount: Number(musicCount),
-      coverUrl: coverFile === null ? null : coverUrlOf(album.id, coverFile),
+      coverUrl: albumCoverUrlOf(album.id, coverFile),
     }));
   }
 

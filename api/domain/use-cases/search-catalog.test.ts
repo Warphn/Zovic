@@ -5,6 +5,7 @@ import { SEARCH_LIMIT, SearchCatalog } from "./search-catalog.ts";
 const RESULTS: SearchResults = {
   musics: [{ id: 1, name: "Águas de Março", duration: 212, artists: [{ id: 3, name: "Elis Regina" }] }],
   artists: [{ id: 3, name: "Elis Regina", musicCount: 7, imageUrl: null }],
+  albums: [{ id: 5, name: "Elis & Tom", year: 1974, artists: [{ id: 3, name: "Elis Regina" }], musicCount: 14, coverUrl: null }],
   playlists: [{ id: 42, name: "Água fresca", isPrivate: false, color: "#1DB954", musicCount: 10, coverUrl: null }],
 };
 
@@ -41,7 +42,7 @@ describe("SearchCatalog", () => {
 
     const output = await useCase.execute({ userId: 7, term: "   ", birthdate: ADULT, now: NOW });
 
-    expect(output).toEqual({ musics: [], artists: [], playlists: [] });
+    expect(output).toEqual({ musics: [], artists: [], albums: [], playlists: [] });
     expect(query.calls).toHaveLength(0);
   });
 

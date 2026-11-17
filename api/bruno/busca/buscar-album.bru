@@ -1,0 +1,30 @@
+meta {
+  name: Buscar álbum
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/search?q=concreto
+  body: none
+  auth: none
+}
+
+params:query {
+  q: concreto
+}
+
+docs {
+  "concreto" acha o álbum "Ondas de Concreto" do seed (HU-12), com o ano, os artistas e as faixas ativas.
+}
+
+tests {
+  test("responde 200 com o álbum no grupo albums", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().albums[0]).to.include({ name: "Ondas de Concreto", year: 2018, musicCount: 5 });
+  });
+
+  test("traz os artistas do álbum", function () {
+    expect(res.getBody().albums[0].artists.map((a) => a.name)).to.deep.equal(["Maré Alta"]);
+  });
+}
