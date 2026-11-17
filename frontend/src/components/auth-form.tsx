@@ -99,8 +99,10 @@ interface FormFieldProps extends InputProps {
 // label stays up. The label is set at its small size and scaled up to rest, so the move is
 // transform only (translate + scale), never top or font-size.
 const LABEL_AT_REST = "translate-y-2 scale-[1.2727]"
+// A value the browser autofilled may not count as typed yet (the placeholder still "shows"), so
+// :autofill floats the label too
 const LABEL_FLOAT_ON_STATE =
-  "peer-focus:translate-y-0 peer-focus:scale-100 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:scale-100"
+  "peer-focus:translate-y-0 peer-focus:scale-100 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:scale-100 peer-autofill:translate-y-0 peer-autofill:scale-100"
 
 // Labelled input whose error is announced with it (aria-invalid + aria-describedby)
 export function FormField({ id, label, error, placeholder, type, ...inputProps }: FormFieldProps) {
@@ -117,6 +119,9 @@ export function FormField({ id, label, error, placeholder, type, ...inputProps }
           aria-describedby={error ? errorId : undefined}
           className={cn(
             "peer h-12 px-3 pt-5 pb-1 placeholder:text-transparent focus:placeholder:text-muted-foreground",
+            // The browser paints autofilled fields light blue; an inset shadow in the field's own
+            // surface covers it, and the text keeps the ink
+            "autofill:shadow-[inset_0_0_0_1000px_var(--color-surface)] autofill:[-webkit-text-fill-color:var(--color-foreground)]",
             error && "pr-10"
           )}
           {...inputProps}
