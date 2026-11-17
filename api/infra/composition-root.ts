@@ -57,6 +57,7 @@ import { RemoveMusicFromPlaylist } from "../domain/use-cases/remove-music-from-p
 import { AddCollaborator, ListCollaborators, RemoveCollaborator } from "../domain/use-cases/playlist-collaborators.ts";
 import { ChangePlaylistCover, GetPlaylistCover, RemovePlaylistCover } from "../domain/use-cases/playlist-cover.ts";
 import { ReorderPlaylistMusics } from "../domain/use-cases/reorder-playlist-musics.ts";
+import { RemoveCommentAsAdmin } from "../domain/use-cases/remove-comment-as-admin.ts";
 import { ReportComment } from "../domain/use-cases/report-comment.ts";
 import { SearchCatalog } from "../domain/use-cases/search-catalog.ts";
 import { UpdatePlaylist } from "../domain/use-cases/update-playlist.ts";
@@ -120,7 +121,6 @@ export function composeApp(
     storages.covers,
   );
   const manageUsers = new ManageUsers(new BetterAuthUserAccounts(auth, db));
-  const adminController = makeAdminController(new PostgresAdminQueries(db), manageUsers, manageCatalog);
 
   const commentRepository = new PostgresCommentRepository(db);
   const createComment = new CreateComment(commentRepository, userRepository);
@@ -128,6 +128,12 @@ export function composeApp(
   const deleteComment = new DeleteComment(commentRepository, userRepository);
   const reportComment = new ReportComment(commentRepository, userRepository);
   const commentController = makeCommentController(createComment, listComments, deleteComment, reportComment);
+  const adminController = makeAdminController(
+    new PostgresAdminQueries(db),
+    manageUsers,
+    manageCatalog,
+    new RemoveCommentAsAdmin(commentRepository),
+  );
 
   const getMySubscription = new GetMySubscription(subscriptionRepository);
   const subscriptionController = makeSubscriptionController({

@@ -1,4 +1,5 @@
 import type { Request, RequestHandler, Response } from "express";
+import type { RemoveCommentAsAdminUseCase } from "../../domain/use-cases/remove-comment-as-admin.ts";
 import { NotFoundError } from "../../domain/errors/domain-error.ts";
 import type { AdminQueries, CatalogQueries, PlayLog } from "../../domain/ports/admin-queries.ts";
 import { canSeeExplicit } from "../../domain/shared/age.ts";
@@ -117,9 +118,16 @@ export interface AdminController {
   createArtist: RequestHandler;
   renameArtist: RequestHandler;
   removeArtist: RequestHandler;
+  listCommentReports: RequestHandler;
+  removeComment: RequestHandler;
 }
 
-export function makeAdminController(queries: AdminQueries, users: ManageUsers, catalog: ManageCatalog): AdminController {
+export function makeAdminController(
+  queries: AdminQueries,
+  users: ManageUsers,
+  catalog: ManageCatalog,
+  removeComment: RemoveCommentAsAdminUseCase,
+): AdminController {
   return {
     stats: async (_req, res) => {
       res.json(await queries.stats());
@@ -182,6 +190,13 @@ export function makeAdminController(queries: AdminQueries, users: ManageUsers, c
     },
     removeArtist: async (req, res) => {
       await catalog.deleteArtist(idParam(req));
+      res.sendStatus(204);
+    },
+    listCommentReports: async (_req, res) => {
+      res.json(await queries.listReportedComments());
+    },
+    removeComment: async (req, res) => {
+      await removeComment.execute({ adminId: res.locals.userId, commentId: idParam(req) });
       res.sendStatus(204);
     },
   };

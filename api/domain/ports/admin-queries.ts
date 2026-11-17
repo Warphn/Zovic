@@ -96,12 +96,28 @@ export interface UsageStats {
   byGenre: { genreId: number; name: string; color: string; plays: number }[];
 }
 
+/** Um comentário ativo com pelo menos uma denúncia, para a moderação (HU-39). */
+export interface ReportedCommentItem {
+  id: number;
+  comment: string;
+  /** Segundo da música a que o comentário se refere, ou null. */
+  timestamp: number | null;
+  createdAt: string;
+  author: { id: number; name: string };
+  music: { id: number; name: string };
+  reportCount: number;
+  /** Da denúncia mais recente para a mais antiga. */
+  reports: { reason: string; reporterName: string; createdAt: string }[];
+}
+
 export interface AdminQueries {
   stats(): Promise<UsageStats>;
   /** Todos os usuários, inclusive removidos; search filtra por nome ou email. */
   listUsers(search?: string): Promise<AdminUserItem[]>;
   /** Últimas reproduções do usuário, da mais recente para a mais antiga; null se ele não existe. */
   recentPlays(userId: number, limit: number): Promise<RecentPlay[] | null>;
+  /** Comentários ativos denunciados, dos mais denunciados para os menos; no empate, a denúncia mais recente primeiro. */
+  listReportedComments(): Promise<ReportedCommentItem[]>;
 }
 
 export interface NewAccountInput {

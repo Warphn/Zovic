@@ -113,11 +113,12 @@ export class PostgresCommentRepository implements CommentRepository {
     }));
   }
 
-  async softDelete(id: number, deletedAt = new Date()): Promise<void> {
-    await this.pool.query(
-      `UPDATE comments SET deleted_at = $1 WHERE id = $2`,
-      [deletedAt, id],
-    );
+  async softDelete(id: number, deletedBy: number, deletedAt = new Date()): Promise<void> {
+    await this.pool.query(`UPDATE comments SET deleted_at = $1, deleted_by = $2 WHERE id = $3`, [
+      deletedAt,
+      deletedBy,
+      id,
+    ]);
   }
 
   async saveReport(report: CommentReport): Promise<void> {
