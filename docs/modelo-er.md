@@ -1,6 +1,6 @@
 # Modelo Entidade-Relacionamento
 
-O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261117_190000__Registra_quem_removeu_o_comentario.sql`).
+O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrations/`, e este documento acompanha a última delas (`V261116_090100__Aceita_musica_no_evento_de_ouvida.sql`).
 
 ### Diagrama gerado do banco
 
@@ -8,11 +8,25 @@ O modelo de dados do Zovic. A fonte da verdade são as migrations em `db/migrati
 
 Esta imagem sai do banco com `bun run db:erd` (veja [Banco de dados](banco-de-dados.md)), é atualizada automaticamente pelo CI a cada push e está sempre fiel a ele: tabelas, colunas, chaves e cardinalidades vêm do próprio Postgres. As tabelas do Better Auth e o histórico do Flyway ficam de fora.
 
-### Diagrama didático
+### DER conceitual
 
-![Diagrama ER do Zovic](assets/modelo-er.png)
+![DER conceitual do Zovic](assets/der-conceitual.png)
 
-Esta é a versão feita à mão, com os verbos das relações, para explicar o modelo.
+O modelo conceitual, na notação de Chen (como no brModelo). As entidades ficam nos retângulos e os relacionamentos nos losangos. Cada linha liga uma entidade a um relacionamento, com a cardinalidade (mín, máx) junto da entidade. Não há chaves estrangeiras nem tabelas associativas: um relacionamento N:M, como `contém` entre Playlist e Música, guarda os próprios atributos (`posição` e `adicionada_em`). Ficam de fora:
+
+- as tabelas do Better Auth (`session`, `account` e `verification`), que são da biblioteca de login;
+- a `system_data`, que só guarda contadores que um `COUNT` já calcula;
+- as estatísticas `musics.streams` e `musics.rating`, que repetem o que está em `user_event` e em `rating`.
+
+### Modelo relacional
+
+![Modelo relacional do Zovic](assets/modelo-er.png)
+
+O modelo lógico: cada entidade e cada relacionamento N:M viram uma tabela, e os relacionamentos 1:N viram uma chave estrangeira. A seta sai da FK e aponta para a PK que ela referencia.
+
+Os dois diagramas ficam no [`modelo-er.drawio`](assets/modelo-er.drawio), uma página cada. Para mudar, edite no draw.io e exporte de novo a página como PNG: a página "DER conceitual" vira o `der-conceitual.png`, e a "Modelo relacional" vira o `modelo-er.png`.
+
+O [`modelo-er-pe-de-galinha.drawio`](assets/modelo-er-pe-de-galinha.drawio) (imagem em [`modelo-er-pe-de-galinha.png`](assets/modelo-er-pe-de-galinha.png)) é a versão anterior, em notação pé de galinha, que misturava os dois modelos: cada relação aparecia na linha com cardinalidade e também na chave estrangeira ou na tabela associativa. Ele fica só como referência e não é atualizado.
 
 ## Diagrama
 
@@ -22,7 +36,7 @@ Os tipos são os do Postgres. `PK` marca a chave primária, `FK` a chave estrang
 erDiagram
     plan_type ||--|{ plan : "classifica"
     plan ||--|{ plan_user : "possui"
-    user ||--|{ plan_user : "assina"
+    user ||--o{ plan_user : "assina"
     plan ||--o{ plan_invitation : "convida"
 
     user ||--o{ session : "abre"

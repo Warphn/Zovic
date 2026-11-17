@@ -1,0 +1,77 @@
+\section{Evolução do Esquema}
+\label{sec:evolucao}
+
+O esquema muda ao longo do projeto: cada funcionalidade nova pode pedir uma
+tabela ou uma coluna. Essas mudanças são feitas por \textbf{migrations} do
+Flyway, arquivos SQL aplicados em ordem e registrados na tabela
+\campo{flyway\_schema\_history}. O Flyway roda a cada \campo{docker compose
+up}, então o banco de qualquer integrante e o de produção ficam sempre na
+mesma versão.
+
+\subsection{Nome e ordem}
+
+O nome de cada arquivo segue o padrão
+\campo{V<AAMMDD>\_<HHMMSS>\_\_<Descricao>.sql}. Como a versão é a data e a hora
+de criação, as migrations de integrantes diferentes não disputam o mesmo
+número, e rodam na ordem em que foram escritas. Um nome fora do padrão faz o
+Flyway falhar (\campo{validateMigrationNaming}), em vez de ignorar o arquivo em
+silêncio.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Migrations aplicadas até a entrega}
+  \label{tab:migrations}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{0.42}L{1.58}@{}}
+    \toprule
+    \poliCabTabela{Versão} & \poliCabTabela{O que muda} \\
+    \midrule
+    \campo{V1} & Esquema inicial: planos, usuários, catálogo, interações e playlists \\
+    \campo{V261020\_162546} & Tabelas do Better Auth e email na tabela \campo{user} \\
+    \campo{V261026\_133836} & Papel do usuário (\campo{admin} ou \campo{assinante}) \\
+    \campo{V261103\_151718} & Extensão \campo{unaccent}, para a busca não diferenciar acentos \\
+    \campo{V261103\_154132} & Eventos de reprodução passam a apontar para a música \\
+    \campo{V261103\_163300} & Ordem das músicas na playlist \\
+    \campo{V261105\_151000} & Convites do plano familiar e limite de 4 pessoas \\
+    \campo{V261105\_162500} & Denúncias de comentários \\
+    \campo{V261105\_183723} & Áudio e conteúdo explícito na música, ano no álbum \\
+    \campo{V261105\_213000} & Capa do álbum \\
+    \campo{V261112\_120000} & Número da faixa no álbum \\
+    \campo{V261115\_200000} & Playlist ``Músicas Curtidas'' de cada conta \\
+    \campo{V261116\_090000} & Evento \campo{music\_listened} \\
+    \campo{V261116\_090100} & O evento \campo{music\_listened} também leva a música \\
+    \campo{V261117\_160000} & Nome de artista único, com a fusão dos duplicados \\
+    \campo{V261117\_170000} & Capa da playlist e foto do artista \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\FloatBarrier
+\subsection{Regras}
+
+\begin{itemize}
+  \item \textbf{Uma migration publicada nunca é editada.} O Flyway guarda um
+    checksum de cada arquivo aplicado e se recusa a subir se ele mudar. Uma
+    correção é sempre uma migration nova.
+  \item \textbf{Dados de teste não entram em migration}, porque as migrations
+    também rodam em produção. Eles ficam no seed (\cref{sec:acesso}).
+  \item \textbf{Uma regra nova cuida dos dados que já existem.} Antes de criar
+    o índice de nome de artista único, a migration
+    \campo{V261117\_160000} funde os artistas de mesmo nome no de menor
+    \campo{id}: os vínculos com álbuns e músicas passam para ele, e os outros
+    recebem remoção lógica. Sem isso, o índice falharia em bancos que já
+    tivessem duplicados.
+  \item \textbf{Valor novo de enum e o uso dele vão em migrations separadas.}
+    O Postgres não permite usar um valor de enum na mesma transação em que ele
+    foi criado, e o Flyway roda cada migration numa transação. Por isso
+    \campo{music\_listened} entrou numa migration, e o \campo{CHECK} que o usa
+    entrou na seguinte.
+\end{itemize}
+
+\subsection{Documentação gerada}
+
+Depois de uma migration, o comando \campo{db:sync} atualiza o
+\campo{schema.prisma} a partir do banco, e o \campo{db:sync --check} confere se
+os dois estão iguais. O diagrama da \cref{fig:relacional} é gerado pelo CI.
+Com isso, a documentação do esquema não depende de alguém lembrar de
+atualizá-la.

@@ -1,0 +1,28 @@
+\section{Introdução}
+
+O Zovic é uma plataforma de streaming de música desenvolvida na disciplina de
+Engenharia de Software. Visitantes navegam pelo catálogo, assinantes ouvem
+músicas, montam playlists, comentam e avaliam faixas, e um gestor pode dividir
+um plano familiar com até quatro pessoas. Um administrador mantém o catálogo e
+acompanha as estatísticas de uso.
+
+Todos esses dados ficam num único banco PostgreSQL. Este relatório descreve
+como ele foi modelado e como é mantido:
+
+\begin{itemize}
+  \item o \textbf{modelo conceitual} (\cref{sec:conceitual}), que mostra as
+    entidades do domínio e como elas se relacionam, sem detalhes de
+    implementação;
+  \item o \textbf{modelo relacional} (\cref{sec:relacional}), que mapeia o
+    conceitual em tabelas, chaves primárias e chaves estrangeiras;
+  \item as \textbf{restrições de integridade} (\cref{sec:integridade}) que o
+    próprio banco garante;
+  \item a \textbf{evolução do esquema} por migrations (\cref{sec:evolucao}) e
+    o \textbf{acesso aos dados} pela API (\cref{sec:acesso});
+  \item as \textbf{limitações conhecidas} e o que ainda está planejado
+    (\cref{sec:limitacoes}).
+\end{itemize}
+
+A fonte da verdade do esquema são as migrations em \campo{db/migrations/}, no
+repositório do projeto. Este relatório acompanha a última delas,
+\campo{V261117\_170000\_\_Adiciona\_imagem\_da\_playlist\_e\_do\_artista.sql}.

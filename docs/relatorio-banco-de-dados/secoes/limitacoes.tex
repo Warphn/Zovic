@@ -1,0 +1,29 @@
+\section{Limitações e Próximos Passos}
+\label{sec:limitacoes}
+
+A revisão do modelo conceitual mostrou pontos em que o banco atual guarda
+mais do que o modelo pede. Eles estão listados abaixo, com a mudança
+planejada.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Pontos em aberto no esquema}
+  \label{tab:pendencias}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{0.8}L{1.15}L{1.05}@{}}
+    \toprule
+    \poliCabTabela{Ponto} & \poliCabTabela{Problema} & \poliCabTabela{Mudança planejada} \\
+    \midrule
+    \campo{musics.rating} e \campo{musics.streams} & Dados derivados: repetem a média de \campo{rating} e a contagem de \campo{user\_event}, e podem divergir delas & Calcular na consulta e apagar as colunas \\
+    \campo{rating} (nota de 1 a 5) & A HU-20 trocou a nota por like e dislike & Tabela de votos no lugar de \campo{rating} \\
+    \campo{system\_data} & Contadores que um \campo{COUNT} já calcula; hoje só o seed escreve nela & Apagar a tabela ou trocá-la por uma \emph{view} \\
+    \campo{music\_user} & As curtidas passaram para a playlist ``Músicas Curtidas'', e a API não usa mais a tabela & Apagar a tabela \\
+    \campo{musics.lyrics\_id} & Coluna sem chave estrangeira: a tabela de letras ainda não existe & Criar a tabela de letras, se a funcionalidade entrar no escopo \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Cada mudança será uma migration nova, seguindo as regras da
+\cref{sec:evolucao}. Quando uma delas for aplicada, o modelo relacional da
+\cref{fig:relacional} se atualiza sozinho no próximo push, e o modelo
+conceitual da \cref{fig:der} já está na forma final.
