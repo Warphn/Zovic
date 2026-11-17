@@ -1,4 +1,4 @@
-// Counts how much sound a listen really played, for "Já ouvidas" (HU-15): a music counts as
+// Counts how much sound a listen really played, for the listened icon (HU-15): a music counts as
 // listened after more than 30 seconds of sound in one listen. The API checks the rule again;
 // this only decides when to tell it.
 
